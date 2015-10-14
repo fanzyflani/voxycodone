@@ -289,8 +289,10 @@ int kd_sort_imap(void const* ap, void const* bp)
 
 	double ac = ae->v[kd_imap_axis];
 	double bc = be->v[kd_imap_axis];
+	double ar = ae->rad;
+	double br = be->rad;
 
-	return(ac < bc ? -1 : ac > bc ? 1 : 0);
+	return(ac < bc ? -1 : ac-ar > bc-br ? 1 : 0);
 }
 
 struct kd *kd_build_node(int *base, int base_len, struct kd *parent)
@@ -311,7 +313,7 @@ struct kd *kd_build_node(int *base, int base_len, struct kd *parent)
 	kd->split_axis = -1;
 
 	// If we have less than two in here, return
-	if(base_len < 9)
+	if(base_len < 5)
 	{
 		// But first, let's get the contents list set up
 		kd->contents = malloc(base_len*sizeof(int));
@@ -373,28 +375,23 @@ struct kd *kd_build_node(int *base, int base_len, struct kd *parent)
 
 	// TODO: avoid a split
 
-	// Build left bucket
-	for(i = median0; i < base_len; i++)
+	// Split index map
+	int *submap0 = malloc(base_len*sizeof(int));
+	int *submap1 = malloc(base_len*sizeof(int));
+	int blen0 = 0;
+	int blen1 = 0;
+
+	// Build buckets
+	for(i = 0; i < base_len; i++)
 	{
 		struct sph *sph = &sph_list[newmap[i]];
 
-		if(sph->v[kd->split_axis] - sph->rad >= kd->split_point)
-			break;
-	}
-	int blen0 = i;
-
-	// Build right bucket
-	for(i = median1; i >= 0; i--)
-	{
-		struct sph *sph = &sph_list[newmap[i]];
-
-		if(sph->v[kd->split_axis] + sph->rad <= kd->split_point)
-			break;
+		if(sph->v[kd->split_axis] - sph->rad <= kd->split_point)
+			submap0[blen0++] = newmap[i];
+		if(sph->v[kd->split_axis] + sph->rad >= kd->split_point)
+			submap1[blen1++] = newmap[i];
 	}
 
-	int blen1 = base_len - (i+1);
-
-	//printf("%i %i %i\n", blen0, blen1, base_len);
 	// If we're all in the bucket, change strategy and become a leaf instead
 	if(blen0 == base_len || blen1 == base_len)
 	{
@@ -404,15 +401,19 @@ struct kd *kd_build_node(int *base, int base_len, struct kd *parent)
 		kd->contents_len = base_len;
 
 		free(newmap);
+		free(submap0);
+		free(submap1);
 		return kd;
 	}
 
 	// Split!
-	kd->children[0] = kd_build_node(newmap, blen0, kd);
-	kd->children[1] = kd_build_node(newmap + base_len - blen1, blen1, kd);
+	kd->children[0] = kd_build_node(submap0, blen0, kd);
+	kd->children[1] = kd_build_node(submap1, blen1, kd);
 
 	// Return
 	free(newmap);
+	free(submap0);
+	free(submap1);
 	return kd;
 
 }
@@ -446,8 +447,6 @@ void kd_generate()
 	// Recursively build tree
 	kd_list_len = 0;
 	kd_build_node(NULL, sph_count, NULL);
-	//local kd_root = kd_build_node(sph_list, nil)
-	//local b1, b2 = kd_root.bmin, kd_root.bmax
 
 	// Bounding-box for fast skips
 	// XXX: this may need to be replaced with something faster
@@ -556,15 +555,39 @@ void h_render_main(void)
 	mat4x4_translate_in_place(mat_cam1, -cam_pos_x, -cam_pos_y, -cam_pos_z);
 
 	int x, y, z, i;
-	int cube_units = 10;
+	/*
+	int cube_units = 8;
 	sph_count = cube_units*cube_units*cube_units;
 
 	i = 0;
 	for(y = 1; y <= cube_units; y++)
 	for(x = 1; x <= cube_units; x++)
 	for(z = 1; z <= cube_units; z++)
-		sph_set(i++, x*3 - 1.5*cube_units - 1.5, y*3 - 2.0, -z*3, 1.0,
+	{
+		double rad = sin((((x+y-z/2.0)/cube_units)+render_sec_current)*M_PI*2.0)*0.5+1.0;
+		sph_set(i++, x*4 - 2*cube_units - 2, y*4 - 3, -z*4, rad,
 			y*255/cube_units, x*255/cube_units, z*255/cube_units, 255);
+	}
+	*/
+	sph_count = 50;
+	double fx, fy, fz;
+	fx = 0.0;
+	fy = 0.0;
+	fz = 0.0;
+	for(i = 0; i < sph_count; i++)
+	{
+		fx = sin(((i/(double)sph_count+render_sec_current/50.0)*2.0 + 0.0/3.0)*M_PI*2.0)*50.0;
+		fy = sin(((i/(double)sph_count+render_sec_current/50.0)*3.3 + 1.0/3.0)*M_PI*2.0)*30.0 + 30.0;
+		fz = sin(((i/(double)sph_count+render_sec_current/50.0)*1.0 + 2.0/3.0)*M_PI*2.0)*50.0 - 60.0;
+		sph_set(i, fx, fy, fz,
+			//sin((i*2.0/(double)sph_count + render_sec_current/3.0)*M_PI*2.0),
+			4.0,
+			sin(M_PI*2.0*((i/(double)sph_count) + 0.0/3.0))*128.0+127.5,
+			sin(M_PI*2.0*((i/(double)sph_count) + 1.0/3.0))*128.0+127.5,
+			sin(M_PI*2.0*((i/(double)sph_count) + 2.0/3.0))*128.0+127.5,
+			255);
+
+	}
 
 	//sph_count = 16;
 	kd_generate();
@@ -778,7 +801,7 @@ int main(int argc, char *argv[])
 #ifndef WIN32
 		//usleep(500);
 #else
-		SDL_Delay(10);
+		//SDL_Delay(10);
 #endif
 	}
 

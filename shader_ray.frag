@@ -3,14 +3,16 @@ const bool do_kdtree = true;
 const bool do_shadow = true;
 const bool do_bbox = true;
 
+const bool test_mesh = false; // WIP: hardcoded sphere grid spam
+
 const float EPSILON = 0.0001;
 const float ZFAR = 1000.0;
-const int BOUNCES = 0;
+const int BOUNCES = 2;
 const int SPH_MAX = (1024);
 const int SPILIST_MAX = (1024+1024);
 const int KD_MAX = (2048+128);
-const int KD_TRACE_MAX = 8;
-const int KD_LOOKUP_MAX = 64;
+const int KD_TRACE_MAX = 12;
+const int KD_LOOKUP_MAX = 128;
 
 uniform sampler2D tex0;
 
@@ -76,11 +78,8 @@ float decode_float_16(vec4 c)
 	return (c.r + (c.g-128.0)*256.0)/64.0;
 }
 
-void shade_sphere(int spi)
+void shade_sphere(vec3 epos, vec3 ecol)
 {
-	vec4 spd = sph_data[spi];
-	vec3 epos = spd.xyz;
-
 	// Calculate point of intersection
 	vec3 epoint = wpos + ttime*wdir;
 
@@ -89,15 +88,18 @@ void shade_sphere(int spi)
 
 	// Calculate colour
 	tdiff = max(0.0, dot(tnorm, normalize(light0_pos - epoint)));
-	tcol = fetch_data(4, spi).rgb;
+	tcol = ecol;
 }
 
-void trace_sphere(int spi, bool shadow_mode, vec3 epos, float erad, vec3 ecol)
+void trace_sphere(int spi, bool shadow_mode, vec3 epos, float erad)
 {
 	// Calculate hypotenuse
 	vec3 dpos = epos - wpos;
 	float dposl2 = dot(dpos, dpos);
-	if(ttime < sqrt(dposl2) - erad) return; // *** ACCEL SKIP if we cannot reach it
+
+	// this skip actually slows traces down, so DISABLED
+	//if(ttime < sqrt(dposl2) - erad) return; // *** ACCEL SKIP if we cannot reach it
+
 	float erad2 = erad*erad;
 	bool einside = dposl2 < erad2;
 	if(einside) return; // *** TEMPORARY ACCEL SKIP - inside is very slow with this struct!
@@ -176,7 +178,10 @@ void kd_add_plane(int idx, float tmin, float tmax)
 {
 	// Don't overflow trace list!
 	if(kd_trace_head >= KD_TRACE_MAX)
+	{
+		ccol.r = 1.0;
 		return;
+	}
 
 	// Don't add something that has no or negative time!
 	if(tmin >= tmax) return;
@@ -203,6 +208,57 @@ bool kd_fetch_plane(void)
 
 void trace_scene(bool shadow_mode)
 {
+	if(test_mesh)
+	{
+		vec3 dsign = sign(wdir);
+		vec3 adir = abs(wdir);
+		vec3 aidir = 1.0/max(vec3(EPSILON), adir);
+		vec3 ecol = vec3(1.0, 0.5, 0.3);
+		trace_spi = -1;
+
+		//vec3 epos = floor(wpos/2.0)*2.0;
+		//vec3 rbox = (epos-wpos)*dsign;
+		vec3 epos = floor((wpos+1.0)/2.0)*2.0 + 1.0*dsign;
+		vec3 rbox = (epos-wpos)*dsign + 1.0;
+
+		for(int i = 0; i < 3; i++)
+		{
+			trace_sphere(1, shadow_mode, epos, 1.0);
+
+			if(trace_spi >= 0)
+			{
+				shade_sphere(epos, ecol);
+				break;
+			}
+
+			vec3 cstime = aidir*rbox;
+			float stime;
+
+			if(cstime.x < cstime.y && cstime.x < cstime.z)
+			{
+				stime = cstime.x;
+				rbox -= stime*adir;
+				rbox.x = 2.0;
+				epos.x += 2.0*dsign.x;
+
+			} else if(cstime.y < cstime.z) {
+				stime = cstime.y;
+				rbox -= stime*aidir;
+				rbox.y = 2.0;
+				epos.y += 2.0*dsign.y;
+
+			} else {
+				stime = cstime.z;
+				rbox -= stime*aidir;
+				rbox.z = 2.0;
+				epos.z += 2.0*dsign.z;
+
+			}
+		}
+
+		return;
+	}
+
 	// Trace to plane
 	trace_plane(shadow_mode
 		, vec3(0.0, 1.0, 0.0), -3.0
@@ -247,7 +303,7 @@ void trace_scene(bool shadow_mode)
 			return;
 		}
 
-		base_ttime = facg;
+		base_ttime = min(ttime, facg);
 		base_pretime = max(0.0, facf);
 	}
 
@@ -296,16 +352,22 @@ void trace_scene(bool shadow_mode)
 				float cmp_pos;
 				float cmp_idir;
 
-				if(split_axis == 0)
+				switch(split_axis)
 				{
-					cmp_pos = wpos.x;
-					cmp_idir = idir.x;
-				} else if(split_axis == 1) {
-					cmp_pos = wpos.y;
-					cmp_idir = idir.y;
-				} else {
-					cmp_pos = wpos.z;
-					cmp_idir = idir.z;
+					case 0:
+						cmp_pos = wpos.x;
+						cmp_idir = idir.x;
+						break;
+
+					case 1:
+						cmp_pos = wpos.y;
+						cmp_idir = idir.y;
+						break;
+
+					default:
+						cmp_pos = wpos.z;
+						cmp_idir = idir.z;
+						break;
 				}
 
 				/*
@@ -394,17 +456,7 @@ void trace_scene(bool shadow_mode)
 						int spi = kd_data_spilist[spibeg+j];
 						vec4 spd = sph_data[spi];
 
-						trace_sphere(spi, shadow_mode,
-							/*
-							vec3(
-								decode_float(fetch_data(0, spi)),
-								decode_float(fetch_data(1, spi)),
-								decode_float(fetch_data(2, spi))
-							),
-							decode_float(fetch_data(3, spi)),
-							*/
-							spd.xyz, spd.w,
-							fetch_data(4, spi).rgb);
+						trace_sphere(spi, shadow_mode, spd.xyz, spd.w);
 					}
 
 					if(ttime == kd_tmax)
@@ -425,26 +477,14 @@ void trace_scene(bool shadow_mode)
 		{
 			vec4 spd = sph_data[i];
 
-			trace_sphere(i, shadow_mode,
-				/*
-				vec3(
-					decode_float(fetch_data(0, i)),
-					decode_float(fetch_data(1, i)),
-					decode_float(fetch_data(2, i))
-				),
-				decode_float(fetch_data(3, i)),
-				*/
-				spd.xyz, spd.w,
-				fetch_data(4, i).rgb
-				//vec3(1.0, 0.0, 1.0)
-				);
+			trace_sphere(i, shadow_mode, spd.xyz, spd.w);
 
 			if(shadow_mode && ttime < base_ttime) break;
 		}
 	}
 
 	if(trace_spi >= 0)
-		shade_sphere(trace_spi);
+		shade_sphere(sph_data[trace_spi].xyz, fetch_data(4, trace_spi).rgb);
 
 	if(ttime == base_ttime)
 		ttime = old_ttime;
@@ -457,7 +497,8 @@ void main()
 
 	// Set up boundary
 	float amax = max(max(abs(wdir.x),abs(wdir.y)),abs(wdir.z));
-	tcol = (amax == abs(wdir.y) ? vec3(0.4, 1.0, 0.3) : vec3(0.5, 0.7, 1.0)) * amax;
+	//tcol = (amax == abs(wdir.y) ? vec3(0.4, 1.0, 0.3) : vec3(0.5, 0.7, 1.0)) * amax;
+	tcol = vec3(0.5, 0.7, 1.0) * amax;
 	tnorm = vec3(0.0);
 	ttime = ZFAR;
 	tdiff = 1.0;
