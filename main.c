@@ -13,6 +13,27 @@
 #endif
 
 #include <epoxy/gl.h>
+#ifdef WIN32
+#include <epoxy/wgl.h>
+#endif
+
+#ifdef WIN32
+// libepoxy calls wglGetProcAddress for stuff that's core in 1.1
+// at least on Wine this returns NULL for a lot of things
+// so we have to get to the opengl32.dll crap directly
+#undef glBindTexture
+#undef glDrawArrays
+#undef glGenTextures
+#undef glTexImage2D
+#undef glTexParameteri
+#undef glTexSubImage2D
+GLAPI void APIENTRY glBindTexture( GLenum target, GLuint texture );
+GLAPI void APIENTRY glDrawArrays( GLenum mode, GLint first, GLsizei count );
+GLAPI void APIENTRY glGenTextures( GLsizei n, GLuint *textures );
+GLAPI void APIENTRY glTexImage2D( GLenum target, GLint level, GLint internalFormat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const GLvoid *pixels );
+GLAPI void APIENTRY glTexParameteri( GLenum target, GLenum pname, GLint param );
+GLAPI void APIENTRY glTexSubImage2D( GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid *pixels );
+#endif
 
 #include <SDL.h>
 
@@ -173,6 +194,7 @@ void init_gfx(void)
 
 	GLint link_status;
 	glGetProgramiv(shader_ray, GL_LINK_STATUS, &link_status);
+	printf("Link status: %i\n", link_status);
 	assert(link_status == GL_TRUE);
 
 	shader_ray_tex0 = glGetUniformLocation(shader_ray, "tex0");
@@ -189,18 +211,26 @@ void init_gfx(void)
 	//shader_ray_kd_data_spibeg = glGetUniformLocation(shader_ray, "kd_data_spibeg");
 	//shader_ray_kd_data_spilen = glGetUniformLocation(shader_ray, "kd_data_spilen");
 	shader_ray_kd_data_spilist = glGetUniformLocation(shader_ray, "kd_data_spilist");
+	printf("Got uniforms %i\n", shader_ray_kd_data_spilist);
 
 	glGenTextures(1, &tex_ray0);
 	glBindTexture(GL_TEXTURE_2D, tex_ray0);
-	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 64, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-	glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, 64, 1024);
+	if(!epoxy_has_gl_extension("GL_ARB_texture_storage"))
+	{
+		printf("Eww yuck no glTexStorage2D update your drivers you scrub");
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 64, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	} else {
+		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, 64, 1024);
+	}
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glBindTexture(GL_TEXTURE_2D, 0);
+	printf("Got texture\n");
 
 	glGenBuffers(1, &va_ray_vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, va_ray_vbo);
 	glBufferData(GL_ARRAY_BUFFER, 6*2*sizeof(int16_t), va_ray_data, GL_STATIC_DRAW);
+	printf("Got buffer\n");
 
 	glGenVertexArrays(1, &va_ray_vao);
 	glBindVertexArray(va_ray_vao);
@@ -210,6 +240,7 @@ void init_gfx(void)
 	glEnableVertexAttribArray(0);
 	glBindVertexArray(0);
 	glDisableVertexAttribArray(0);
+	printf("Got VAO\n");
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }

@@ -544,7 +544,8 @@ void main()
 			if(false)
 			{
 				// Cast from light
-				// FIXME: broken when bbox enabled
+				// disabled: causes fringing on the shadows
+				// and no real performance improvements
 				wdir = normalize(wpos - light0_pos);
 				wpos = light0_pos;
 			} else {
