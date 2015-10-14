@@ -5,10 +5,10 @@ const bool do_bbox = true;
 
 const float EPSILON = 0.0001;
 const float ZFAR = 1000.0;
-const int BOUNCES = 2;
-const int SPH_MAX = 128;
-const int SPILIST_MAX = 256;
-const int KD_MAX = 512;
+const int BOUNCES = 0;
+const int SPH_MAX = (1024);
+const int SPILIST_MAX = (1024+1024);
+const int KD_MAX = (2048+128);
 const int KD_TRACE_MAX = 8;
 const int KD_LOOKUP_MAX = 64;
 
@@ -37,13 +37,11 @@ float kd_tmax;
 
 // TODO: get uniform blocks working so we can make these into structs
 // (it's theoretically better for cache)
-// TODO: get these working in the first place
-// TODO: HURRY THE FUCK UP AND PORT THE KD TREE CODE TO C FROM THE ICEBALL PROTOTYPE
 uniform int kd_data_split_axis[KD_MAX];
 uniform float kd_data_split_point[KD_MAX];
-uniform int kd_data_child1[KD_MAX];
-uniform int kd_data_spibeg[KD_MAX];
-uniform int kd_data_spilen[KD_MAX];
+//uniform int kd_data_child1[KD_MAX];
+//uniform int kd_data_spibeg[KD_MAX];
+//uniform int kd_data_spilen[KD_MAX];
 uniform int kd_data_spilist[SPILIST_MAX];
 
 //vec3 light0_vec;
@@ -284,10 +282,11 @@ void trace_scene(bool shadow_mode)
 			// Load plane
 			//vec4 k0 = fetch_data(16+0, kd_trace_node);
 			int split_axis = kd_data_split_axis[kd_trace_node];
-			int child1 = kd_data_child1[kd_trace_node];
+			int child1 = split_axis >> 16;
+			split_axis = split_axis & 0xFFFF;
 
 			//if(k0.a < 0.5)
-			if(split_axis <= -1)
+			if(split_axis < 3)
 			{
 				// Split node
 
@@ -297,11 +296,11 @@ void trace_scene(bool shadow_mode)
 				float cmp_pos;
 				float cmp_idir;
 
-				if(split_axis == -1)
+				if(split_axis == 0)
 				{
 					cmp_pos = wpos.x;
 					cmp_idir = idir.x;
-				} else if(split_axis == -2) {
+				} else if(split_axis == 1) {
 					cmp_pos = wpos.y;
 					cmp_idir = idir.y;
 				} else {
@@ -386,7 +385,7 @@ void trace_scene(bool shadow_mode)
 				if(spilen > 0)
 				{
 					kd_old_ttime = ttime;
-					int spibeg = split_axis;
+					int spibeg = split_axis-3;
 
 					// SPHERE TRACE MODE
 					for(int j = 0; j < spilen; j++)
