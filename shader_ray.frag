@@ -1,7 +1,7 @@
 #version 150
 const bool do_debug = false;
 const bool do_kdtree = true;
-const bool do_shadow = false;
+const bool do_shadow = true;
 const bool do_bbox = true;
 
 const bool do_kd_restart = false;
@@ -10,7 +10,7 @@ const bool test_mesh = true; // WIP: hardcoded sphere grid spam
 
 const float EPSILON = 0.0001;
 const float ZFAR = 1000.0;
-const uint BOUNCES = 0U;
+const uint BOUNCES = 2U;
 const uint SPH_MAX = (1024U);
 const uint SPILIST_MAX = (1024U+1024U);
 const uint KD_MAX = (2048U);
@@ -153,12 +153,15 @@ void trace_donut(bool shadow_mode, vec3 epos, vec3 enorm, float radh, float radd
 	// Normalise
 	enorm = normalize(enorm);
 
+	float radx = radh+radd;
+
 	//if((dot(enorm, wpos)-eoffs)*dot(enorm,wdir) >= EPSILON) return; // *** ACCEL SKIP
 
 	// Project direction onto the plane
 	// (200-level Linear Algebra, a paper I got a C- on)
 	float proj_poffs = -dot(enorm, wdir);
-	vec3 proj_pdir = normalize(wdir + enorm*proj_poffs);
+	//vec3 proj_pdir = normalize(wdir + enorm*proj_poffs);
+	vec3 proj_pdir = (wdir + enorm*proj_poffs);
 
 	// Get pos offset
 	float eoffs = dot(epos, enorm);
@@ -173,27 +176,41 @@ void trace_donut(bool shadow_mode, vec3 epos, vec3 enorm, float radh, float radd
 	float etime = -nopos*nodir;
 	//if(etime < EPSILON) return; // *** SKIP if casting in wrong direction
 
-	// Calculate donut centre point
-	//vec3 epoint = epos + etime*wdir;
-	vec3 epoint = etime*wdir;
-	vec3 pdir = normalize(epos - epoint);
-	float prad = length(epos - epoint);
+	// Project position onto the plane
+	vec3 epoint = wpos - enorm*etime;
+
+	// Caluclate requirements for our double-triangle motion
+	vec3 pdir = normalize(epoint - epos);
+	float prad = length(epoint - epos);
 	float pcos = dot(pdir, wdir);
 
 	// Now for some trigonometric horror
 	float psin = sqrt(1.0 - pcos*pcos);
-	float K = pcos*prad;
-	float tA = psin*prad;
-	float tB = sqrt((radh+radd)*(radh+radd) - K*K);
+	float K = pcos*prad; // Tangent distance
+	//float tA = psin*prad;
+	float tA = sqrt(prad*prad - K*K); // Time to tangent
+	float tB = sqrt(radx*radx - K*K); // Time from tangent to border
 
 	float ptime = tA+tB; 
-	vec3 ppos = epos + normalize(proj_pdir*ptime - epos)*(radh+radd);
+	//vec3 ppos = epos + normalize(proj_pdir*(ptime))*(radh+radd);
 
 	// Trace sphere
-	float old_ttime = ttime;
-	trace_sphere(1, shadow_mode, ppos, radd);
-	if((!shadow_mode) && ttime != old_ttime)
-		shade_sphere(ppos, ecol);
+	{
+		float old_ttime = ttime;
+		vec3 ppos = epoint + proj_pdir*(ptime);
+		ppos = epos + normalize(ppos - epos)*radx;
+		trace_sphere(1, shadow_mode, ppos, radd);
+		if((!shadow_mode) && ttime != old_ttime)
+			shade_sphere(ppos, ecol);
+	}
+	if(false){
+		float old_ttime = ttime;
+		vec3 ppos = epoint + proj_pdir*(tA-tB);
+		ppos = epos + normalize(ppos - epos)*radx;
+		trace_sphere(1, shadow_mode, ppos, radd);
+		if((!shadow_mode) && ttime != old_ttime)
+			shade_sphere(ppos, ecol);
+	}
 }
 
 void trace_plane(bool shadow_mode, vec3 enorm, float eoffs, vec3 ecol0, vec3 ecol1)
@@ -339,6 +356,12 @@ void trace_scene(bool shadow_mode)
 
 	if(test_mesh)
 	{
+		trace_plane(shadow_mode
+			, vec3(0.0, 1.0, 0.0), -3.0
+			, vec3(0.9, 0.9, 0.9)
+			, vec3(0.1, 0.1, 0.1)
+			);
+
 		trace_donut(shadow_mode, vec3(0.0, 0.0, -4.0), vec3(0.0, 0.0, 1.0), 1.0, 0.5, vec3(1.0, 0.0, 1.0));
 		/*
 		vec3 dsign = sign(wdir);
