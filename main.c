@@ -70,7 +70,7 @@ double bmax_z = 0.0;
 
 #define SPH_MAX (1024)
 #define SPILIST_MAX (1024+1024)
-#define KD_MAX (2048+128)
+#define KD_MAX (2048)
 
 int sph_count = 0;
 float sph_data[SPH_MAX*4];
@@ -91,10 +91,11 @@ struct kd {
 	int split_axis;
 	int contents_offs;
 	int contents_len;
+	double b1[3], b2[3];
 	// TODO: other things
 } kd_list[KD_MAX];
-int kd_data_split_axis[KD_MAX];
-float kd_data_split_point[KD_MAX];
+GLuint kd_data_split_axis[KD_MAX];
+GLfloat kd_data_split_point[KD_MAX];
 //int kd_data_child1[KD_MAX];
 //int kd_data_spibeg[KD_MAX];
 //int kd_data_spilen[KD_MAX];
@@ -104,6 +105,9 @@ int spilist_len = 0;
 
 GLuint shader_ray;
 GLint shader_ray_tex0;
+GLint shader_ray_tex1;
+GLint shader_ray_tex2;
+GLint shader_ray_tex3;
 GLint shader_ray_sph_count;
 GLint shader_ray_sph_data;
 GLint shader_ray_light0_pos;
@@ -113,12 +117,15 @@ GLint shader_ray_in_cam_inverse;
 GLint shader_ray_in_aspect;
 GLint shader_ray_kd_data_split_axis;
 GLint shader_ray_kd_data_split_point;
-GLint shader_ray_kd_data_child1;
-GLint shader_ray_kd_data_spibeg;
-GLint shader_ray_kd_data_spilen;
+//GLint shader_ray_kd_data_child1;
+//GLint shader_ray_kd_data_spibeg;
+//GLint shader_ray_kd_data_spilen;
 GLint shader_ray_kd_data_spilist;
 
 GLuint tex_ray0;
+GLuint tex_ray1;
+GLuint tex_ray2;
+GLuint tex_ray3;
 GLuint va_ray_vbo;
 GLuint va_ray_vao;
 int16_t va_ray_data[12] = {
@@ -184,11 +191,16 @@ void init_gfx(void)
 	glGetShaderInfoLog(ray_f, 64*1024-1, NULL, info_log);
 	printf("=== FRAGMENT SHADER ===\n%s\n\n", info_log);
 	shader_ray = glCreateProgram();
+	printf("Attaching shaders\n");
 	glAttachShader(shader_ray, ray_v);
 	glAttachShader(shader_ray, ray_f);
+	printf("Binding inputs\n");
 	glBindAttribLocation(shader_ray, 0, "in_vertex");
+	printf("Binding outputs\n");
 	glBindFragDataLocation(shader_ray, 0, "out_frag_color");
+	printf("Linking! This is the part where your computer dies\n");
 	glLinkProgram(shader_ray);
+	printf("Getting results\n");
 	glGetProgramInfoLog(shader_ray, 64*1024-1, NULL, info_log);
 	printf("=== OVERALL PROGRAM ===\n%s\n\n", info_log);
 
@@ -198,6 +210,9 @@ void init_gfx(void)
 	assert(link_status == GL_TRUE);
 
 	shader_ray_tex0 = glGetUniformLocation(shader_ray, "tex0");
+	shader_ray_tex1 = glGetUniformLocation(shader_ray, "tex1");
+	shader_ray_tex2 = glGetUniformLocation(shader_ray, "tex2");
+	shader_ray_tex3 = glGetUniformLocation(shader_ray, "tex3");
 	shader_ray_sph_count = glGetUniformLocation(shader_ray, "sph_count");
 	shader_ray_sph_data = glGetUniformLocation(shader_ray, "sph_data");
 	shader_ray_light0_pos = glGetUniformLocation(shader_ray, "light0_pos");
@@ -205,25 +220,80 @@ void init_gfx(void)
 	shader_ray_bmax = glGetUniformLocation(shader_ray, "bmax");
 	shader_ray_in_cam_inverse = glGetUniformLocation(shader_ray, "in_cam_inverse");
 	shader_ray_in_aspect = glGetUniformLocation(shader_ray, "in_aspect");
-	shader_ray_kd_data_split_axis = glGetUniformLocation(shader_ray, "kd_data_split_axis");
-	shader_ray_kd_data_split_point = glGetUniformLocation(shader_ray, "kd_data_split_point");
+	//shader_ray_kd_data_split_axis = glGetUniformLocation(shader_ray, "kd_data_split_axis");
+	//shader_ray_kd_data_split_point = glGetUniformLocation(shader_ray, "kd_data_split_point");
 	//shader_ray_kd_data_child1 = glGetUniformLocation(shader_ray, "kd_data_child1");
 	//shader_ray_kd_data_spibeg = glGetUniformLocation(shader_ray, "kd_data_spibeg");
 	//shader_ray_kd_data_spilen = glGetUniformLocation(shader_ray, "kd_data_spilen");
 	shader_ray_kd_data_spilist = glGetUniformLocation(shader_ray, "kd_data_spilist");
-	printf("Got uniforms %i\n", shader_ray_kd_data_spilist);
+	//printf("Got uniforms %i\n", shader_ray_kd_data_spilist);
+	printf("Got uniforms\n");
 
 	glGenTextures(1, &tex_ray0);
-	glBindTexture(GL_TEXTURE_2D, tex_ray0);
+	glGenTextures(1, &tex_ray1);
+	glGenTextures(1, &tex_ray2);
+	glGenTextures(1, &tex_ray3);
 	if(!epoxy_has_gl_extension("GL_ARB_texture_storage"))
 	{
-		printf("Eww yuck no glTexStorage2D update your drivers you scrub");
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 64, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+		printf("Eww yuck no glTexStorage2D update your drivers you scrub\n");
+		glGetError();
+		glBindTexture(GL_TEXTURE_2D, tex_ray0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, SPH_MAX, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+		printf("%i\n", glGetError());
+
+		glBindTexture(GL_TEXTURE_2D, tex_ray1);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, 1, KD_MAX, 0, GL_RED, GL_FLOAT, NULL);
+		printf("%i\n", glGetError());
+
+		glBindTexture(GL_TEXTURE_2D, tex_ray2);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, 2, KD_MAX, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
+		printf("%i\n", glGetError());
+
+		glBindTexture(GL_TEXTURE_2D, tex_ray3);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, KD_MAX, 4, 0, GL_RGBA, GL_FLOAT, NULL);
+		printf("%i\n", glGetError());
 	} else {
-		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, 64, 1024);
+		glGetError();
+		glBindTexture(GL_TEXTURE_2D, tex_ray0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, 1, SPH_MAX);
+		printf("%i\n", glGetError());
+
+		glBindTexture(GL_TEXTURE_2D, tex_ray1);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexStorage2D(GL_TEXTURE_2D, 1, GL_R32F, 1, KD_MAX);
+		printf("%i\n", glGetError());
+
+		glBindTexture(GL_TEXTURE_2D, tex_ray2);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexStorage2D(GL_TEXTURE_2D, 1, GL_R32UI, 2, KD_MAX);
+		printf("%i\n", glGetError());
+
+		glBindTexture(GL_TEXTURE_2D, tex_ray3);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, KD_MAX, 4);
+		printf("%i\n", glGetError());
 	}
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	printf("Got texture\n");
 
@@ -343,31 +413,84 @@ struct kd *kd_build_node(int *base, int base_len, struct kd *parent)
 	kd->children[1] = NULL;
 	kd->split_axis = -1;
 
+	// Get size
+	double bs[3];
+
+	kd_get_box(base, base_len, kd->b1, kd->b2);
+	for(i = 0; i < 3; i++)
+		bs[i] = kd->b2[i] - kd->b1[i];
+
 	// If we have less than two in here, return
-	if(base_len < 5)
+	if(base_len < 20)
 	{
-		// But first, let's get the contents list set up
-		kd->contents = malloc(base_len*sizeof(int));
-		kd->contents_len = base_len;
-		if(base == NULL)
+		// TODO make this faster
+		if(0 && parent != NULL)
 		{
-			for(i = 0; i < base_len; i++)
-				kd->contents[i] = i;
+			// Set up a box
+			kd->split_axis = parent->split_axis;
+			struct kd *skd, *ckd;
+			int cidx = 0;
+			int sidx = 0;
+
+			if(kd->idx == parent->idx+1)
+			{
+				kd->split_point = kd->b1[kd->split_axis];
+				sidx = kd_list_len++;
+				cidx = kd_list_len++;
+				kd->children[0] = &kd_list[sidx];
+				kd->children[1] = &kd_list[cidx];
+			} else {
+				kd->split_point = kd->b2[kd->split_axis];
+				cidx = kd_list_len++;
+				sidx = kd_list_len++;
+				kd->children[0] = &kd_list[cidx];
+				kd->children[1] = &kd_list[sidx];
+			}
+			assert(kd_list_len <= KD_MAX);
+			assert(kd_list_len >= 0);
+
+			skd = &kd_list[sidx];
+			skd->idx = sidx;
+			skd->parent = kd;
+			skd->contents = NULL;
+			skd->contents_offs = 0;
+			skd->contents_len = 0;
+			skd->children[0] = NULL;
+			skd->children[1] = NULL;
+			skd->split_axis = -1;
+
+			ckd = &kd_list[cidx];
+			ckd->idx = cidx;
+			ckd->parent = kd;
+			ckd->contents_offs = 0;
+			ckd->children[0] = NULL;
+			ckd->children[1] = NULL;
+			ckd->split_axis = -1;
+			ckd->contents = malloc(base_len*sizeof(int));
+			ckd->contents_len = base_len;
+			if(base == NULL)
+			{
+				for(i = 0; i < base_len; i++)
+					ckd->contents[i] = i;
+			} else {
+				memcpy(ckd->contents, base, base_len*sizeof(int));
+			}
+
 		} else {
-			memcpy(kd->contents, base, base_len*sizeof(int));
+			kd->contents = malloc(base_len*sizeof(int));
+			kd->contents_len = base_len;
+			if(base == NULL)
+			{
+				for(i = 0; i < base_len; i++)
+					kd->contents[i] = i;
+			} else {
+				memcpy(kd->contents, base, base_len*sizeof(int));
+			}
 		}
 
 		// OK, now return!
 		return kd;
 	}
-
-	// Get size
-	double b1[3], b2[3];
-	double bs[3];
-
-	kd_get_box(base, base_len, b1, b2);
-	for(i = 0; i < 3; i++)
-		bs[i] = b2[i] - b1[i];
 
 	// Find longest for split
 	kd->split_axis = 0;
@@ -449,28 +572,6 @@ struct kd *kd_build_node(int *base, int base_len, struct kd *parent)
 
 }
 
-/*
-function kd_get_sph_part_count(kd)
-	if kd.children then
-		return 0
-			+ kd_get_sph_part_count(kd.children[1])
-			+ kd_get_sph_part_count(kd.children[2])
-	else
-		return #kd.contents
-	end
-end
-
-function kd_get_depth(kd)
-	if kd.children then
-		return 1 + math.max(
-			kd_get_depth(kd.children[1]),
-			kd_get_depth(kd.children[2]))
-	else
-		return 1
-	end
-end
-*/
-
 void kd_generate()
 {
 	int i, j;
@@ -525,7 +626,8 @@ void kd_generate()
 
 			//kd_data_split_axis[i] = -1-kd->split_axis;
 			//kd_data_child1[i] = kd->children[1]->idx;
-			kd_data_split_axis[i] = (kd->split_axis | (kd->children[1]->idx<<16));
+			kd_data_split_axis[i] = (kd->split_axis | (kd->children[1]->idx<<2)
+				| ((kd->parent == NULL ? 0 : kd->parent->idx)<<20));
 			kd_data_split_point[i] = kd->split_point;
 		} else {
 			/*
@@ -538,9 +640,13 @@ void kd_generate()
 			)
 			*/
 
+			assert(kd->contents_offs <= 0xFFF);
+			assert(kd->contents_len <= 0x3F);
+			assert(kd->parent == NULL || kd->parent->idx <= 0x3FF);
 			//kd_data_spibeg[i] = kd->contents_offs;
 			//kd_data_spilen[i] = kd->contents_len;
-			kd_data_split_axis[i] = (kd->contents_offs+3)|(kd->contents_len<<16);
+			kd_data_split_axis[i] = (kd->contents_offs<<2)|(kd->contents_len<<14)|3
+				| ((kd->parent == NULL ? 0 : kd->parent->idx)<<20);
 			//kd_data_child1[i] = kd->contents_len;
 		}
 
@@ -586,8 +692,7 @@ void h_render_main(void)
 	mat4x4_translate_in_place(mat_cam1, -cam_pos_x, -cam_pos_y, -cam_pos_z);
 
 	int x, y, z, i;
-	/*
-	int cube_units = 8;
+	int cube_units = 10;
 	sph_count = cube_units*cube_units*cube_units;
 
 	i = 0;
@@ -599,7 +704,7 @@ void h_render_main(void)
 		sph_set(i++, x*4 - 2*cube_units - 2, y*4 - 3, -z*4, rad,
 			y*255/cube_units, x*255/cube_units, z*255/cube_units, 255);
 	}
-	*/
+	/*
 	sph_count = 50;
 	double fx, fy, fz;
 	fx = 0.0;
@@ -607,8 +712,8 @@ void h_render_main(void)
 	fz = 0.0;
 	for(i = 0; i < sph_count; i++)
 	{
-		fx = sin(((i/(double)sph_count+render_sec_current/50.0)*2.0 + 0.0/3.0)*M_PI*2.0)*50.0;
 		fy = sin(((i/(double)sph_count+render_sec_current/50.0)*3.3 + 1.0/3.0)*M_PI*2.0)*30.0 + 30.0;
+		fx = sin(((i/(double)sph_count+render_sec_current/50.0)*2.0 + 0.0/3.0)*M_PI*2.0)*50.0;
 		fz = sin(((i/(double)sph_count+render_sec_current/50.0)*1.0 + 2.0/3.0)*M_PI*2.0)*50.0 - 60.0;
 		sph_set(i, fx, fy, fz,
 			//sin((i*2.0/(double)sph_count + render_sec_current/3.0)*M_PI*2.0),
@@ -619,25 +724,71 @@ void h_render_main(void)
 			255);
 
 	}
+	*/
 
 	//sph_count = 16;
-	kd_generate();
+	sph_count=0;
+	//kd_generate();
 
 	if(!sent_shit)
 	{
-		static uint32_t sph_buf[1024];
+		static uint32_t sph_buf1[SPH_MAX];
+		static float sph_buf2[12*KD_MAX];
 		for(i = 0; i < sph_count; i++)
 		{
 			struct sph *sph = &sph_list[i];
 
-			sph_buf[1*i + 0] = sph->rgba;
+			sph_buf1[1*i + 0] = sph->rgba;
+			sph_buf2[KD_MAX*4*0 + 4*i + 0] = sph->v[0];
+			sph_buf2[KD_MAX*4*0 + 4*i + 1] = sph->v[1];
+			sph_buf2[KD_MAX*4*0 + 4*i + 2] = sph->v[2];
+			sph_buf2[KD_MAX*4*0 + 4*i + 3] = sph->rad;
 		}
 
-		sent_shit = true;
+		static float kd_buf1[KD_MAX];
+		static uint32_t kd_buf2[2*KD_MAX];
+
+		for(i = 0; i < kd_list_len; i++)
+		{
+			kd_buf1[1*i + 0] = kd_data_split_point[i];
+			kd_buf2[2*i + 0] = kd_data_split_axis[i];
+			struct kd *kd = &kd_list[i];
+			sph_buf2[KD_MAX*4*1 + 4*i + 0] = kd->b1[0];
+			sph_buf2[KD_MAX*4*1 + 4*i + 1] = kd->b1[1];
+			sph_buf2[KD_MAX*4*1 + 4*i + 2] = kd->b1[2];
+			sph_buf2[KD_MAX*4*2 + 4*i + 0] = kd->b2[0];
+			sph_buf2[KD_MAX*4*2 + 4*i + 1] = kd->b2[1];
+			sph_buf2[KD_MAX*4*2 + 4*i + 2] = kd->b2[2];
+		}
+
+		for(i = 0; i < spilist_len; i++)
+		{
+			kd_buf2[2*i + 1] = spilist[i];
+		}
+
+		//sent_shit = true;
+		glGetError();
 		glBindTexture(GL_TEXTURE_2D, tex_ray0);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 4, 0, 1, 1024, GL_RGBA, GL_UNSIGNED_BYTE, sph_buf);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 1, sph_count, GL_RGBA, GL_UNSIGNED_BYTE, sph_buf1);
+		//printf("tex0 %i\n", glGetError());
+		glBindTexture(GL_TEXTURE_2D, tex_ray1);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 1, kd_list_len, GL_RED, GL_FLOAT, kd_buf1);
+		//printf("tex1 %i\n", glGetError());
+		glBindTexture(GL_TEXTURE_2D, tex_ray2);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 2, KD_MAX, GL_RED_INTEGER, GL_UNSIGNED_INT, kd_buf2);
+		//printf("tex2 %i\n", glGetError());
+		glBindTexture(GL_TEXTURE_2D, tex_ray3);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, sph_count, 3, GL_RGBA, GL_FLOAT, sph_buf2);
+		//printf("tex3 %i\n", glGetError());
 	}
 
+	glActiveTexture(GL_TEXTURE0 + 1);
+	glBindTexture(GL_TEXTURE_2D, tex_ray1);
+	glActiveTexture(GL_TEXTURE0 + 2);
+	glBindTexture(GL_TEXTURE_2D, tex_ray2);
+	glActiveTexture(GL_TEXTURE0 + 3);
+	glBindTexture(GL_TEXTURE_2D, tex_ray3);
+	glActiveTexture(GL_TEXTURE0 + 0);
 	glBindTexture(GL_TEXTURE_2D, tex_ray0);
 	glUseProgram(shader_ray);
 
@@ -646,6 +797,9 @@ void h_render_main(void)
 	glUniform2f(shader_ray_in_aspect, 720.0/1280.0, 1.0);
 
 	glUniform1i(shader_ray_tex0, 0);
+	glUniform1i(shader_ray_tex1, 1);
+	glUniform1i(shader_ray_tex2, 2);
+	glUniform1i(shader_ray_tex3, 3);
 	glUniform1i(shader_ray_sph_count, sph_count);
 	glUniform3f(shader_ray_light0_pos,
 		//cam_pos_x, cam_pos_y, cam_pos_z);
@@ -656,13 +810,13 @@ void h_render_main(void)
 	glUniform3f(shader_ray_bmax, bmax_x, bmax_y, bmax_z);
 
 	//printf("%i %i %i\n", sph_count, spilist_len, kd_list_len);
-	glUniform4fv(shader_ray_sph_data, sph_count, sph_data);
-	glUniform1iv(shader_ray_kd_data_split_axis, kd_list_len, kd_data_split_axis);
-	glUniform1fv(shader_ray_kd_data_split_point, kd_list_len, kd_data_split_point);
+	//glUniform4fv(shader_ray_sph_data, sph_count, sph_data);
+	//glUniform1uiv(shader_ray_kd_data_split_axis, kd_list_len, kd_data_split_axis);
+	//glUniform1fv(shader_ray_kd_data_split_point, kd_list_len, kd_data_split_point);
 	//glUniform1iv(shader_ray_kd_data_child1, kd_list_len, kd_data_child1);
 	//glUniform1iv(shader_ray_kd_data_spibeg, kd_list_len, kd_data_spibeg);
 	//glUniform1iv(shader_ray_kd_data_spilen, kd_list_len, kd_data_spilen);
-	glUniform1iv(shader_ray_kd_data_spilist, spilist_len, spilist);
+	//glUniform1iv(shader_ray_kd_data_spilist, spilist_len, spilist);
 
 	glBindVertexArray(va_ray_vao);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -709,7 +863,8 @@ void hook_mouse_motion(int x, int y, int dx, int dy)
 
 void hook_tick(double sec_current, double sec_delta)
 {
-	double mvspeed = 20.0;
+	//double mvspeed = 20.0;
+	double mvspeed = 2.0;
 	double mvspeedf = mvspeed * sec_delta;
 
 	double ldx = 0.0;
@@ -780,6 +935,7 @@ int main(int argc, char *argv[])
 	int32_t ticks_prev = SDL_GetTicks();
 	int32_t ticks_get_fps = ticks_prev;
 	int fps = 0;
+	char hands = '/';
 
 	for(;;)
 	{
@@ -818,7 +974,8 @@ int main(int argc, char *argv[])
 
 			char fpsbuf[32];
 			fpsbuf[31] = '\x00';
-			snprintf(fpsbuf, 32-1, "FPS: %i", fps);
+			snprintf(fpsbuf, 32-1, ":D-%c-< FPS: %i", hands, fps);
+			hands ^= ('/' ^ '\\');
 			SDL_SetWindowTitle(window, fpsbuf);
 			fps = 0;
 		}
