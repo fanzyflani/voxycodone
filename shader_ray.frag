@@ -6,7 +6,7 @@ const bool do_bbox = true;
 
 const bool do_kd_restart = false;
 
-const bool test_mesh = true; // WIP: hardcoded sphere grid spam
+const bool test_mesh = false; // WIP: hardcoded sphere grid spam
 
 const float EPSILON = 0.0001;
 const float ZFAR = 1000.0;

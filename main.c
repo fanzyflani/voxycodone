@@ -727,8 +727,8 @@ void h_render_main(void)
 	*/
 
 	//sph_count = 16;
-	sph_count=0;
-	//kd_generate();
+	//sph_count=0;
+	kd_generate();
 
 	if(!sent_shit)
 	{
