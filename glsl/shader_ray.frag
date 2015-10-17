@@ -1,3 +1,4 @@
+// vim: syntax=c
 #version 150
 const bool do_debug = false;
 const bool do_kdtree = true;
@@ -26,6 +27,9 @@ uniform int sph_count;
 //uniform vec4 sph_data[SPH_MAX];
 
 uniform vec3 light0_pos;
+uniform vec3 light0_dir;
+uniform float light0_cos;
+uniform float light0_pow;
 
 uniform vec3 bmin, bmax;
 //vec3 bmin, bmax;
@@ -88,6 +92,19 @@ float decode_float_16(vec4 c)
 	return (c.r + (c.g-128.0)*256.0)/64.0;
 }
 
+void apply_light(vec3 epoint)
+{
+	vec3 ldir = normalize(light0_pos - epoint);
+	float lfoc = (dot(ldir, -normalize(light0_dir)) - light0_cos)/light0_cos;
+	if(lfoc > 0.0)
+	{
+		tdiff = max(0.0, dot(tnorm, ldir));
+		tdiff *= pow(lfoc, light0_pow);
+	} else {
+		tdiff = 0.0;
+	}
+}
+
 void shade_sphere(vec3 epos, vec3 ecol)
 {
 	// Calculate point of intersection
@@ -97,7 +114,7 @@ void shade_sphere(vec3 epos, vec3 ecol)
 	tnorm = normalize(epoint - epos);
 
 	// Calculate colour
-	tdiff = max(0.0, dot(tnorm, normalize(light0_pos - epoint)));
+	apply_light(epoint);
 	tcol = ecol;
 }
 
@@ -147,6 +164,70 @@ void trace_sphere(int spi, bool shadow_mode, vec3 epos, float erad)
 	trace_spi = spi;
 }
 
+void trace_cylinder(bool shadow_mode, vec3 epos0, vec3 epos1, float erad, vec3 ecol)
+{
+	// Get normal
+	vec3 enorm = normalize(epos1 - epos0);
+
+	// Get base plane offset
+	float eoffs0 = dot(epos0, enorm);
+	float eoffs1 = dot(epos1, enorm);
+
+	// Project to planes
+	vec3 dwdir = sign(wdir)*max(vec3(EPSILON), abs(wdir));
+	float proj_poffs = dot(enorm, wpos); // Distance to plane
+	float proj_doffs = dot(enorm, wdir); // Offset for direction
+	float proj0_time = (eoffs0-proj_poffs)/proj_doffs; // Time to plane 0
+	float proj1_time = (eoffs1-proj_poffs)/proj_doffs; // Time to plane 1
+	bool side0_valid = (proj0_time >= EPSILON);
+	bool side1_valid = (proj1_time >= EPSILON);
+	if(!(side0_valid || side1_valid)) return; // *** SKIP if behind
+	vec3 proj0_wpos = wpos + proj0_time*dwdir;
+	vec3 proj1_wpos = wpos + proj1_time*dwdir;
+	vec3 proj_wdir = wdir - proj_doffs*enorm;
+
+	// Check radius
+	side0_valid = side0_valid && length(proj0_wpos - epos0) <= erad;
+	side1_valid = side1_valid && length(proj1_wpos - epos1) <= erad;
+
+	// Do caps
+	if(side0_valid || side1_valid)
+	{
+		float etime0 = proj0_time;
+		float etime1 = proj1_time;
+		float etime = (etime0 < etime1 && side0_valid ? etime0 : etime1);
+		vec3 epoint = (etime0 < etime1 && side0_valid ? proj0_wpos : proj1_wpos);
+
+		// @@@ TIME SELECT
+		if(etime >= ttime) return; // *** TIME SKIP
+		ttime = etime;
+		if(shadow_mode) return;
+
+		tcol = ecol;
+		//tnorm = normalize(proj_wpos - epos);
+		tnorm = (dot(enorm, wdir) < 0.0 ? -enorm : enorm);
+		apply_light(epoint);
+	}
+
+	// Do actual cylinder
+	// (abuse plane 0 for position)
+
+	// Calculate requirements for our double-triangle motion
+	float prad = length(proj0_wpos - epos0);
+	float pcos = dot(-wdir, proj_wdir);
+
+	// Now for some trigonometric horror
+	float tA = pcos*prad; // Time to tangent
+	float K = sqrt(prad*prad - tA*tA); // Tangent distance
+	float tB = sqrt(erad*erad - K*K); // Time from tangent to border
+
+	// Assert things
+	float tAB = tA+tB;
+	//if(etime < proj0_time
+	// TODO!
+
+}
+
 // Let's not pretend that we actually call this a "torus"
 void trace_donut(bool shadow_mode, vec3 epos, vec3 enorm, float radh, float radd, vec3 ecol)
 {
@@ -159,49 +240,58 @@ void trace_donut(bool shadow_mode, vec3 epos, vec3 enorm, float radh, float radd
 
 	// Project direction onto the plane
 	// (200-level Linear Algebra, a paper I got a C- on)
-	float proj_poffs = -dot(enorm, wdir);
-	//vec3 proj_pdir = normalize(wdir + enorm*proj_poffs);
-	vec3 proj_pdir = (wdir + enorm*proj_poffs);
+	float proj_poffs = dot(enorm, wdir);
+	vec3 proj_pdir = normalize(wdir - enorm*proj_poffs);
 
 	// Get pos offset
 	float eoffs = dot(epos, enorm);
 	float nopos = dot(enorm, wpos) - eoffs;
 
 	// Get dir offset
-	float nodir = dot(enorm, idir);
+	float nodir = dot(enorm, wdir);
 	//if(nodir*nopos >= 0.0) return; // *** ACCEL SKIP
 
 	// Get time
 	// TODO: find accurate skip
-	float etime = -nopos*nodir;
+	float etime = -nopos/nodir;
 	//if(etime < EPSILON) return; // *** SKIP if casting in wrong direction
 
 	// Project position onto the plane
 	vec3 epoint = wpos - enorm*etime;
 
-	// Caluclate requirements for our double-triangle motion
+	// Calculate requirements for our double-triangle motion
 	vec3 pdir = normalize(epoint - epos);
 	float prad = length(epoint - epos);
-	float pcos = dot(pdir, wdir);
+	float pcos = dot(-pdir, proj_pdir);
 
 	// Now for some trigonometric horror
-	float psin = sqrt(1.0 - pcos*pcos);
-	float K = pcos*prad; // Tangent distance
-	//float tA = psin*prad;
-	float tA = sqrt(prad*prad - K*K); // Time to tangent
+	float tA = pcos*prad; // Time to tangent
+	float K = sqrt(prad*prad - tA*tA); // Tangent distance
 	float tB = sqrt(radx*radx - K*K); // Time from tangent to border
 
 	float ptime = tA+tB; 
+	if(ptime < 0.0) ptime -= 2.0*tB;
+	if(ptime < 0.0) return;
 	//vec3 ppos = epos + normalize(proj_pdir*(ptime))*(radh+radd);
 
 	// Trace sphere
 	{
 		float old_ttime = ttime;
 		vec3 ppos = epoint + proj_pdir*(ptime);
-		ppos = epos + normalize(ppos - epos)*radx;
+		//vec3 ppos = wpos + pdir*(ptime);
+		//ppos = epos + normalize(ppos - epos)*radx;
+		/*
 		trace_sphere(1, shadow_mode, ppos, radd);
 		if((!shadow_mode) && ttime != old_ttime)
 			shade_sphere(ppos, ecol);
+		*/
+
+		etime = ptime;
+		if(ttime < etime) return;
+		ttime = etime;
+		tcol = ecol;
+		tnorm = normalize(ppos - epos);
+		apply_light(epoint);
 	}
 	if(false){
 		float old_ttime = ttime;
@@ -250,7 +340,7 @@ void trace_plane(bool shadow_mode, vec3 enorm, float eoffs, vec3 ecol0, vec3 eco
 
 	// Calculate colour
 	tnorm = (einside ? -enorm : enorm);
-	tdiff = max(0.0, dot(tnorm, normalize(light0_pos - epoint)));
+	apply_light(epoint);
 	tcol = (csel >= 1.0 ? ecol1 : ecol0);
 }
 
@@ -362,7 +452,10 @@ void trace_scene(bool shadow_mode)
 			, vec3(0.1, 0.1, 0.1)
 			);
 
-		trace_donut(shadow_mode, vec3(0.0, 0.0, -4.0), vec3(0.0, 0.0, 1.0), 1.0, 0.5, vec3(1.0, 0.0, 1.0));
+		//trace_donut(shadow_mode, vec3(0.0, 0.0, -4.0), vec3(0.0, 0.0, 1.0), 1.0, 0.5, vec3(1.0, 0.0, 1.0));
+		//trace_cylinder(shadow_mode, vec3(0.0, 0.0, -4.0), vec3(0.0, 0.0, 1.0), 1.0, vec3(1.0, 0.0, 1.0));
+		//trace_cylinder(shadow_mode, vec3(0.0, -0.0, -4.0), vec3(0.0, 0.0, 4.0), 1.0, vec3(1.0, 0.0, 1.0));
+		trace_cylinder(shadow_mode, vec3(1.0, 0.0, -4.0), vec3(2.0, 1.0, -4.0), 1.0, vec3(1.0, 0.0, 1.0));
 		/*
 		vec3 dsign = sign(wdir);
 		vec3 adir = abs(wdir);
@@ -716,7 +809,10 @@ void main()
 				wdir = normalize(light0_pos - wpos);
 			}
 
-			trace_scene(true);
+			if(tdiff > 0.0)
+			{
+				trace_scene(true);
+			}
 		}
 
 		// Check if we hit something
@@ -744,7 +840,11 @@ void main()
 		// Apply specular
 		if(unshadowed)
 		{
-			float spec = dot(wdir, normalize(light0_pos - wpos));
+			float spec = 1.0;
+			vec3 ldir = normalize(light0_pos - wpos);
+			spec *= max(0.0, dot(wdir, ldir));
+			float lfoc = max(0.0, (dot(ldir, -normalize(light0_dir)) - light0_cos)/light0_cos);
+			spec *= (lfoc > 0.0 ? 1.0 : 0.0);
 			if(spec > 0.0)
 				tcol += pow(spec, 128.0);
 		}

@@ -1,3 +1,4 @@
+// vim: syntax=c
 #version 150
 
 const int SPH_MAX = 255;
