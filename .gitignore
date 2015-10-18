@@ -1,0 +1,11 @@
+# final builds
+tfiy
+tfiy.exe
+
+# objects
+*.o
+
+# VIM
+.*.swp
+.*.swo
+
