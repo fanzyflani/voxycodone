@@ -38,40 +38,10 @@ const int16_t va_ray_data[12] = {
 	 1,-1,
 };
 
-char *load_str(const char *fname)
-{
-	FILE *fp = fopen(fname, "rb");
-	size_t dynbuf_len = 0;
-	char *dynbuf = malloc(dynbuf_len+1);
-	char inbuf[1024];
-
-	for(;;)
-	{
-		// Fetch
-		ssize_t bytes_read = fread(inbuf, 1, 1024, fp);
-		assert(bytes_read >= 0);
-
-		// Check for EOF
-		if(bytes_read == 0)
-			break;
-
-		// Expand
-		dynbuf = realloc(dynbuf, dynbuf_len + bytes_read + 1);
-
-		// Copy
-		memcpy(dynbuf + dynbuf_len, inbuf, bytes_read);
-		dynbuf_len += bytes_read;
-	}
-	dynbuf[dynbuf_len] = '\x00';
-
-	fclose(fp);
-	return dynbuf;
-}
-
 void init_gfx(void)
 {
-	char *ray_v_src = load_str("glsl/shader_ray.vert");
-	char *ray_f_src = load_str("glsl/shader_ray.frag");
+	char *ray_v_src = glslpp_load_str("glsl/shader_ray.vert", NULL);
+	char *ray_f_src = glslpp_load_str("glsl/shader_ray.frag", NULL);
 	const char *ray_v_src_alias = ray_v_src;
 	const char *ray_f_src_alias = ray_f_src;
 

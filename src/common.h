@@ -66,6 +66,9 @@ struct kd {
 	// TODO: other things
 };
 
+char *load_str(const char *fname);
+char *glslpp_load_str(const char *fname, size_t *len);
+
 // init.c
 extern GLuint shader_ray;
 extern GLint shader_ray_tex0;
@@ -116,10 +119,29 @@ extern int spilist_len;
 
 void kd_generate(void);
 
+// scene.c
+extern double cam_rot_x;
+extern double cam_rot_y;
+extern double cam_pos_x;
+extern double cam_pos_y;
+extern double cam_pos_z;
+
+void h_render_main(void);
+void hook_tick(double sec_current, double sec_delta);
+
 // sph.c
 extern int sph_count;
 extern struct sph sph_list[SPH_MAX];
 
 void sph_set(int i, double x, double y, double z, double rad, int r, int g, int b, int a);
 
+
+// main.c
+extern double render_sec_current;
+extern int key_pos_dxn;
+extern int key_pos_dxp;
+extern int key_pos_dyn;
+extern int key_pos_dyp;
+extern int key_pos_dzn;
+extern int key_pos_dzp;
 
