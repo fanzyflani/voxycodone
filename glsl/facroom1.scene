@@ -1,7 +1,47 @@
 // vim: syntax=c
+void scene_trace_plane_corrugated(bool shadow_mode, vec3 enorm, vec3 eigen, float eoffs, vec3 ecol)
+{
+	// Normalise
+	enorm = normalize(enorm);
+
+	//if((dot(enorm, wpos)-eoffs)*dot(enorm,wdir) >= EPSILON) return; // *** ACCEL SKIP
+
+	// Get pos offset
+	float nopos = dot(enorm, wpos) - eoffs;
+
+	// Check side
+	bool einside = (nopos < 0.0);
+
+	// Get dir offset
+	float nodir = dot(enorm, idir);
+	//if(nodir*nopos >= 0.0) return; // *** ACCEL SKIP
+
+	// Get time
+	float etime = -nopos*nodir;
+	if(etime < EPSILON) return; // *** SKIP if casting in wrong direction
+
+	// @@@ TIME SELECT
+	if(etime >= ttime) return; // *** TIME SKIP
+	ttime = etime;
+	if(shadow_mode) return;
+
+	// Calculate point of intersection
+	vec3 epoint = wpos + etime*wdir;
+
+	// Calculate sin offset
+	vec3 ewav = normalize(cross(enorm, eigen));
+	float wavoffs = dot(ewav, epoint);
+	enorm += 0.2*ewav*sin(2.0*3.141593*wavoffs*1.0);
+
+	// Calculate colour
+	tnorm = (einside ? -enorm : enorm);
+	tcol = ecol;
+}
+
 
 void trace_scene(bool shadow_mode)
 {
+	tshine = 0.0;
 	idir = sign(wdir)/max(vec3(EPSILON), abs(wdir));
 
 	trace_plane(shadow_mode
@@ -9,31 +49,37 @@ void trace_scene(bool shadow_mode)
 		, vec3(0.4, 0.4, 0.4) , vec3(0.4, 0.4, 0.4)
 		);
 
+	/*
 	trace_plane(shadow_mode
 		, vec3(0.0,-1.0, 0.0), -13.0
 		, vec3(0.4, 0.4, 0.4) , vec3(0.4, 0.4, 0.4)
+		);
+	*/
+	scene_trace_plane_corrugated(shadow_mode
+		, vec3(0.0,-1.0, 0.0), vec3(1.0, 0.0, 0.0), -13.0
+		, vec3(0.4, 0.4, 0.4)
 		);
 
 	//trace_donut(shadow_mode, vec3(0.0, 0.0, -4.0), vec3(0.0, 0.0, 1.0), 1.0, 0.5, vec3(1.0, 0.0, 1.0));
 	//trace_cylinder(shadow_mode, vec3(0.0, 0.0, -4.0), vec3(0.0, 0.0, 1.0), 1.0, vec3(1.0, 0.0, 1.0));
 	//trace_cylinder(shadow_mode, vec3(0.0, -0.0, -4.0), vec3(0.0, 0.0, 4.0), 1.0, vec3(1.0, 0.0, 1.0));
 
-	trace_plane(shadow_mode
-		, vec3(1.0, 0.0, 0.0), -20.0
-		, vec3(0.4, 0.4, 0.4) , vec3(0.4, 0.4, 0.4)
+	scene_trace_plane_corrugated(shadow_mode
+		, vec3(1.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0), -20.0
+		, vec3(0.4, 0.4, 0.4)
 		);
-	trace_plane(shadow_mode
-		, vec3(-1.0, 0.0, 0.0), -20.0
-		, vec3(0.4, 0.4, 0.4) , vec3(0.4, 0.4, 0.4)
+	scene_trace_plane_corrugated(shadow_mode
+		, vec3(-1.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0), -20.0
+		, vec3(0.4, 0.4, 0.4)
 		);
 
-	trace_plane(shadow_mode
-		, vec3(0.0, 0.0, 1.0), -50.0
-		, vec3(0.4, 0.4, 0.4) , vec3(0.4, 0.4, 0.4)
+	scene_trace_plane_corrugated(shadow_mode
+		, vec3(0.0, 0.0, 1.0), vec3(0.0, 1.0, 0.0), -50.0
+		, vec3(0.4, 0.4, 0.4)
 		);
-	trace_plane(shadow_mode
-		, vec3(0.0, 0.0, -1.0), -20.0
-		, vec3(0.4, 0.4, 0.4) , vec3(0.4, 0.4, 0.4)
+	scene_trace_plane_corrugated(shadow_mode
+		, vec3(0.0, 0.0, -1.0), vec3(0.0, 1.0, 0.0), -20.0
+		, vec3(0.4, 0.4, 0.4)
 		);
 	
 	{
@@ -41,7 +87,7 @@ void trace_scene(bool shadow_mode)
 		vec3 spos = vec3(-6.0, 0.0, -15.0);
 		vec3 scol = vec3(0.5, 1.0, 1.0);
 		trace_sphere(1, shadow_mode, spos, 3.0);
-		if(trace_spi == 1) shade_sphere(spos, scol);
+		if(trace_spi == 1) {tshine = 0.3; shade_sphere(spos, scol);}
 	}
 
 	{
@@ -49,7 +95,7 @@ void trace_scene(bool shadow_mode)
 		vec3 spos = vec3(6.0, 0.0, -35.0);
 		vec3 scol = vec3(1.0, 0.5, 1.0);
 		trace_sphere(1, shadow_mode, spos, 3.0);
-		if(trace_spi == 1) shade_sphere(spos, scol);
+		if(trace_spi == 1) {tshine = 0.3; shade_sphere(spos, scol);}
 	}
 }
 

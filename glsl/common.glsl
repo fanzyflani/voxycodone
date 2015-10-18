@@ -10,7 +10,7 @@ const bool test_mesh = false; // WIP: hardcoded sphere grid spam
 
 const float EPSILON = 0.0001;
 const float ZFAR = 1000.0;
-const uint BOUNCES = 1U;
+const uint BOUNCES = 2U;
 const uint SPH_MAX = (1024U);
 const uint SPILIST_MAX = (1024U+1024U);
 const uint LIGHT_MAX = (32U);
@@ -57,6 +57,7 @@ float kd_tmax;
 //uniform int kd_data_spilen[KD_MAX];
 //uniform int kd_data_spilist[SPILIST_MAX];
 
+float tshine;
 float ttime;
 float tdiff;
 uint tlights;

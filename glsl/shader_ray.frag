@@ -29,6 +29,7 @@ void main()
 	tnorm = vec3(0.0);
 	ttime = zfar;
 	tdiff = 1.0;
+	tshine = 0.3;
 
 	if(do_debug) dcol = vec3(0.0);
 	ccol = vec3(0.0);
@@ -51,6 +52,7 @@ void main()
 		//vec3 tcol_bak = tcol;
 		//vec3 tnorm_bak = tnorm;
 		//float tdiff_bak = tdiff;
+		float tshine_bak = tshine;
 		vec3 wpos_bak = wpos;
 		vec3 wdir_bak = wdir;
 
@@ -93,8 +95,7 @@ void main()
 				acol += tcol * light_col[lidx] * tdiff;
 
 			// Restore colour backup
-			//tcol = tcol_bak;
-			//tdiff = tdiff_bak;
+			tshine = tshine_bak;
 
 			// Restore trace backup
 			//tnorm = tnorm_bak;
@@ -121,7 +122,8 @@ void main()
 
 		// Accumulate colour
 		ccol += acol * ccol_fac;
-		ccol_fac *= 0.3;
+		ccol_fac *= tshine;
+		if(ccol_fac <= 1.0/255.0/2.0) break;
 
 	}
 
