@@ -124,10 +124,11 @@ void h_render_main(void)
 	glUniform1i(shader_ray_tex3, 3);
 	glUniform1i(shader_ray_sph_count, sph_count);
 
-	float lpos[3*32];
-	float ldir[3*32];
-	float lcos[32];
-	float lpow[32];
+	float lpos[3*LIGHT_MAX];
+	float ldir[3*LIGHT_MAX];
+	float lcos[LIGHT_MAX];
+	float lpow[LIGHT_MAX];
+	int light_count = 3;
 
 	lpos[0*3 + 0] = 0.0;
 	lpos[0*3 + 1] = 5.0;
@@ -147,10 +148,20 @@ void h_render_main(void)
 	lcos[1] = 1.0 - 0.7;
 	lpow[1] = 1.0/4.0;
 
-	glUniform3fv(shader_ray_light0_pos, 2, lpos);
-	glUniform3fv(shader_ray_light0_dir, 2, ldir);
-	glUniform1fv(shader_ray_light0_cos, 2, lcos);
-	glUniform1fv(shader_ray_light0_pow, 2, lpow);
+	lpos[2*3 + 0] = 20.0;
+	lpos[2*3 + 1] = 40.0;
+	lpos[2*3 + 2] = -30.0;
+	ldir[2*3 + 0] = 0.0;
+	ldir[2*3 + 1] = -1.0;
+	ldir[2*3 + 2] = 0.0;
+	lcos[2] = cos((45.0+15.0*-cos(render_sec_current*0.4))*M_PI/180.0);
+	lpow[2] = 1.0/4.0;
+
+	glUniform1ui(shader_ray_light_count, light_count);
+	glUniform3fv(shader_ray_light0_pos, light_count, lpos);
+	glUniform3fv(shader_ray_light0_dir, light_count, ldir);
+	glUniform1fv(shader_ray_light0_cos, light_count, lcos);
+	glUniform1fv(shader_ray_light0_pow, light_count, lpow);
 
 	glUniform3f(shader_ray_bmin, bmin_x, bmin_y, bmin_z);
 	glUniform3f(shader_ray_bmax, bmax_x, bmax_y, bmax_z);

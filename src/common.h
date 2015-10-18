@@ -45,6 +45,7 @@ GLAPI void APIENTRY glTexSubImage2D( GLenum target, GLint level, GLint xoffset, 
 #define SPH_MAX (1024)
 #define SPILIST_MAX (1024+1024)
 #define KD_MAX (2048)
+#define LIGHT_MAX (32)
 
 struct sph {
 	double v[3];
@@ -78,6 +79,7 @@ extern GLint shader_ray_tex2;
 extern GLint shader_ray_tex3;
 extern GLint shader_ray_sph_count;
 extern GLint shader_ray_sph_data;
+extern GLint shader_ray_light_count;
 extern GLint shader_ray_light0_pos;
 extern GLint shader_ray_light0_dir;
 extern GLint shader_ray_light0_cos;

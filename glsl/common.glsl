@@ -26,7 +26,7 @@ uniform sampler2D tex3;
 uniform int sph_count;
 //uniform vec4 sph_data[SPH_MAX];
 
-const uint light_count = 2U;
+uniform uint light_count;
 uniform vec3 light_pos[LIGHT_MAX];
 uniform vec3 light_dir[LIGHT_MAX];
 uniform float light_cos[LIGHT_MAX];
