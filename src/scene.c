@@ -172,7 +172,10 @@ void h_render_main(void)
 	lcos[2] = cos((45.0+15.0*-cos(render_sec_current*0.4))*M_PI/180.0);
 	lpow[2] = 1.0/4.0;
 	*/
-	int light_count = (render_sec_current < 3.0
+	int light_count = (
+		render_sec_current < 1.0
+		? 0
+		: render_sec_current < 3.0
 		? 2
 		: render_sec_current < 4.0
 		? 4
@@ -202,59 +205,59 @@ void h_render_main(void)
 	lcos[1] = 1.0 - 0.9;
 	lpow[1] = 1.0/4.0;
 
-	lcol[2*3 + 0] = 1.0*0.25;
-	lcol[2*3 + 1] = 1.0*0.25;
-	lcol[2*3 + 2] = 1.0*0.25;
+	lcol[2*3 + 0] = 1.0;
+	lcol[2*3 + 1] = 1.0;
+	lcol[2*3 + 2] = 1.0;
 	lpos[2*3 + 0] = 5.0;
 	lpos[2*3 + 1] = 5.0;
 	lpos[2*3 + 2] = -10.0;
 	ldir[2*3 + 0] = 0.0;
 	ldir[2*3 + 1] = -1.0;
 	ldir[2*3 + 2] = 0.0;
-	lcos[2] = cos(75.0*M_PI/180.0);
-	lpow[2] = 1.0/1.0;
+	lcos[2] = cos(45.0*M_PI/180.0);
+	lpow[2] = 1.0/2.0;
 
-	lcol[3*3 + 0] = 1.0*0.25;
-	lcol[3*3 + 1] = 1.0*0.25;
-	lcol[3*3 + 2] = 1.0*0.25;
+	lcol[3*3 + 0] = 1.0;
+	lcol[3*3 + 1] = 1.0;
+	lcol[3*3 + 2] = 1.0;
 	lpos[3*3 + 0] =-5.0;
 	lpos[3*3 + 1] = 5.0;
 	lpos[3*3 + 2] = -10.0;
 	ldir[3*3 + 0] = 0.0;
 	ldir[3*3 + 1] = -1.0;
 	ldir[3*3 + 2] = 0.0;
-	lcos[3] = cos(75.0*M_PI/180.0);
-	lpow[3] = 1.0/1.0;
+	lcos[3] = cos(45.0*M_PI/180.0);
+	lpow[3] = 1.0/2.0;
 
-	lcol[4*3 + 0] = 1.0*0.25;
-	lcol[4*3 + 1] = 1.0*0.25;
-	lcol[4*3 + 2] = 1.0*0.25;
+	lcol[4*3 + 0] = 1.0;
+	lcol[4*3 + 1] = 1.0;
+	lcol[4*3 + 2] = 1.0;
 	lpos[4*3 + 0] = 5.0;
 	lpos[4*3 + 1] = 5.0;
-	lpos[4*3 + 2] = -20.0;
+	lpos[4*3 + 2] = -30.0;
 	ldir[4*3 + 0] = 0.0;
 	ldir[4*3 + 1] = -1.0;
 	ldir[4*3 + 2] = 0.0;
-	lcos[4] = cos(75.0*M_PI/180.0);
-	lpow[4] = 1.0/1.0;
+	lcos[4] = cos(45.0*M_PI/180.0);
+	lpow[4] = 1.0/2.0;
 
-	lcol[5*3 + 0] = 1.0*0.25;
-	lcol[5*3 + 1] = 1.0*0.25;
-	lcol[5*3 + 2] = 1.0*0.25;
+	lcol[5*3 + 0] = 1.0;
+	lcol[5*3 + 1] = 1.0;
+	lcol[5*3 + 2] = 1.0;
 	lpos[5*3 + 0] =-5.0;
 	lpos[5*3 + 1] = 5.0;
-	lpos[5*3 + 2] = -20.0;
+	lpos[5*3 + 2] = -30.0;
 	ldir[5*3 + 0] = 0.0;
 	ldir[5*3 + 1] = -1.0;
 	ldir[5*3 + 2] = 0.0;
-	lcos[5] = cos(75.0*M_PI/180.0);
-	lpow[5] = 1.0/1.0;
+	lcos[5] = cos(45.0*M_PI/180.0);
+	lpow[5] = 1.0/2.0;
 
 	for(i = 0; i < 2; i++)
 	{
-		if(render_sec_current < 0.3)
+		if(render_sec_current < 1.6)
 		for(j = 0; j < 3; j++)
-			lcol[3*(0+i) + j] *= render_sec_current/0.3;
+			lcol[3*(0+i) + j] *= (render_sec_current-1.0)/0.6;
 
 		if(render_sec_current < 3.1)
 		for(j = 0; j < 3; j++)

@@ -55,7 +55,7 @@ void main()
 		vec3 wdir_bak = wdir;
 
 		// Apply ambient
-		vec3 acol = tcol * 0.3;
+		vec3 acol = tcol * 0.1;
 
 		// Trace to light for shadows
 		for(uint lidx = 0U; lidx < light_count; lidx++)
