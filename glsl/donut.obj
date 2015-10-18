@@ -63,7 +63,6 @@ void trace_donut(bool shadow_mode, vec3 epos, vec3 enorm, float radh, float radd
 		ttime = etime;
 		tcol = ecol;
 		tnorm = normalize(ppos - epos);
-		apply_light(epoint);
 	}
 	if(false){
 		float old_ttime = ttime;

@@ -8,19 +8,7 @@ out vec4 out_frag_color;
 %include glsl/common.glsl
 
 %include glsl/kd.lib
-
-void apply_light(vec3 epoint)
-{
-	vec3 ldir = normalize(light0_pos - epoint);
-	float lfoc = (dot(ldir, -normalize(light0_dir)) - light0_cos)/light0_cos;
-	if(lfoc > 0.0)
-	{
-		tdiff = max(0.0, dot(tnorm, ldir));
-		tdiff *= pow(lfoc, light0_pow);
-	} else {
-		tdiff = 0.0;
-	}
-}
+%include glsl/lighting.lib
 
 %include glsl/sphere.obj
 %include glsl/cylinder.obj
@@ -66,66 +54,73 @@ void main()
 		vec3 wpos_bak = wpos;
 		vec3 wdir_bak = wdir;
 
-		// Trace to light for shadows
-		if(do_shadow)
-		{
-			zfar = ttime = length(light0_pos - wpos);
-
-			if(false)
-			{
-				// Cast from light
-				// disabled: causes fringing on the shadows
-				// and no real performance improvements
-				wdir = normalize(wpos - light0_pos);
-				wpos = light0_pos;
-			} else {
-				// Cast to light
-				wdir = normalize(light0_pos - wpos);
-			}
-
-			if(tdiff > 0.0)
-			{
-				trace_scene(true);
-			}
-		}
-
-		// Check if we hit something
-		bool unshadowed = (!do_shadow) || (ttime == zfar);
-
-		// Restore colour backup
-		//tcol = tcol_bak;
-		//tdiff = tdiff_bak;
-
-		// Restore trace backup
-		//tnorm = tnorm_bak;
-		wpos = wpos_bak;
-		wdir = wdir_bak;
-		ttime = zfar = zfar_bak;
-
-		// Reflect
-		wdir = 2.0*dot(tnorm, -wdir)*tnorm + wdir;
-
-		// Apply ambient + diffuse
+		// Apply ambient
 		float comb_light = 0.1;
-		if(unshadowed)
-			comb_light += 0.9*tdiff;
-		tcol *= comb_light;
+		vec3 acol = tcol * 0.1;
 
-		// Apply specular
-		if(unshadowed)
+		// Trace to light for shadows
+		for(uint lidx = 0U; lidx < light_count; lidx++)
 		{
-			float spec = 1.0;
-			vec3 ldir = normalize(light0_pos - wpos);
-			spec *= max(0.0, dot(wdir, ldir));
-			float lfoc = max(0.0, (dot(ldir, -normalize(light0_dir)) - light0_cos)/light0_cos);
-			spec *= (lfoc > 0.0 ? 1.0 : 0.0);
-			if(spec > 0.0)
-				tcol += pow(spec, 128.0);
-		}
+			// Calculate diffuse
+			apply_light(lidx, wpos);
 
+			// Check if we hit something
+			bool unshadowed = tdiff > 0.0;
+
+			// Cast shadow
+			if(do_shadow && unshadowed)
+			{
+				zfar = ttime = length(light_pos[lidx] - wpos);
+
+				if(false)
+				{
+					// Cast from light
+					// disabled: causes fringing on the shadows
+					// and no real performance improvements
+					wdir = normalize(wpos - light_pos[lidx]);
+					wpos = light_pos[lidx];
+				} else {
+					// Cast to light
+					wdir = normalize(light_pos[lidx] - wpos);
+				}
+
+				trace_scene(true);
+
+				if(ttime != zfar) unshadowed = false;
+			}
+
+			// Apply diffuse
+			if(unshadowed)
+				acol += tcol * tdiff;
+
+			// Restore colour backup
+			//tcol = tcol_bak;
+			//tdiff = tdiff_bak;
+
+			// Restore trace backup
+			//tnorm = tnorm_bak;
+			wpos = wpos_bak;
+			wdir = wdir_bak;
+			ttime = zfar = zfar_bak;
+
+			// Reflect
+			wdir = 2.0*dot(tnorm, -wdir)*tnorm + wdir;
+
+			// Apply specular
+			if(unshadowed)
+			{
+				float spec = 1.0;
+				vec3 ldir = normalize(light_pos[lidx] - wpos);
+				spec *= max(0.0, dot(wdir, ldir));
+				float lfoc = max(0.0, (dot(ldir, -normalize(light_dir[lidx])) - light_cos[lidx])/light_cos[lidx]);
+				spec *= (lfoc > 0.0 ? 1.0 : 0.0);
+				if(spec > 0.0)
+					acol += pow(spec, 128.0);
+			}
+		}
 
 		// Accumulate colour
-		ccol += tcol * ccol_fac;
+		ccol += acol * ccol_fac;
 		ccol_fac *= 0.3;
 
 	}

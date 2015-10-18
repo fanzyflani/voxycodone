@@ -13,6 +13,7 @@ const float ZFAR = 1000.0;
 const uint BOUNCES = 2U;
 const uint SPH_MAX = (1024U);
 const uint SPILIST_MAX = (1024U+1024U);
+const uint LIGHT_MAX = (32U);
 const uint KD_MAX = (2048U);
 const uint KD_TRACE_MAX = 10U;
 const uint KD_LOOKUP_MAX = 128U;
@@ -25,10 +26,11 @@ uniform sampler2D tex3;
 uniform int sph_count;
 //uniform vec4 sph_data[SPH_MAX];
 
-uniform vec3 light0_pos;
-uniform vec3 light0_dir;
-uniform float light0_cos;
-uniform float light0_pow;
+const uint light_count = 2U;
+uniform vec3 light_pos[LIGHT_MAX];
+uniform vec3 light_dir[LIGHT_MAX];
+uniform float light_cos[LIGHT_MAX];
+uniform float light_pow[LIGHT_MAX];
 
 uniform vec3 bmin, bmax;
 //vec3 bmin, bmax;
@@ -54,9 +56,9 @@ float kd_tmax;
 //uniform int kd_data_spilen[KD_MAX];
 //uniform int kd_data_spilist[SPILIST_MAX];
 
-//vec3 light0_vec;
 float ttime;
 float tdiff;
+uint tlights;
 float zfar = ZFAR;
 vec3 tcol, tnorm;
 vec3 wpos, wdir, idir;

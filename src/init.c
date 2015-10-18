@@ -86,10 +86,10 @@ void init_gfx(void)
 	shader_ray_tex3 = glGetUniformLocation(shader_ray, "tex3");
 	shader_ray_sph_count = glGetUniformLocation(shader_ray, "sph_count");
 	shader_ray_sph_data = glGetUniformLocation(shader_ray, "sph_data");
-	shader_ray_light0_pos = glGetUniformLocation(shader_ray, "light0_pos");
-	shader_ray_light0_dir = glGetUniformLocation(shader_ray, "light0_dir");
-	shader_ray_light0_cos = glGetUniformLocation(shader_ray, "light0_cos");
-	shader_ray_light0_pow = glGetUniformLocation(shader_ray, "light0_pow");
+	shader_ray_light0_pos = glGetUniformLocation(shader_ray, "light_pos");
+	shader_ray_light0_dir = glGetUniformLocation(shader_ray, "light_dir");
+	shader_ray_light0_cos = glGetUniformLocation(shader_ray, "light_cos");
+	shader_ray_light0_pow = glGetUniformLocation(shader_ray, "light_pow");
 	shader_ray_bmin = glGetUniformLocation(shader_ray, "bmin");
 	shader_ray_bmax = glGetUniformLocation(shader_ray, "bmax");
 	shader_ray_in_cam_inverse = glGetUniformLocation(shader_ray, "in_cam_inverse");

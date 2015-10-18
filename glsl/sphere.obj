@@ -9,7 +9,6 @@ void shade_sphere(vec3 epos, vec3 ecol)
 	tnorm = normalize(epoint - epos);
 
 	// Calculate colour
-	apply_light(epoint);
 	tcol = ecol;
 }
 

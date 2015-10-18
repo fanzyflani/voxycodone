@@ -42,7 +42,6 @@ void trace_cylinder(bool shadow_mode, vec3 epos0, vec3 epos1, float erad, vec3 e
 		tcol = ecol;
 		//tnorm = normalize(proj_wpos - epos);
 		tnorm = (dot(enorm, wdir) < 0.0 ? -enorm : enorm);
-		apply_light(epoint);
 	}
 
 	// Do actual cylinder

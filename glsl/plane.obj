@@ -36,7 +36,6 @@ void trace_plane(bool shadow_mode, vec3 enorm, float eoffs, vec3 ecol0, vec3 eco
 
 	// Calculate colour
 	tnorm = (einside ? -enorm : enorm);
-	apply_light(epoint);
 	tcol = (csel >= 1.0 ? ecol1 : ecol0);
 }
 

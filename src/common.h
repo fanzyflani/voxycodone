@@ -66,6 +66,7 @@ struct kd {
 	// TODO: other things
 };
 
+// glslpp.c
 char *load_str(const char *fname);
 char *glslpp_load_str(const char *fname, size_t *len);
 

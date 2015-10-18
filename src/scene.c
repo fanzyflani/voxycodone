@@ -123,16 +123,34 @@ void h_render_main(void)
 	glUniform1i(shader_ray_tex2, 2);
 	glUniform1i(shader_ray_tex3, 3);
 	glUniform1i(shader_ray_sph_count, sph_count);
-	glUniform3f(shader_ray_light0_pos,
-		//cam_pos_x, cam_pos_y, cam_pos_z);
-		0.0, 10.0, -10.0);
-		//sin(render_sec_current)*15.0+5.0, 10.0, cos(render_sec_current)*15.0+5.0);
-	glUniform3f(shader_ray_light0_dir,
-		//cam_pos_x, cam_pos_y, cam_pos_z);
-		//0.0, 10.0, -10.0);
-		sin(render_sec_current)*15.0+5.0, -30.0, cos(render_sec_current)*15.0+5.0);
-	glUniform1f(shader_ray_light0_cos, 1.0 - 0.7);
-	glUniform1f(shader_ray_light0_pow, 1.0/4.0);
+
+	float lpos[3*32];
+	float ldir[3*32];
+	float lcos[32];
+	float lpow[32];
+
+	lpos[0*3 + 0] = 0.0;
+	lpos[0*3 + 1] = 5.0;
+	lpos[0*3 + 2] = -10.0;
+	ldir[0*3 + 0] = sin(render_sec_current)*15.0+5.0;
+	ldir[0*3 + 1] = -20.0;
+	ldir[0*3 + 2] = cos(render_sec_current)*15.0+5.0;
+	lcos[0] = 1.0 - 0.7;
+	lpow[0] = 1.0/4.0;
+
+	lpos[1*3 + 0] = 0.0;
+	lpos[1*3 + 1] = 5.0;
+	lpos[1*3 + 2] = -60.0;
+	ldir[1*3 + 0] = -sin(render_sec_current)*15.0+5.0;
+	ldir[1*3 + 1] = -20.0;
+	ldir[1*3 + 2] = -cos(render_sec_current)*15.0+5.0;
+	lcos[1] = 1.0 - 0.7;
+	lpow[1] = 1.0/4.0;
+
+	glUniform3fv(shader_ray_light0_pos, 2, lpos);
+	glUniform3fv(shader_ray_light0_dir, 2, ldir);
+	glUniform1fv(shader_ray_light0_cos, 2, lcos);
+	glUniform1fv(shader_ray_light0_pow, 2, lpow);
 
 	glUniform3f(shader_ray_bmin, bmin_x, bmin_y, bmin_z);
 	glUniform3f(shader_ray_bmax, bmax_x, bmax_y, bmax_z);
