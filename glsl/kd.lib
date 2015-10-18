@@ -1,0 +1,98 @@
+// vim: syntax=c
+
+void kd_add_plane(uint idx, float tmin, float tmax)
+{
+	// KD-Restart doesn't use this function
+	if(do_kd_restart) return;
+
+	// Don't overflow trace list!
+	if(kd_trace_head >= int(KD_TRACE_MAX))
+	{
+		ccol.r = 1.0;
+		return;
+	}
+
+	// Don't add something that has no or negative time!
+	if(tmin >= tmax) return;
+
+	kd_trace_nodes[kd_trace_head].idx = idx;
+	kd_trace_nodes[kd_trace_head].tmin = tmin;
+	kd_trace_nodes[kd_trace_head].tmax = tmax;
+	kd_trace_head++;
+}
+
+bool kd_fetch_plane(void)
+{
+	if(do_kd_restart)
+	{
+		kd_tmin = kd_tmax;
+		kd_tmax = ttime;
+		if(kd_tmin >= kd_tmax)
+			return false;
+
+		if(false)
+		{
+			// KD-Backtrack (well, not quite)
+			//uint parent = (kd_data_split_axis[kd_trace_node] & 0xFFFFU) >> 2;
+			uint parent = (texelFetch(tex2, ivec2(0, kd_trace_node), 0).x & 0xFFFFU) >> 2;
+			for(uint i = 0U; i < KD_TRACE_MAX; i++)
+			{
+				// Check if parent valid
+				if(parent == kd_trace_node)
+					return false;
+
+				// Advance to parent
+				kd_trace_node = parent;
+				//uint data = kd_data_split_axis[kd_trace_node];
+				uint data = texelFetch(tex2, ivec2(0, kd_trace_node), 0).x;
+				parent = data >> 20;
+
+				// Check if in range
+				// Note, we simply cannot have a leaf (unless there's a bug (NO PUN INTENDED))
+				uint kd_trace_axis = data & 3U;
+				//float split_point = kd_data_split_point[kd_trace_node];
+				float split_point = texelFetch(tex1, ivec2(0,kd_trace_node), 0).x;
+				float split_time;
+				switch(kd_trace_axis)
+				{
+					case 0U:
+						split_time = (split_point - wdir.x)*idir.x;
+						break;
+					case 1U:
+						split_time = (split_point - wdir.y)*idir.y;
+						break;
+					case 2U:
+					default:
+						split_time = (split_point - wdir.z)*idir.z;
+						break;
+				}
+
+				// If it is, use this node!
+				//if(split_time >= kd_tmin && split_time <= kd_tmax)
+				if(split_time >= kd_tmin)
+				{
+					// TODO: store node bounding boxes somehow.
+					return true;
+				}
+			}
+			return false;
+
+		} else {
+			// KD-Restart
+			kd_trace_node = 0U;
+			return true;
+		}
+	}
+
+	// Ensure we have nodes remaining to trace through
+	if(kd_trace_head <= 0) return false;
+
+	// Load node info
+	kd_trace_head--;
+	kd_trace_node = kd_trace_nodes[kd_trace_head].idx;
+	kd_tmin = kd_trace_nodes[kd_trace_head].tmin;
+	kd_tmax = kd_trace_nodes[kd_trace_head].tmax;
+
+	return true;
+}
+

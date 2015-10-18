@@ -1,0 +1,18 @@
+// vim: syntax=c
+
+void trace_scene(bool shadow_mode)
+{
+	idir = sign(wdir)/max(vec3(EPSILON), abs(wdir));
+
+	trace_plane(shadow_mode
+		, vec3(0.0, 1.0, 0.0), -3.0
+		, vec3(0.9, 0.9, 0.9)
+		, vec3(0.1, 0.1, 0.1)
+		);
+
+	//trace_donut(shadow_mode, vec3(0.0, 0.0, -4.0), vec3(0.0, 0.0, 1.0), 1.0, 0.5, vec3(1.0, 0.0, 1.0));
+	//trace_cylinder(shadow_mode, vec3(0.0, 0.0, -4.0), vec3(0.0, 0.0, 1.0), 1.0, vec3(1.0, 0.0, 1.0));
+	//trace_cylinder(shadow_mode, vec3(0.0, -0.0, -4.0), vec3(0.0, 0.0, 4.0), 1.0, vec3(1.0, 0.0, 1.0));
+	trace_cylinder(shadow_mode, vec3(1.0, 0.0, -4.0), vec3(2.0, 1.0, -4.0), 1.0, vec3(1.0, 0.0, 1.0));
+}
+

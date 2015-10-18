@@ -1,0 +1,66 @@
+// vim: syntax=c
+
+void trace_cylinder(bool shadow_mode, vec3 epos0, vec3 epos1, float erad, vec3 ecol)
+{
+	// Get normal
+	vec3 enorm = normalize(epos1 - epos0);
+
+	// Get base plane offset
+	float eoffs0 = dot(epos0, enorm);
+	float eoffs1 = dot(epos1, enorm);
+
+	// Project to planes
+	vec3 dwdir = sign(wdir)*max(vec3(EPSILON), abs(wdir));
+	float proj_poffs = dot(enorm, wpos); // Distance to plane
+	float proj_doffs = dot(enorm, wdir); // Offset for direction
+	float proj0_time = (eoffs0-proj_poffs)/proj_doffs; // Time to plane 0
+	float proj1_time = (eoffs1-proj_poffs)/proj_doffs; // Time to plane 1
+	bool side0_valid = (proj0_time >= EPSILON);
+	bool side1_valid = (proj1_time >= EPSILON);
+	if(!(side0_valid || side1_valid)) return; // *** SKIP if behind
+	vec3 proj0_wpos = wpos + proj0_time*dwdir;
+	vec3 proj1_wpos = wpos + proj1_time*dwdir;
+	vec3 proj_wdir = wdir - proj_doffs*enorm;
+
+	// Check radius
+	side0_valid = side0_valid && length(proj0_wpos - epos0) <= erad;
+	side1_valid = side1_valid && length(proj1_wpos - epos1) <= erad;
+
+	// Do caps
+	if(side0_valid || side1_valid)
+	{
+		float etime0 = proj0_time;
+		float etime1 = proj1_time;
+		float etime = (etime0 < etime1 && side0_valid ? etime0 : etime1);
+		vec3 epoint = (etime0 < etime1 && side0_valid ? proj0_wpos : proj1_wpos);
+
+		// @@@ TIME SELECT
+		if(etime >= ttime) return; // *** TIME SKIP
+		ttime = etime;
+		if(shadow_mode) return;
+
+		tcol = ecol;
+		//tnorm = normalize(proj_wpos - epos);
+		tnorm = (dot(enorm, wdir) < 0.0 ? -enorm : enorm);
+		apply_light(epoint);
+	}
+
+	// Do actual cylinder
+	// (abuse plane 0 for position)
+
+	// Calculate requirements for our double-triangle motion
+	float prad = length(proj0_wpos - epos0);
+	float pcos = dot(-wdir, proj_wdir);
+
+	// Now for some trigonometric horror
+	float tA = pcos*prad; // Time to tangent
+	float K = sqrt(prad*prad - tA*tA); // Tangent distance
+	float tB = sqrt(erad*erad - K*K); // Time from tangent to border
+
+	// Assert things
+	float tAB = tA+tB;
+	//if(etime < proj0_time
+	// TODO!
+
+}
+

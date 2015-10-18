@@ -1,0 +1,61 @@
+// vim: syntax=c
+
+void shade_sphere(vec3 epos, vec3 ecol)
+{
+	// Calculate point of intersection
+	vec3 epoint = wpos + ttime*wdir;
+
+	// Calculate normal
+	tnorm = normalize(epoint - epos);
+
+	// Calculate colour
+	apply_light(epoint);
+	tcol = ecol;
+}
+
+void trace_sphere(int spi, bool shadow_mode, vec3 epos, float erad)
+{
+	//if(true)return;
+	if(do_debug) dcol.r += (1.0 - dcol.b)*0.2;
+	// Calculate hypotenuse
+	vec3 dpos = epos - wpos;
+
+	// Calculate angle and thus adjacent
+	float dirl = dot(dpos, wdir);
+	//if(!einside && dirl < 0.0) return; // *** SKIP if behind camera
+	if(dirl <= (shadow_mode ? 0.0 : 0.5)) return; // *** SKIP - frustum cull
+	float dposl2 = dot(dpos, dpos);
+
+	// this skip actually slows traces down, so DISABLED
+	//if(ttime < sqrt(dposl2) - erad) return; // *** ACCEL SKIP if we cannot reach it
+
+	float erad2 = erad*erad;
+	bool einside = dposl2 < erad2;
+	if(einside) return; // *** TEMPORARY ACCEL SKIP - inside is very slow with this struct!
+
+	// Calculate relative radius
+	float rad2 = dposl2 - dirl*dirl;
+	if(rad2 > erad2) return; // *** SKIP if not in sphere
+
+	//
+	// TOUCHING PRIMITIVE
+	//
+
+	// Calculate time to entry point
+	// time_offset^2 = erad2 - rad2
+	float etime_offset2 = erad2 - rad2;
+	float etime_offset = sqrt(etime_offset2);
+	float etime = dirl + (einside ? etime_offset : -etime_offset);
+
+	if(etime < EPSILON) return; // *** NOT SURE WHY WE HAVE TO SKIP BUT OH WELL
+
+	// @@@ TIME SELECT
+	if(etime > ttime) return; // *** TIME SKIP
+	ttime = etime;
+	if(do_debug) dcol.g += (1.0-dcol.g)*0.5;
+	if(shadow_mode) return;
+
+	// Set sphere index
+	trace_spi = spi;
+}
+

@@ -1,0 +1,77 @@
+// vim: syntax=c
+
+// Let's not pretend that we actually call this a "torus"
+void trace_donut(bool shadow_mode, vec3 epos, vec3 enorm, float radh, float radd, vec3 ecol)
+{
+	// Normalise
+	enorm = normalize(enorm);
+
+	float radx = radh+radd;
+
+	//if((dot(enorm, wpos)-eoffs)*dot(enorm,wdir) >= EPSILON) return; // *** ACCEL SKIP
+
+	// Project direction onto the plane
+	// (200-level Linear Algebra, a paper I got a C- on)
+	float proj_poffs = dot(enorm, wdir);
+	vec3 proj_pdir = normalize(wdir - enorm*proj_poffs);
+
+	// Get pos offset
+	float eoffs = dot(epos, enorm);
+	float nopos = dot(enorm, wpos) - eoffs;
+
+	// Get dir offset
+	float nodir = dot(enorm, wdir);
+	//if(nodir*nopos >= 0.0) return; // *** ACCEL SKIP
+
+	// Get time
+	// TODO: find accurate skip
+	float etime = -nopos/nodir;
+	//if(etime < EPSILON) return; // *** SKIP if casting in wrong direction
+
+	// Project position onto the plane
+	vec3 epoint = wpos - enorm*etime;
+
+	// Calculate requirements for our double-triangle motion
+	vec3 pdir = normalize(epoint - epos);
+	float prad = length(epoint - epos);
+	float pcos = dot(-pdir, proj_pdir);
+
+	// Now for some trigonometric horror
+	float tA = pcos*prad; // Time to tangent
+	float K = sqrt(prad*prad - tA*tA); // Tangent distance
+	float tB = sqrt(radx*radx - K*K); // Time from tangent to border
+
+	float ptime = tA+tB; 
+	if(ptime < 0.0) ptime -= 2.0*tB;
+	if(ptime < 0.0) return;
+	//vec3 ppos = epos + normalize(proj_pdir*(ptime))*(radh+radd);
+
+	// Trace sphere
+	{
+		float old_ttime = ttime;
+		vec3 ppos = epoint + proj_pdir*(ptime);
+		//vec3 ppos = wpos + pdir*(ptime);
+		//ppos = epos + normalize(ppos - epos)*radx;
+		/*
+		trace_sphere(1, shadow_mode, ppos, radd);
+		if((!shadow_mode) && ttime != old_ttime)
+			shade_sphere(ppos, ecol);
+		*/
+
+		etime = ptime;
+		if(ttime < etime) return;
+		ttime = etime;
+		tcol = ecol;
+		tnorm = normalize(ppos - epos);
+		apply_light(epoint);
+	}
+	if(false){
+		float old_ttime = ttime;
+		vec3 ppos = epoint + proj_pdir*(tA-tB);
+		ppos = epos + normalize(ppos - epos)*radx;
+		trace_sphere(1, shadow_mode, ppos, radd);
+		if((!shadow_mode) && ttime != old_ttime)
+			shade_sphere(ppos, ecol);
+	}
+}
+
