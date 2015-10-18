@@ -8,6 +8,7 @@ GLint shader_ray_tex3;
 GLint shader_ray_sph_count;
 GLint shader_ray_sph_data;
 GLint shader_ray_light_count;
+GLint shader_ray_light0_col;
 GLint shader_ray_light0_pos;
 GLint shader_ray_light0_dir;
 GLint shader_ray_light0_cos;
@@ -88,6 +89,7 @@ void init_gfx(void)
 	shader_ray_sph_count = glGetUniformLocation(shader_ray, "sph_count");
 	shader_ray_sph_data = glGetUniformLocation(shader_ray, "sph_data");
 	shader_ray_light_count = glGetUniformLocation(shader_ray, "light_count");
+	shader_ray_light0_col = glGetUniformLocation(shader_ray, "light_col");
 	shader_ray_light0_pos = glGetUniformLocation(shader_ray, "light_pos");
 	shader_ray_light0_dir = glGetUniformLocation(shader_ray, "light_dir");
 	shader_ray_light0_cos = glGetUniformLocation(shader_ray, "light_cos");

@@ -27,6 +27,7 @@ uniform int sph_count;
 //uniform vec4 sph_data[SPH_MAX];
 
 uniform uint light_count;
+uniform vec3 light_col[LIGHT_MAX];
 uniform vec3 light_pos[LIGHT_MAX];
 uniform vec3 light_dir[LIGHT_MAX];
 uniform float light_cos[LIGHT_MAX];

@@ -80,6 +80,7 @@ extern GLint shader_ray_tex3;
 extern GLint shader_ray_sph_count;
 extern GLint shader_ray_sph_data;
 extern GLint shader_ray_light_count;
+extern GLint shader_ray_light0_col;
 extern GLint shader_ray_light0_pos;
 extern GLint shader_ray_light0_dir;
 extern GLint shader_ray_light0_cos;

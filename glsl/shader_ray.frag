@@ -91,7 +91,7 @@ void main()
 
 			// Apply diffuse
 			if(unshadowed)
-				acol += tcol * tdiff;
+				acol += tcol * light_col[lidx] * tdiff;
 
 			// Restore colour backup
 			//tcol = tcol_bak;
