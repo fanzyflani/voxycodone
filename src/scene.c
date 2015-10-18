@@ -8,6 +8,8 @@ double cam_pos_z = 0.0;
 
 void h_render_main(void)
 {
+	int x, y, z, i, j;
+
 	mat4x4 mat_cam1;
 	mat4x4 mat_cam2;
 
@@ -16,7 +18,6 @@ void h_render_main(void)
 	mat4x4_rotate_Y(mat_cam1, mat_cam2, cam_rot_y);
 	mat4x4_translate_in_place(mat_cam1, -cam_pos_x, -cam_pos_y, -cam_pos_z);
 
-	int x, y, z, i;
 	/*
 	int cube_units = 8;
 	sph_count = cube_units*cube_units*cube_units;
@@ -32,6 +33,7 @@ void h_render_main(void)
 	}
 	*/
 
+	/*
 	sph_count = 50;
 	double fx, fy, fz;
 	fx = 0.0;
@@ -51,10 +53,11 @@ void h_render_main(void)
 			255);
 
 	}
+	*/
 
 	//sph_count = 16;
-	//sph_count=0;
-	kd_generate();
+	sph_count=0;
+	//kd_generate();
 
 	static uint32_t sph_buf1[SPH_MAX];
 	static float sph_buf2[12*KD_MAX];
@@ -129,6 +132,8 @@ void h_render_main(void)
 	float ldir[3*LIGHT_MAX];
 	float lcos[LIGHT_MAX];
 	float lpow[LIGHT_MAX];
+
+	/*
 	int light_count = 3;
 
 	lcol[0*3 + 0] = 1.0;
@@ -166,6 +171,100 @@ void h_render_main(void)
 	ldir[2*3 + 2] = 0.0;
 	lcos[2] = cos((45.0+15.0*-cos(render_sec_current*0.4))*M_PI/180.0);
 	lpow[2] = 1.0/4.0;
+	*/
+	int light_count = (render_sec_current < 3.0
+		? 2
+		: render_sec_current < 4.0
+		? 4
+		: 6);
+
+	lcol[0*3 + 0] = 0.2;
+	lcol[0*3 + 1] = 0.2;
+	lcol[0*3 + 2] = 0.2;
+	lpos[0*3 + 0] = 0.0-0.1;
+	lpos[0*3 + 1] = 0.0;
+	lpos[0*3 + 2] = 9.0;
+	ldir[0*3 + 0] = 0.0;
+	ldir[0*3 + 1] = 0.0;
+	ldir[0*3 + 2] = -1.0;
+	lcos[0] = 1.0 - 0.9;
+	lpow[0] = 1.0/4.0;
+
+	lcol[1*3 + 0] = 0.2;
+	lcol[1*3 + 1] = 0.2;
+	lcol[1*3 + 2] = 0.2;
+	lpos[1*3 + 0] = 0.0+0.1;
+	lpos[1*3 + 1] = 0.0;
+	lpos[1*3 + 2] = 9.0;
+	ldir[1*3 + 0] = 0.0;
+	ldir[1*3 + 1] = 0.0;
+	ldir[1*3 + 2] = -1.0;
+	lcos[1] = 1.0 - 0.9;
+	lpow[1] = 1.0/4.0;
+
+	lcol[2*3 + 0] = 1.0*0.25;
+	lcol[2*3 + 1] = 1.0*0.25;
+	lcol[2*3 + 2] = 1.0*0.25;
+	lpos[2*3 + 0] = 5.0;
+	lpos[2*3 + 1] = 5.0;
+	lpos[2*3 + 2] = -10.0;
+	ldir[2*3 + 0] = 0.0;
+	ldir[2*3 + 1] = -1.0;
+	ldir[2*3 + 2] = 0.0;
+	lcos[2] = cos(75.0*M_PI/180.0);
+	lpow[2] = 1.0/1.0;
+
+	lcol[3*3 + 0] = 1.0*0.25;
+	lcol[3*3 + 1] = 1.0*0.25;
+	lcol[3*3 + 2] = 1.0*0.25;
+	lpos[3*3 + 0] =-5.0;
+	lpos[3*3 + 1] = 5.0;
+	lpos[3*3 + 2] = -10.0;
+	ldir[3*3 + 0] = 0.0;
+	ldir[3*3 + 1] = -1.0;
+	ldir[3*3 + 2] = 0.0;
+	lcos[3] = cos(75.0*M_PI/180.0);
+	lpow[3] = 1.0/1.0;
+
+	lcol[4*3 + 0] = 1.0*0.25;
+	lcol[4*3 + 1] = 1.0*0.25;
+	lcol[4*3 + 2] = 1.0*0.25;
+	lpos[4*3 + 0] = 5.0;
+	lpos[4*3 + 1] = 5.0;
+	lpos[4*3 + 2] = -20.0;
+	ldir[4*3 + 0] = 0.0;
+	ldir[4*3 + 1] = -1.0;
+	ldir[4*3 + 2] = 0.0;
+	lcos[4] = cos(75.0*M_PI/180.0);
+	lpow[4] = 1.0/1.0;
+
+	lcol[5*3 + 0] = 1.0*0.25;
+	lcol[5*3 + 1] = 1.0*0.25;
+	lcol[5*3 + 2] = 1.0*0.25;
+	lpos[5*3 + 0] =-5.0;
+	lpos[5*3 + 1] = 5.0;
+	lpos[5*3 + 2] = -20.0;
+	ldir[5*3 + 0] = 0.0;
+	ldir[5*3 + 1] = -1.0;
+	ldir[5*3 + 2] = 0.0;
+	lcos[5] = cos(75.0*M_PI/180.0);
+	lpow[5] = 1.0/1.0;
+
+	for(i = 0; i < 2; i++)
+	{
+		if(render_sec_current < 0.3)
+		for(j = 0; j < 3; j++)
+			lcol[3*(0+i) + j] *= render_sec_current/0.3;
+
+		if(render_sec_current < 3.1)
+		for(j = 0; j < 3; j++)
+			lcol[3*(2+i) + j] *= (render_sec_current-3.0)/0.1;
+
+		if(render_sec_current < 4.1)
+		for(j = 0; j < 3; j++)
+			lcol[3*(4+i) + j] *= (render_sec_current-4.0)/0.1;
+
+	}
 
 	glUniform1ui(shader_ray_light_count, light_count);
 	glUniform3fv(shader_ray_light0_col, light_count, lcol);

@@ -29,13 +29,13 @@ void trace_plane(bool shadow_mode, vec3 enorm, float eoffs, vec3 ecol0, vec3 eco
 	vec3 epoint = wpos + etime*wdir;
 
 	// TODO: genericise this pattern
-	float c0 = floor(epoint.x/3.0);
-	float c1 = floor(epoint.z/3.0);
-	float csel = c0+c1;
-	csel -= floor(csel/2.0)*2.0;
+	int c0 = int(floor(epoint.x+0.001));
+	int c1 = int(floor(epoint.y+0.001));
+	int c2 = int(floor(epoint.z+0.001));
+	int csel = (c0+c1+c2)%2;
 
 	// Calculate colour
 	tnorm = (einside ? -enorm : enorm);
-	tcol = (csel >= 1.0 ? ecol1 : ecol0);
+	tcol = (csel >= 1 ? ecol1 : ecol0);
 }
 

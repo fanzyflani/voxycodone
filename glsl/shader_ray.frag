@@ -15,7 +15,7 @@ out vec4 out_frag_color;
 %include glsl/donut.obj
 %include glsl/plane.obj
 
-%include glsl/genkd1.scene
+%include glsl/facroom1.scene
 
 void main()
 {
@@ -55,8 +55,7 @@ void main()
 		vec3 wdir_bak = wdir;
 
 		// Apply ambient
-		float comb_light = 0.1;
-		vec3 acol = tcol * 0.1;
+		vec3 acol = tcol * 0.3;
 
 		// Trace to light for shadows
 		for(uint lidx = 0U; lidx < light_count; lidx++)
@@ -115,7 +114,8 @@ void main()
 				float lfoc = max(0.0, (dot(ldir, -normalize(light_dir[lidx])) - light_cos[lidx])/light_cos[lidx]);
 				spec *= (lfoc > 0.0 ? 1.0 : 0.0);
 				if(spec > 0.0)
-					acol += pow(spec, 128.0);
+					//acol += pow(spec, 128.0);
+					acol += 0.2*pow(spec, 4.0);
 			}
 		}
 
