@@ -135,6 +135,7 @@ int main(int argc, char *argv[])
 		render_sec_current = ((double)(ticks_now))/1000.0;
 		hook_tick(render_sec_current, sec_delta);
 		h_render_main();
+		glFinish();
 		SDL_GL_SwapWindow(window);
 		ticks_prev = ticks_now;
 

@@ -6,12 +6,10 @@ const bool do_bbox = true;
 
 const bool do_kd_restart = false;
 
-const bool test_mesh = false; // WIP: hardcoded sphere grid spam
-
 const float EPSILON = 0.0001;
 const float ZFAR = 1000.0;
 const uint BOUNCES = 2U;
-const uint RADIOSITY_BOUNCES_WARNING_FUCKING_SLOW = 1U; // WARNING RADIOSITY IS FUCKING SLOW
+const uint RADIOSITY_BOUNCES_WARNING_THIS_IS_FUCKING_SLOW = 1U; // WARNING INDIRECT BOUNCES ARE FUCKING SLOW
 const uint SPH_MAX = (1024U);
 const uint SPILIST_MAX = (1024U+1024U);
 const uint LIGHT_MAX = (32U);

@@ -148,7 +148,7 @@ void scene_trace_room_corrugated(inout Trace T, bool shadow_mode, vec3 v1, vec3 
 		}
 	}
 
-	if(plane_hit.y) T.tshine = 0.3;
+	//if(plane_hit.y) T.tshine = 0.3;
 
 	// Calculate sin offset
 	vec3 ewav = normalize(cross(T.tnorm, eigen));
@@ -162,7 +162,8 @@ void scene_trace_room_corrugated(inout Trace T, bool shadow_mode, vec3 v1, vec3 
 	// Rust!
 	if(plane_hit.y)
 	{
-		T.tcol = vec3(0.2, 0.00, 0.0);
+		//T.tcol = vec3(0.2, 0.00, 0.0);
+		T.tcol = ecol;
 	} else {
 		vec2 rustc = vec2(dot(ewav, epoint), dot(eigen, epoint));
 		float rfac = 0.0;

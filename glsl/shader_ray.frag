@@ -50,10 +50,14 @@ void main()
 		T0.ttime = T0.zfar;
 
 		// Back up useful things
-		Trace T1 = T0;
+		Trace T1;
+		T1 = T0;
 
 		// Apply ambient
-		vec3 acol = T0.tcol * light_amb;
+		vec3 acol = (
+			RADIOSITY_BOUNCES_WARNING_THIS_IS_FUCKING_SLOW > 0U
+			? vec3(0.0)
+			: T0.tcol * light_amb);
 
 		// Trace to light for shadows
 		for(uint lidx = 0U; lidx < light_count; lidx++)
@@ -63,9 +67,10 @@ void main()
 
 			// Check if we hit something
 			bool unshadowed = T0.tdiff > 0.0;
+			if(!unshadowed) T0.tdiff = 0.0;
 
 			// Cast shadow
-			vec3 mcol = vec3(1.0);
+			vec3 mcol = vec3(0.0);
 
 			if(do_shadow && unshadowed)
 			{
@@ -84,16 +89,60 @@ void main()
 				}
 
 				trace_scene(T0, true);
+				mcol = T0.tcol * T0.tdiff;
 
 				if(T0.ttime != T0.zfar)
 				{
 					unshadowed = false;
+					mcol = vec3(0.0);
+				}
+			}
+
+			// INDIRECT LIGHTING
+			// Cast from light to random direction
+			Trace Ti;
+			if(RADIOSITY_BOUNCES_WARNING_THIS_IS_FUCKING_SLOW > 0U)
+			{
+				Ti = T1;
+
+				Ti.wdir = normalize(light_dir[lidx]*1.0 + texture(tex_rand,
+					vec2(gl_FragCoord.xy)/128.0).xyz*2.0-1.0);
+				Ti.wpos = light_pos[lidx];
+			}
+
+			for(uint rb = 0U; rb < RADIOSITY_BOUNCES_WARNING_THIS_IS_FUCKING_SLOW; rb++)
+			{
+				// Calculate light
+				trace_scene(Ti, true);
+				vec3 mcol_i = T1.tcol;
+				Ti.wpos += Ti.wdir*(Ti.ttime - EPSILON*8.0);
+				apply_light(Ti, lidx, Ti.wpos);
+				if(Ti.tdiff <= 0.0) break;
+
+				mcol_i *= Ti.tcol * Ti.tdiff;
+
+				// Cast from point to target
+				Ti.wdir = normalize(T0.wpos - Ti.wpos);
+				Ti.zfar = Ti.ttime = length(T0.wpos - Ti.wpos) - 1.0;
+				Trace Ti2 = Ti;
+				trace_scene(Ti2, true);
+
+				// Check if we hit it
+				if(Ti2.ttime == Ti2.zfar)
+				{
+					//if(!unshadowed)  mcol_i = vec3(0.1);
+					unshadowed = true;
+					//mcol_i *= 100.0;
+					//mcol_i = vec3(1.0);
+					mcol += mcol_i;
+					//T0.tcol = vec3(1.0, 0.0, 0.0);
+					//mcol = vec3(1.0);
 				}
 			}
 
 			// Apply diffuse
 			if(unshadowed)
-				acol += T0.tcol * mcol * light_col[lidx] * T0.tdiff;
+				acol += mcol * light_col[lidx];
 
 			// Restore backup
 			T0 = T1;
@@ -104,7 +153,8 @@ void main()
 			// Apply specular
 			if(unshadowed)
 			{
-				float spec = 1.0;
+				float spec = 0.0;
+				//spec *= 0.0;
 				vec3 ldir = normalize(light_pos[lidx] - T0.wpos);
 				spec *= max(0.0, dot(T0.wdir, ldir));
 				float lfoc = clamp((dot(ldir, -normalize(light_dir[lidx])) - light_cos[lidx])/light_cos[lidx], 0.0, 1.0);
@@ -113,7 +163,7 @@ void main()
 				spec *= (dot(ldir, T0.tnorm) > 0.0 ? 1.0 : 0.0);
 				if(spec > 0.0)
 					//acol += pow(spec, 128.0);
-					acol += 0.2*pow(spec, 4.0);
+					acol += 0.2*pow(spec, 4.0)*acol;
 			}
 		}
 
