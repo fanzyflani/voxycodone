@@ -35,10 +35,9 @@ char *glslpp_load_str(const char *fname, size_t *len)
 	printf("Loading GLSL shader \"%s\"\n", fname);
 
 	FILE *fp = fopen(fname, "rb");
+	char inbuf[1024];
 	size_t dynbuf_len = 0;
 	char *dynbuf = malloc(dynbuf_len+1);
-	char inbuf[1024];
-
 	for(;;)
 	{
 		// Fetch

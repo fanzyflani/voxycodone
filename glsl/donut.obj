@@ -1,26 +1,26 @@
 // vim: syntax=c
 
 // Let's not pretend that we actually call this a "torus"
-void trace_donut(bool shadow_mode, vec3 epos, vec3 enorm, float radh, float radd, vec3 ecol)
+void trace_donut(inout Trace T, bool shadow_mode, vec3 epos, vec3 enorm, float radh, float radd, vec3 ecol)
 {
 	// Normalise
 	enorm = normalize(enorm);
 
 	float radx = radh+radd;
 
-	//if((dot(enorm, wpos)-eoffs)*dot(enorm,wdir) >= EPSILON) return; // *** ACCEL SKIP
+	//if((dot(enorm, T.wpos)-eoffs)*dot(enorm,T.wdir) >= EPSILON) return; // *** ACCEL SKIP
 
 	// Project direction onto the plane
 	// (200-level Linear Algebra, a paper I got a C- on)
-	float proj_poffs = dot(enorm, wdir);
-	vec3 proj_pdir = normalize(wdir - enorm*proj_poffs);
+	float proj_poffs = dot(enorm, T.wdir);
+	vec3 proj_pdir = normalize(T.wdir - enorm*proj_poffs);
 
 	// Get pos offset
 	float eoffs = dot(epos, enorm);
-	float nopos = dot(enorm, wpos) - eoffs;
+	float nopos = dot(enorm, T.wpos) - eoffs;
 
 	// Get dir offset
-	float nodir = dot(enorm, wdir);
+	float nodir = dot(enorm, T.wdir);
 	//if(nodir*nopos >= 0.0) return; // *** ACCEL SKIP
 
 	// Get time
@@ -29,7 +29,7 @@ void trace_donut(bool shadow_mode, vec3 epos, vec3 enorm, float radh, float radd
 	//if(etime < EPSILON) return; // *** SKIP if casting in wrong direction
 
 	// Project position onto the plane
-	vec3 epoint = wpos - enorm*etime;
+	vec3 epoint = T.wpos - enorm*etime;
 
 	// Calculate requirements for our double-triangle motion
 	vec3 pdir = normalize(epoint - epos);
@@ -48,27 +48,27 @@ void trace_donut(bool shadow_mode, vec3 epos, vec3 enorm, float radh, float radd
 
 	// Trace sphere
 	{
-		float old_ttime = ttime;
+		float old_ttime = T.ttime;
 		vec3 ppos = epoint + proj_pdir*(ptime);
-		//vec3 ppos = wpos + pdir*(ptime);
+		//vec3 ppos = T.wpos + pdir*(ptime);
 		//ppos = epos + normalize(ppos - epos)*radx;
 		/*
-		trace_sphere(1, shadow_mode, ppos, radd);
-		if((!shadow_mode) && ttime != old_ttime)
+		trace_sphere(T, 1, shadow_mode, ppos, radd);
+		if((!shadow_mode) && T.ttime != old_ttime)
 			shade_sphere(ppos, ecol);
 		*/
 
 		etime = ptime;
-		if(ttime < etime) return;
-		ttime = etime;
-		tcol = ecol;
-		tnorm = normalize(ppos - epos);
+		if(T.ttime < etime) return;
+		T.ttime = etime;
+		T.tcol = ecol;
+		T.tnorm = normalize(ppos - epos);
 	}
 	if(false){
-		float old_ttime = ttime;
+		float old_ttime = T.ttime;
 		vec3 ppos = epoint + proj_pdir*(tA-tB);
 		ppos = epos + normalize(ppos - epos)*radx;
-		trace_sphere(shadow_mode, ppos, radd, ecol);
+		trace_sphere(T, shadow_mode, ppos, radd, ecol);
 	}
 }
 

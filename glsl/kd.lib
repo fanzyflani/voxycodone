@@ -21,12 +21,12 @@ void kd_add_plane(uint idx, float tmin, float tmax)
 	kd_trace_head++;
 }
 
-bool kd_fetch_plane(void)
+bool kd_fetch_plane(inout Trace T)
 {
 	if(do_kd_restart)
 	{
 		kd_tmin = kd_tmax;
-		kd_tmax = ttime;
+		kd_tmax = T.ttime;
 		if(kd_tmin >= kd_tmax)
 			return false;
 
@@ -56,14 +56,14 @@ bool kd_fetch_plane(void)
 				switch(kd_trace_axis)
 				{
 					case 0U:
-						split_time = (split_point - wdir.x)*idir.x;
+						split_time = (split_point - T.wdir.x)*T.idir.x;
 						break;
 					case 1U:
-						split_time = (split_point - wdir.y)*idir.y;
+						split_time = (split_point - T.wdir.y)*T.idir.y;
 						break;
 					case 2U:
 					default:
-						split_time = (split_point - wdir.z)*idir.z;
+						split_time = (split_point - T.wdir.z)*T.idir.z;
 						break;
 				}
 

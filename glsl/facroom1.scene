@@ -1,19 +1,19 @@
 // vim: syntax=c
-void scene_trace_plane_corrugated(bool shadow_mode, vec3 enorm, vec3 eigen, float eoffs, vec3 ecol)
+void scene_trace_plane_corrugated(inout Trace T, bool shadow_mode, vec3 enorm, vec3 eigen, float eoffs, vec3 ecol)
 {
 	// Normalise
 	enorm = normalize(enorm);
 
-	//if((dot(enorm, wpos)-eoffs)*dot(enorm,wdir) >= EPSILON) return; // *** ACCEL SKIP
+	//if((dot(enorm, T.wpos)-eoffs)*dot(enorm,wdir) >= EPSILON) return; // *** ACCEL SKIP
 
 	// Get pos offset
-	float nopos = dot(enorm, wpos) - eoffs;
+	float nopos = dot(enorm, T.wpos) - eoffs;
 
 	// Check side
 	bool einside = (nopos < 0.0);
 
 	// Get dir offset
-	float nodir = dot(enorm, idir);
+	float nodir = dot(enorm, T.idir);
 	//if(nodir*nopos >= 0.0) return; // *** ACCEL SKIP
 
 	// Get time
@@ -21,12 +21,12 @@ void scene_trace_plane_corrugated(bool shadow_mode, vec3 enorm, vec3 eigen, floa
 	if(etime < EPSILON) return; // *** SKIP if casting in wrong direction
 
 	// @@@ TIME SELECT
-	if(etime >= ttime) return; // *** TIME SKIP
-	ttime = etime;
+	if(etime >= T.ttime) return; // *** TIME SKIP
+	T.ttime = etime;
 	if(shadow_mode) return;
 
 	// Calculate point of intersection
-	vec3 epoint = wpos + etime*wdir;
+	vec3 epoint = T.wpos + etime*T.wdir;
 
 	// Calculate sin offset
 	vec3 ewav = normalize(cross(enorm, eigen));
@@ -34,22 +34,21 @@ void scene_trace_plane_corrugated(bool shadow_mode, vec3 enorm, vec3 eigen, floa
 	enorm += 0.2*ewav*sin(2.0*3.141593*wavoffs*1.0);
 
 	// Calculate colour
-	tnorm = (einside ? -enorm : enorm);
-	tcol = ecol;
+	T.tnorm = (einside ? -enorm : enorm);
+	T.tcol = ecol;
 }
 
-// // WARNING: This is only accurate when cast from INSIDE the room!
-void scene_trace_room_corrugated(bool shadow_mode, vec3 v1, vec3 v2, vec3 ecol)
+void scene_trace_room_corrugated(inout Trace T, bool shadow_mode, vec3 v1, vec3 v2, vec3 ecol)
 {
 	// Get planes of collision
 	// wpos > v2 || (wpos >= v1 && wdir >= 0.0)
-	bvec3 colsel = greaterThanEqual(wdir, vec3(0.0));
+	bvec3 colsel = greaterThanEqual(T.wdir, vec3(0.0));
 	vec3 pcolback = mix(v1, v2, colsel);
 	vec3 pcolfront = mix(v2, v1, colsel);
 
 	// Get plane times
-	vec3 ptimesback = (pcolback-wpos)*idir;
-	vec3 ptimesfront = (pcolfront-wpos)*idir;
+	vec3 ptimesback = (pcolback-T.wpos)*T.idir;
+	vec3 ptimesfront = (pcolfront-T.wpos)*T.idir;
 
 	// Get nearest plane
 	float etimeback = min(min(ptimesback.x, ptimesback.y), ptimesback.z);
@@ -72,7 +71,7 @@ void scene_trace_room_corrugated(bool shadow_mode, vec3 v1, vec3 v2, vec3 ecol)
 	vec3 eigen = vec3(0.0, 1.0, 0.0);
 
 	// Calculate point of intersection
-	vec3 epoint = wpos + etime*wdir;
+	vec3 epoint = T.wpos + etime*T.wdir;
 
 	// @@@ CSG SUBTRACT
 	if(!binside && plane_hit.x && length(epoint.yz*vec2(0.5, 1.0) - vec2(-3.0, -15.0)) < 6.0)
@@ -82,11 +81,11 @@ void scene_trace_room_corrugated(bool shadow_mode, vec3 v1, vec3 v2, vec3 ecol)
 		ptimes = ptimesback;
 		binside = true;
 		bentered = true;
-		epoint = wpos + etime*wdir;
+		epoint = T.wpos + etime*T.wdir;
 		plane_hit = equal(ptimes, vec3(etime));
 	}
 
-	tentered = bentered;
+	T.tentered = bentered;
 
 	if(plane_hit.x && length(epoint.yz*vec2(0.5, 1.0) - vec2(-3.0, -15.0)) < 6.0)
 	{
@@ -95,32 +94,32 @@ void scene_trace_room_corrugated(bool shadow_mode, vec3 v1, vec3 v2, vec3 ecol)
 	}
 
 	// @@@ TIME SELECT
-	if(etime >= ttime) return; // *** TIME SKIP
+	if(etime >= T.ttime) return; // *** TIME SKIP
 
 	// Calculate colour
 	// don't ask me why I have to do this in shadow mode too
-	tcol = ecol;
+	T.tcol = ecol;
 
 	// Apply time
-	ttime = etime;
-	tinside = binside;
-	tentered = bentered;
+	T.ttime = etime;
+	T.tinside = binside;
+	T.tentered = bentered;
 	if(shadow_mode) return;
 
 	// Calculate corrugation
-	vec3 xwdir = (binside ? wdir : -wdir);
+	vec3 xwdir = (binside ? T.wdir : -T.wdir);
 	if(false) {}
-	else if(plane_hit.x) { tnorm = -vec3(1.0, 0.0, 0.0) * sign(xwdir.x); }
-	else if(plane_hit.z) { tnorm = -vec3(0.0, 0.0, 1.0) * sign(xwdir.z); }
+	else if(plane_hit.x) { T.tnorm = -vec3(1.0, 0.0, 0.0) * sign(xwdir.x); }
+	else if(plane_hit.z) { T.tnorm = -vec3(0.0, 0.0, 1.0) * sign(xwdir.z); }
 	else {
-		tnorm = -vec3(0.0, 1.0, 0.0) * sign(xwdir.y);
+		T.tnorm = -vec3(0.0, 1.0, 0.0) * sign(xwdir.y);
 		eigen = vec3(1.0, 0.0, 0.0);
 
 		// Floor is not corrugated
 		if(xwdir.y < 0.0) {
 
 			// Concrete
-			vec3 ewav = normalize(cross(tnorm, eigen));
+			vec3 ewav = normalize(cross(T.tnorm, eigen));
 			vec2 ctc1 = vec2(dot(ewav, epoint), dot(eigen, epoint))/16.0;
 			//ctc1.x +=-sec_current/4.0;
 			vec2 ctc2 = vec2(ctc1.x-ctc1.y, ctc1.y+ctc1.x)/1.4;
@@ -137,33 +136,33 @@ void scene_trace_room_corrugated(bool shadow_mode, vec3 v1, vec3 v2, vec3 ecol)
 			cfac = clamp(cfac, -1.0, 1.0);
 			cfac = sign(cfac)*pow(abs(cfac), vec2(2.0));
 
-			//tcol *= cfac;
+			//T.tcol *= cfac;
 			cfac = (length(cfac) > 1.0 ? normalize(cfac) : cfac);
 			//cfac *= 0.3;
-			tcol = vec3(1.0);
+			T.tcol = vec3(1.0);
 			//tcol *= sqrt(1.0-length(cfac))*0.9+0.1;
-			tnorm = (tnorm*sqrt(1.0 - length(cfac)) + cfac.y*eigen + cfac.x*ewav);
+			T.tnorm = (T.tnorm*sqrt(1.0 - length(cfac)) + cfac.y*eigen + cfac.x*ewav);
 
-			//tshine = 0.3;
+			//T.tshine = 0.3;
 			return;
 		}
 	}
 
-	if(plane_hit.y) tshine = 0.3;
+	if(plane_hit.y) T.tshine = 0.3;
 
 	// Calculate sin offset
-	vec3 ewav = normalize(cross(tnorm, eigen));
+	vec3 ewav = normalize(cross(T.tnorm, eigen));
 	float wavoffs = dot(ewav, epoint);
 
 	// Corrugate!
 	float wang = 2.0*3.141593*wavoffs*1.0; // wave angle, but "wavang" doesn't make a pun
-	tnorm += 0.2*ewav*sin(wang);
-	tnorm = normalize(tnorm);
+	T.tnorm += 0.2*ewav*sin(wang);
+	T.tnorm = normalize(T.tnorm);
 
 	// Rust!
 	if(plane_hit.y)
 	{
-		tcol = vec3(0.2, 0.00, 0.0);
+		T.tcol = vec3(0.2, 0.00, 0.0);
 	} else {
 		vec2 rustc = vec2(dot(ewav, epoint), dot(eigen, epoint));
 		float rfac = 0.0;
@@ -177,40 +176,39 @@ void scene_trace_room_corrugated(bool shadow_mode, vec3 v1, vec3 v2, vec3 ecol)
 		rfac = (rfac - 0.52) * 2.0 / 0.52;
 		rfac = clamp(rfac, 0.0, 1.0);
 
-		tcol = mix(ecol, vec3(0.2, 0.00, 0.0), rfac);
+		T.tcol = mix(ecol, vec3(0.2, 0.00, 0.0), rfac);
 	}
 	
 }
 
-
-void trace_scene(bool shadow_mode)
+void trace_scene(inout Trace T, bool shadow_mode)
 {
-	tshine = 0.0;
-	idir = sign(wdir)/max(vec3(EPSILON), abs(wdir));
+	T.tshine = 0.0;
+	T.idir = sign(T.wdir)/max(vec3(EPSILON), abs(T.wdir));
 
-	tinside = false;
-	tentered = false;
+	T.tinside = false;
+	T.tentered = false;
 
-	scene_trace_room_corrugated(shadow_mode
+	scene_trace_room_corrugated(T, shadow_mode
 		, vec3(-20.0, -3.0, -50.0)
 		, vec3( 20.0, 13.0,  20.0)
 		, vec3( 0.4, 0.4, 0.4));
 	
-	float old_ttime_1 = ttime;
+	float old_ttime_1 = T.ttime;
 	//trace_sphere(shadow_mode, vec3(-6.0, 0.0, -15.0), 3.0, vec3(0.5, 1.0, 1.0));
-	trace_sphere(shadow_mode,
+	trace_sphere(T, shadow_mode,
 		vec3(
 			cos(sec_current*3.141592*2.0/30.0)*60.0,
 			abs(cos(sec_current*3.141592/1.0)*3.0),
 			-15.0
 		), 3.0, vec3(0.5, 1.0, 1.0));
-	if(ttime < old_ttime_1) tshine = 0.3;
+	if(T.ttime < old_ttime_1) T.tshine = 0.3;
 
 	// TODO make this work
-	if(!tentered) return;
+	if(!T.tentered) return;
 	
-	float old_ttime_2 = ttime;
-	trace_sphere(shadow_mode, vec3( 6.0, 0.0, -35.0), 3.0, vec3(1.0, 0.5, 1.0));
-	if(ttime < old_ttime_2) tshine = 0.3;
+	float old_ttime_2 = T.ttime;
+	trace_sphere(T, shadow_mode, vec3( 6.0, 0.0, -35.0), 3.0, vec3(1.0, 0.5, 1.0));
+	if(T.ttime < old_ttime_2) T.tshine = 0.3;
 }
 

@@ -1,15 +1,22 @@
 // vim: syntax=c
 
-void apply_light(uint lidx, vec3 epoint)
+void apply_light(inout Trace T, uint lidx, vec3 epoint)
 {
 	vec3 ldir = normalize(light_pos[lidx] - epoint);
+
+        if(dot(ldir, light_dir[lidx]) > EPSILON)
+        {
+                T.tdiff = 0.0;
+                return;
+        }
+
 	float lfoc = (dot(ldir, -normalize(light_dir[lidx])) - light_cos[lidx])/light_cos[lidx];
 	if(lfoc > 0.0)
 	{
-		tdiff = max(0.0, dot(tnorm, ldir));
-		tdiff *= pow(lfoc, light_pow[lidx]);
+		T.tdiff = max(0.0, dot(T.tnorm, ldir));
+		T.tdiff *= pow(lfoc, light_pow[lidx]);
 	} else {
-		tdiff = 0.0;
+		T.tdiff = 0.0;
 	}
 }
 

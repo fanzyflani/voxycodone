@@ -1,20 +1,20 @@
 // vim: syntax=c
 
-void trace_sphere(bool shadow_mode, vec3 epos, float erad, vec3 ecol)
+void trace_sphere(inout Trace T, bool shadow_mode, vec3 epos, float erad, vec3 ecol)
 {
 	//if(true)return;
 	if(do_debug) dcol.r += (1.0 - dcol.b)*0.2;
 	// Calculate hypotenuse
-	vec3 dpos = epos - wpos;
+	vec3 dpos = epos - T.wpos;
 
 	// Calculate angle and thus adjacent
-	float dirl = dot(dpos, wdir);
+	float dirl = dot(dpos, T.wdir);
 	//if(!einside && dirl < 0.0) return; // *** SKIP if behind camera
 	if(dirl <= (shadow_mode ? 0.0 : 0.5)) return; // *** SKIP - frustum cull
 	float dposl2 = dot(dpos, dpos);
 
 	// this skip actually slows traces down, so DISABLED
-	//if(ttime < sqrt(dposl2) - erad) return; // *** ACCEL SKIP if we cannot reach it
+	//if(T.ttime < sqrt(dposl2) - erad) return; // *** ACCEL SKIP if we cannot reach it
 
 	float erad2 = erad*erad;
 	bool einside = dposl2 < erad2;
@@ -37,18 +37,18 @@ void trace_sphere(bool shadow_mode, vec3 epos, float erad, vec3 ecol)
 	if(etime < EPSILON) return; // *** NOT SURE WHY WE HAVE TO SKIP BUT OH WELL
 
 	// @@@ TIME SELECT
-	if(etime > ttime) return; // *** TIME SKIP
-	ttime = etime;
+	if(etime > T.ttime) return; // *** TIME SKIP
+	T.ttime = etime;
 	if(do_debug) dcol.g += (1.0-dcol.g)*0.5;
 	if(shadow_mode) return;
 
 	// Calculate point of intersection
-	vec3 epoint = wpos + ttime*wdir;
+	vec3 epoint = T.wpos + T.ttime*T.wdir;
 
 	// Calculate normal
-	tnorm = normalize(epoint - epos);
+	T.tnorm = normalize(epoint - epos);
 
 	// Calculate colour
-	tcol = ecol;
+	T.tcol = ecol;
 }
 

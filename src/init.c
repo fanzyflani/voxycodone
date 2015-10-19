@@ -44,6 +44,75 @@ const int16_t va_ray_data[12] = {
 	 1,-1,
 };
 
+void print_shader_log(GLuint shader)
+{
+	GLint loglen = 0;
+	glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &loglen);
+	char *info_log = malloc(loglen+1);
+	info_log[0] = '\x00';
+	info_log[loglen] = '\x00';
+	glGetShaderInfoLog(shader, loglen, NULL, info_log);
+
+	GLint srclen = 0;
+	glGetShaderiv(shader, GL_SHADER_SOURCE_LENGTH, &srclen);
+	char *src = malloc(srclen+1);
+	src[0] = '\x00';
+	src[srclen] = '\x00';
+	glGetShaderSource(shader, srclen, NULL, src);
+
+	// Walk shader log
+
+	char *v = info_log;
+	while(*v != '\x00')
+	{
+		char *f = strchr(v, '\n');
+		if(f == NULL) f = v+strlen(v);
+
+		int is_ln = (*f == '\n');
+		if(is_ln) *f = '\x00';
+
+		int n_file = 0;
+		int n_line = 0;
+		int n_chr = 0;
+		sscanf(v, "%d:%d(%d)", &n_file, &n_line, &n_chr);
+
+		char *s = src;
+		int i;
+		for(i = 1; i < n_line && s != NULL; i++)
+		{
+			s = strchr(s, '\n');
+			if(s != NULL) s++;
+		}
+		char *sf = strchr(s, '\n');
+		if(sf == NULL) sf = s+strlen(s);
+
+		int is_sln = (*sf == '\n');
+		if(is_sln) *sf = '\x00';
+		printf("\x1B[1m%s\x1B[0m\n", v);
+		printf("%s\n\n", s);
+		if(is_sln) *sf = '\n';
+
+		if(is_ln) *f = '\n';
+		if(is_ln) f++;
+
+		v = f;
+	}
+	printf("\n");
+	free(info_log);
+}
+
+void print_program_log(GLuint program)
+{
+	GLint loglen = 0;
+	glGetProgramiv(program, GL_INFO_LOG_LENGTH, &loglen);
+	char *info_log = malloc(loglen+1);
+	info_log[0] = '\x00';
+	info_log[loglen] = '\x00';
+	glGetProgramInfoLog(program, loglen, NULL, info_log);
+	printf("%s\n\n", info_log);
+	free(info_log);
+}
+
 void init_gfx(void)
 {
 	char *ray_v_src = glslpp_load_str("glsl/shader_ray.vert", NULL);
@@ -60,13 +129,12 @@ void init_gfx(void)
 	free(ray_f_src);
 	free(ray_v_src);
 
-	char info_log[64*1024];
 	glCompileShader(ray_v);
-	glGetShaderInfoLog(ray_v, 64*1024-1, NULL, info_log);
-	printf("===   VERTEX SHADER ===\n%s\n\n", info_log);
+	printf("===   VERTEX SHADER ===\n");
+	print_shader_log(ray_v);
 	glCompileShader(ray_f);
-	glGetShaderInfoLog(ray_f, 64*1024-1, NULL, info_log);
-	printf("=== FRAGMENT SHADER ===\n%s\n\n", info_log);
+	printf("=== FRAGMENT SHADER ===\n");
+	print_shader_log(ray_f);
 	shader_ray = glCreateProgram();
 	printf("Attaching shaders\n");
 	glAttachShader(shader_ray, ray_v);
@@ -78,8 +146,8 @@ void init_gfx(void)
 	printf("Linking! This is the part where your computer dies\n");
 	glLinkProgram(shader_ray);
 	printf("Getting results\n");
-	glGetProgramInfoLog(shader_ray, 64*1024-1, NULL, info_log);
-	printf("=== OVERALL PROGRAM ===\n%s\n\n", info_log);
+	printf("=== OVERALL PROGRAM ===\n");
+	print_program_log(shader_ray);
 
 	GLint link_status;
 	glGetProgramiv(shader_ray, GL_LINK_STATUS, &link_status);

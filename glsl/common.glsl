@@ -61,15 +61,18 @@ float kd_tmax;
 //uniform int kd_data_spilen[KD_MAX];
 //uniform int kd_data_spilist[SPILIST_MAX];
 
-bool tinside;
-bool tentered;
-float tshine;
-float ttime;
-float tdiff;
-uint tlights;
-float zfar = ZFAR;
-vec3 tcol, tnorm;
-vec3 wpos, wdir, idir;
+struct Trace
+{
+	float ttime;
+	vec3 tcol, tnorm;
+	vec3 wpos, wdir, idir;
+	float zfar;
+	float tshine;
+	float tdiff;
+	bool tinside;
+	bool tentered;
+};
+
 vec3 ccol;
 vec3 dcol;
 

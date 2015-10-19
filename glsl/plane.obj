@@ -1,19 +1,19 @@
 // vim: syntax=c
-void trace_plane(bool shadow_mode, vec3 enorm, float eoffs, vec3 ecol0, vec3 ecol1)
+void trace_plane(inout Trace T, bool shadow_mode, vec3 enorm, float eoffs, vec3 ecol0, vec3 ecol1)
 {
 	// Normalise
 	enorm = normalize(enorm);
 
-	//if((dot(enorm, wpos)-eoffs)*dot(enorm,wdir) >= EPSILON) return; // *** ACCEL SKIP
+	//if((dot(enorm, T.wpos)-eoffs)*dot(enorm,T.wdir) >= EPSILON) return; // *** ACCEL SKIP
 
 	// Get pos offset
-	float nopos = dot(enorm, wpos) - eoffs;
+	float nopos = dot(enorm, T.wpos) - eoffs;
 
 	// Check side
 	bool einside = (nopos < 0.0);
 
 	// Get dir offset
-	float nodir = dot(enorm, idir);
+	float nodir = dot(enorm, T.idir);
 	//if(nodir*nopos >= 0.0) return; // *** ACCEL SKIP
 
 	// Get time
@@ -21,12 +21,12 @@ void trace_plane(bool shadow_mode, vec3 enorm, float eoffs, vec3 ecol0, vec3 eco
 	if(etime < EPSILON) return; // *** SKIP if casting in wrong direction
 
 	// @@@ TIME SELECT
-	if(etime >= ttime) return; // *** TIME SKIP
-	ttime = etime;
+	if(etime >= T.ttime) return; // *** TIME SKIP
+	T.ttime = etime;
 	if(shadow_mode) return;
 
 	// Calculate point of intersection
-	vec3 epoint = wpos + etime*wdir;
+	vec3 epoint = T.wpos + etime*T.wdir;
 
 	// TODO: genericise this pattern
 	int c0 = int(floor(epoint.x+0.001));
@@ -35,7 +35,7 @@ void trace_plane(bool shadow_mode, vec3 enorm, float eoffs, vec3 ecol0, vec3 eco
 	int csel = (c0+c1+c2)%2;
 
 	// Calculate colour
-	tnorm = (einside ? -enorm : enorm);
-	tcol = (csel >= 1 ? ecol1 : ecol0);
+	T.tnorm = (einside ? -enorm : enorm);
+	T.tcol = (csel >= 1 ? ecol1 : ecol0);
 }
 
