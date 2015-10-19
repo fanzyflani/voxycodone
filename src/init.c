@@ -1,5 +1,9 @@
 #include "common.h"
 
+GLuint shader_blur;
+GLint shader_blur_tex0;
+GLint shader_blur_tex1;
+
 GLuint shader_ray;
 GLint shader_ray_tex0;
 GLint shader_ray_tex1;
@@ -34,6 +38,9 @@ GLuint tex_ray3;
 GLuint tex_ray_rand;
 GLuint va_ray_vbo;
 GLuint va_ray_vao;
+GLuint tex_fbo0_0;
+GLuint tex_fbo0_1;
+GLuint fbo0;
 
 const int16_t va_ray_data[12] = {
 	-1,-1,
@@ -113,10 +120,10 @@ void print_program_log(GLuint program)
 	free(info_log);
 }
 
-void init_gfx(void)
+GLuint init_shader(const char *fname_vert, const char *fname_frag)
 {
-	char *ray_v_src = glslpp_load_str("glsl/shader_ray.vert", NULL);
-	char *ray_f_src = glslpp_load_str("glsl/shader_ray.frag", NULL);
+	char *ray_v_src = glslpp_load_str(fname_vert, NULL);
+	char *ray_f_src = glslpp_load_str(fname_frag, NULL);
 	const char *ray_v_src_alias = ray_v_src;
 	const char *ray_f_src_alias = ray_f_src;
 
@@ -135,25 +142,46 @@ void init_gfx(void)
 	glCompileShader(ray_f);
 	printf("=== FRAGMENT SHADER ===\n");
 	print_shader_log(ray_f);
-	shader_ray = glCreateProgram();
+	GLuint out_shader = glCreateProgram();
 	printf("Attaching shaders\n");
-	glAttachShader(shader_ray, ray_v);
-	glAttachShader(shader_ray, ray_f);
+	glAttachShader(out_shader, ray_v);
+	glAttachShader(out_shader, ray_f);
+
+	// TODO: outsource this to a function
+	glGetError();
 	printf("Binding inputs\n");
-	glBindAttribLocation(shader_ray, 0, "in_vertex");
+	glBindAttribLocation(out_shader, 0, "in_vertex");
 	printf("Binding outputs\n");
-	glBindFragDataLocation(shader_ray, 0, "out_frag_color");
+	glBindFragDataLocation(out_shader, 0, "out_frag_color");
+	glBindFragDataLocation(out_shader, 1, "out_frag_color_gi");
+	printf("%i\n", glGetError());
+
 	printf("Linking! This is the part where your computer dies\n");
-	glLinkProgram(shader_ray);
+	glLinkProgram(out_shader);
+	printf("%i %i\n"
+		, glGetFragDataLocation(out_shader, "out_frag_color")
+		, glGetFragDataLocation(out_shader, "out_frag_color_gi")
+		);
+
 	printf("Getting results\n");
 	printf("=== OVERALL PROGRAM ===\n");
-	print_program_log(shader_ray);
+	print_program_log(out_shader);
 
 	GLint link_status;
-	glGetProgramiv(shader_ray, GL_LINK_STATUS, &link_status);
+	glGetProgramiv(out_shader, GL_LINK_STATUS, &link_status);
 	printf("Link status: %i\n", link_status);
 	assert(link_status == GL_TRUE);
 
+	return out_shader;
+}
+
+void init_gfx(void)
+{
+	shader_blur = init_shader("glsl/post_radblur.vert", "glsl/post_radblur.frag");
+	shader_blur_tex0 = glGetUniformLocation(shader_blur, "tex0");
+	shader_blur_tex1 = glGetUniformLocation(shader_blur, "tex1");
+
+	shader_ray = init_shader("glsl/shader_ray.vert", "glsl/shader_ray.frag");
 	shader_ray_tex0 = glGetUniformLocation(shader_ray, "tex0");
 	shader_ray_tex1 = glGetUniformLocation(shader_ray, "tex1");
 	shader_ray_tex2 = glGetUniformLocation(shader_ray, "tex2");
@@ -282,5 +310,36 @@ void init_gfx(void)
 	printf("Got VAO\n");
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	int wnd_w, wnd_h;
+	SDL_GetWindowSize(window, &wnd_w, &wnd_h);
+	printf("Window size: %i x %i\n", wnd_w, wnd_h);
+
+	glGetError();
+	glGenTextures(1, &tex_fbo0_0);
+	glBindTexture(GL_TEXTURE_2D, tex_fbo0_0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, wnd_w, wnd_h);
+	printf("Got FBO tex 0\n");
+
+	glGenTextures(1, &tex_fbo0_1);
+	glBindTexture(GL_TEXTURE_2D, tex_fbo0_1);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, wnd_w, wnd_h);
+	printf("Got FBO tex 1\n");
+
+	glGenFramebuffers(1, &fbo0);
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + 0, GL_TEXTURE_2D, tex_fbo0_0, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + 1, GL_TEXTURE_2D, tex_fbo0_1, 0);
+	printf("Got FBO %i\n", glGetError());
+	assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 

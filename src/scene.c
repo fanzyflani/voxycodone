@@ -121,6 +121,7 @@ void h_render_main(void)
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, sph_count, 3, GL_RGBA, GL_FLOAT, sph_buf2);
 	//printf("tex3 %i\n", glGetError());
 
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo0);
 	glActiveTexture(GL_TEXTURE0 + 1);
 	glBindTexture(GL_TEXTURE_2D, tex_ray1);
 	glActiveTexture(GL_TEXTURE0 + 2);
@@ -310,6 +311,27 @@ void h_render_main(void)
 	//glUniform1iv(shader_ray_kd_data_spibeg, kd_list_len, kd_data_spibeg);
 	//glUniform1iv(shader_ray_kd_data_spilen, kd_list_len, kd_data_spilen);
 	//glUniform1iv(shader_ray_kd_data_spilist, spilist_len, spilist);
+
+	GLenum bufs2[] = {
+		GL_COLOR_ATTACHMENT0 + 0,
+		GL_COLOR_ATTACHMENT0 + 1,
+	};
+	glDrawBuffers(2, bufs2);
+	glBindVertexArray(va_ray_vao);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+	glBindVertexArray(0);
+
+	glDrawBuffer(GL_FRONT);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glActiveTexture(GL_TEXTURE0 + 1);
+	glBindTexture(GL_TEXTURE_2D, tex_fbo0_1);
+	glActiveTexture(GL_TEXTURE0 + 0);
+	glBindTexture(GL_TEXTURE_2D, tex_fbo0_0);
+	glUseProgram(shader_blur);
+
+	//printf("%i %i\n", shader_blur_tex0, shader_blur_tex1);
+	glUniform1i(shader_blur_tex0, 0);
+	glUniform1i(shader_blur_tex1, 1);
 
 	glBindVertexArray(va_ray_vao);
 	glDrawArrays(GL_TRIANGLES, 0, 6);

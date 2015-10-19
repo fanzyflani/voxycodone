@@ -4,6 +4,7 @@
 invariant in vec3 wpos_in;
 in vec3 wdir_in;
 out vec4 out_frag_color;
+out vec4 out_frag_color_gi;
 
 %include glsl/common.glsl
 
@@ -35,6 +36,7 @@ void main()
 
 	if(do_debug) dcol = vec3(0.0);
 	ccol = vec3(0.0);
+	vec3 ccol_gi = vec3(0.0);
 	float ccol_fac = 1.0;
 
 	for(uint i = 0U; i < BOUNCES+1U; i++)
@@ -54,6 +56,7 @@ void main()
 		T1 = T0;
 
 		// Apply ambient
+		vec3 acol_gi = vec3(0.0);
 		vec3 acol = (
 			RADIOSITY_BOUNCES_WARNING_THIS_IS_FUCKING_SLOW > 0U
 			? vec3(0.0)
@@ -71,6 +74,7 @@ void main()
 
 			// Cast shadow
 			vec3 mcol = vec3(0.0);
+			vec3 mcol_gi = vec3(0.0);
 
 			if(do_shadow && unshadowed)
 			{
@@ -105,7 +109,7 @@ void main()
 			{
 				Ti = T1;
 
-				Ti.wdir = normalize(light_dir[lidx]*1.0 + texture(tex_rand,
+				Ti.wdir = normalize(light_dir[lidx]*2.0 + texture(tex_rand,
 					vec2(gl_FragCoord.xy)/128.0).xyz*2.0-1.0);
 				Ti.wpos = light_pos[lidx];
 			}
@@ -113,8 +117,8 @@ void main()
 			for(uint rb = 0U; rb < RADIOSITY_BOUNCES_WARNING_THIS_IS_FUCKING_SLOW; rb++)
 			{
 				// Calculate light
-				trace_scene(Ti, true);
-				vec3 mcol_i = T1.tcol;
+				trace_scene(Ti, false);
+				vec3 mcol_i = vec3(0.2)*T1.tcol;
 				Ti.wpos += Ti.wdir*(Ti.ttime - EPSILON*8.0);
 				apply_light(Ti, lidx, Ti.wpos);
 				if(Ti.tdiff <= 0.0) break;
@@ -134,15 +138,15 @@ void main()
 					unshadowed = true;
 					//mcol_i *= 100.0;
 					//mcol_i = vec3(1.0);
-					mcol += mcol_i;
+					mcol_gi += mcol_i;
 					//T0.tcol = vec3(1.0, 0.0, 0.0);
 					//mcol = vec3(1.0);
 				}
 			}
 
 			// Apply diffuse
-			if(unshadowed)
-				acol += mcol * light_col[lidx];
+			acol += mcol * light_col[lidx];
+			acol_gi += mcol_gi * light_col[lidx];
 
 			// Restore backup
 			T0 = T1;
@@ -169,6 +173,7 @@ void main()
 
 		// Accumulate colour
 		ccol += acol * ccol_fac;
+		ccol_gi += acol_gi * ccol_fac;
 		ccol_fac *= T0.tshine;
 		if(ccol_fac <= 1.0/255.0/2.0) break;
 
@@ -201,6 +206,8 @@ void main()
 
 	if(do_debug) ccol = dcol * vec3(0.5, 0.3, 1.0);
 
+	//out_frag_color = vec4(ccol + ccol_gi, 1.0);
 	out_frag_color = vec4(ccol, 1.0);
+	out_frag_color_gi = vec4(ccol_gi, 1.0);
 }
 

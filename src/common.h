@@ -72,6 +72,10 @@ char *load_str(const char *fname);
 char *glslpp_load_str(const char *fname, size_t *len);
 
 // init.c
+extern GLuint shader_blur;
+extern GLint shader_blur_tex0;
+extern GLint shader_blur_tex1;
+
 extern GLuint shader_ray;
 extern GLint shader_ray_tex0;
 extern GLint shader_ray_tex1;
@@ -107,6 +111,9 @@ extern GLuint tex_ray3;
 extern GLuint tex_ray_rand;
 extern GLuint va_ray_vbo;
 extern GLuint va_ray_vao;
+extern GLuint tex_fbo0_0;
+extern GLuint tex_fbo0_1;
+extern GLuint fbo0;
 
 void init_gfx(void);
 
@@ -146,6 +153,7 @@ void sph_set(int i, double x, double y, double z, double rad, int r, int g, int 
 
 
 // main.c
+extern SDL_Window *window;
 extern double render_sec_current;
 extern int key_pos_dxn;
 extern int key_pos_dxp;
