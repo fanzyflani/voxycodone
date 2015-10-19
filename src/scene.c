@@ -6,6 +6,7 @@ double cam_pos_x = 0.0;
 double cam_pos_y = 0.0;
 double cam_pos_z = 0.0;
 
+int sent_shit = false;
 void h_render_main(void)
 {
 	int x, y, z, i, j;
@@ -93,6 +94,19 @@ void h_render_main(void)
 		kd_buf2[2*i + 1] = spilist[i];
 	}
 
+	if(!sent_shit)
+	{
+		static float rand_noise[128*128*4];
+		for(i = 0; i < 128*128*4; i++)
+			rand_noise[i] = (rand()%65537)/65537.0;
+
+		glGetError();
+		glBindTexture(GL_TEXTURE_2D, tex_ray_rand);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 128, 128, GL_RGBA, GL_FLOAT, rand_noise);
+		//printf("tex_rand %i\n", glGetError());
+		sent_shit = true;
+	}
+
 	glGetError();
 	glBindTexture(GL_TEXTURE_2D, tex_ray0);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 1, sph_count, GL_RGBA, GL_UNSIGNED_BYTE, sph_buf1);
@@ -113,6 +127,8 @@ void h_render_main(void)
 	glBindTexture(GL_TEXTURE_2D, tex_ray2);
 	glActiveTexture(GL_TEXTURE0 + 3);
 	glBindTexture(GL_TEXTURE_2D, tex_ray3);
+	glActiveTexture(GL_TEXTURE0 + 4);
+	glBindTexture(GL_TEXTURE_2D, tex_ray_rand);
 	glActiveTexture(GL_TEXTURE0 + 0);
 	glBindTexture(GL_TEXTURE_2D, tex_ray0);
 	glUseProgram(shader_ray);
@@ -125,7 +141,9 @@ void h_render_main(void)
 	glUniform1i(shader_ray_tex1, 1);
 	glUniform1i(shader_ray_tex2, 2);
 	glUniform1i(shader_ray_tex3, 3);
+	glUniform1i(shader_ray_tex_rand, 4);
 	glUniform1i(shader_ray_sph_count, sph_count);
+	glUniform1f(shader_ray_sec_current, render_sec_current);
 
 	float lcol[3*LIGHT_MAX];
 	float lpos[3*LIGHT_MAX];
@@ -181,9 +199,9 @@ void h_render_main(void)
 		? 4
 		: 6);
 
-	lcol[0*3 + 0] = 0.2;
-	lcol[0*3 + 1] = 0.2;
-	lcol[0*3 + 2] = 0.2;
+	lcol[0*3 + 0] = 0.1;
+	lcol[0*3 + 1] = 0.1;
+	lcol[0*3 + 2] = 0.1;
 	lpos[0*3 + 0] = 0.0-0.1;
 	lpos[0*3 + 1] = 0.0;
 	lpos[0*3 + 2] = 9.0;
@@ -193,9 +211,9 @@ void h_render_main(void)
 	lcos[0] = 1.0 - 0.9;
 	lpow[0] = 1.0/4.0;
 
-	lcol[1*3 + 0] = 0.2;
-	lcol[1*3 + 1] = 0.2;
-	lcol[1*3 + 2] = 0.2;
+	lcol[1*3 + 0] = 0.1;
+	lcol[1*3 + 1] = 0.1;
+	lcol[1*3 + 2] = 0.1;
 	lpos[1*3 + 0] = 0.0+0.1;
 	lpos[1*3 + 1] = 0.0;
 	lpos[1*3 + 2] = 9.0;
@@ -269,7 +287,12 @@ void h_render_main(void)
 
 	}
 
+	float light_amb = (render_sec_current < 1.0
+		? 0.0
+		: lcol[3*0 + 0]) * 0.2;
+
 	glUniform1ui(shader_ray_light_count, light_count);
+	glUniform1f(shader_ray_light_amb, light_amb);
 	glUniform3fv(shader_ray_light0_col, light_count, lcol);
 	glUniform3fv(shader_ray_light0_pos, light_count, lpos);
 	glUniform3fv(shader_ray_light0_dir, light_count, ldir);

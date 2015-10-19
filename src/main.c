@@ -14,8 +14,6 @@ int key_pos_dyp = false;
 int key_pos_dzn = false;
 int key_pos_dzp = false;
 
-int sent_shit = false;
-
 void hook_key(SDL_Keycode key, int state)
 {
 	if(key == SDLK_ESCAPE && !state)

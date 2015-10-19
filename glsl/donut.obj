@@ -68,9 +68,7 @@ void trace_donut(bool shadow_mode, vec3 epos, vec3 enorm, float radh, float radd
 		float old_ttime = ttime;
 		vec3 ppos = epoint + proj_pdir*(tA-tB);
 		ppos = epos + normalize(ppos - epos)*radx;
-		trace_sphere(1, shadow_mode, ppos, radd);
-		if((!shadow_mode) && ttime != old_ttime)
-			shade_sphere(ppos, ecol);
+		trace_sphere(shadow_mode, ppos, radd, ecol);
 	}
 }
 

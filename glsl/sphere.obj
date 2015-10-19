@@ -1,18 +1,6 @@
 // vim: syntax=c
 
-void shade_sphere(vec3 epos, vec3 ecol)
-{
-	// Calculate point of intersection
-	vec3 epoint = wpos + ttime*wdir;
-
-	// Calculate normal
-	tnorm = normalize(epoint - epos);
-
-	// Calculate colour
-	tcol = ecol;
-}
-
-void trace_sphere(int spi, bool shadow_mode, vec3 epos, float erad)
+void trace_sphere(bool shadow_mode, vec3 epos, float erad, vec3 ecol)
 {
 	//if(true)return;
 	if(do_debug) dcol.r += (1.0 - dcol.b)*0.2;
@@ -54,7 +42,13 @@ void trace_sphere(int spi, bool shadow_mode, vec3 epos, float erad)
 	if(do_debug) dcol.g += (1.0-dcol.g)*0.5;
 	if(shadow_mode) return;
 
-	// Set sphere index
-	trace_spi = spi;
+	// Calculate point of intersection
+	vec3 epoint = wpos + ttime*wdir;
+
+	// Calculate normal
+	tnorm = normalize(epoint - epos);
+
+	// Calculate colour
+	tcol = ecol;
 }
 

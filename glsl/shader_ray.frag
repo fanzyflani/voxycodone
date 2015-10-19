@@ -23,9 +23,9 @@ void main()
 	wdir = normalize(wdir_in);
 
 	// Set up boundary
-	float amax = max(max(abs(wdir.x),abs(wdir.y)),abs(wdir.z));
+	//float amax = max(max(abs(wdir.x),abs(wdir.y)),abs(wdir.z));
 	//tcol = (amax == abs(wdir.y) ? vec3(0.4, 1.0, 0.3) : vec3(0.5, 0.7, 1.0)) * amax;
-	tcol = vec3(0.5, 0.7, 1.0) * amax;
+	//tcol = vec3(0.5, 0.7, 1.0) * amax;
 	tnorm = vec3(0.0);
 	ttime = zfar;
 	tdiff = 1.0;
@@ -57,7 +57,7 @@ void main()
 		vec3 wdir_bak = wdir;
 
 		// Apply ambient
-		vec3 acol = tcol * 0.1;
+		vec3 acol = tcol * light_amb;
 
 		// Trace to light for shadows
 		for(uint lidx = 0U; lidx < light_count; lidx++)
@@ -127,7 +127,31 @@ void main()
 
 	}
 
-	if(ccol_fac == 1.0) ccol = tcol;
+	if(ccol_fac == 1.0)
+	{
+		vec3 ccol1 = vec3(0.1, 0.05, 0.3);
+		//vec3 ccol1 = vec3(0.2, 0.05, 0.1);
+		//vec3 ccol1 = vec3(0.7, 0.7, 0.7);
+		vec3 ccol0 = vec3(0.5, 0.0, 0.0);
+		vec3 scol3 = normalize(wdir_in);
+		//vec3 ascol3 = abs(scol3);
+		//scol3 /= max(max(ascol3.x, ascol3.y), ascol3.z);
+
+		//vec2 scol = scol3.xz + scol3.yx - scol3.zy;
+		//vec2 scol = vec2(atan(scol3.x, scol3.z)*2.0/3.141593, scol3.y);
+		vec2 scol = vec2(scol3.x, scol3.y);
+
+		float camt = 0.0;
+		camt += texture(tex_rand, scol*(1.0/32.0), 0).r*0.5;
+		camt += texture(tex_rand, scol*(1.0/16.0), 0).r*0.2;
+		camt += texture(tex_rand, scol*(1.0/8.0), 0).r*0.15;
+		camt += texture(tex_rand, scol*(1.0/4.0), 0).r*0.05;
+		camt *= 1.3;
+		camt = min(1.0, camt);
+		ccol = (ccol0 + (ccol1 - ccol0)*camt);
+		//ccol = texture(tex_rand, scol).rgb;
+	}
+
 	if(do_debug) ccol = dcol * vec3(0.5, 0.3, 1.0);
 
 	out_frag_color = vec4(ccol, 1.0);

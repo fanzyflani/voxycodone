@@ -11,6 +11,7 @@ const bool test_mesh = false; // WIP: hardcoded sphere grid spam
 const float EPSILON = 0.0001;
 const float ZFAR = 1000.0;
 const uint BOUNCES = 2U;
+const uint RADIOSITY_BOUNCES_WARNING_FUCKING_SLOW = 1U; // WARNING RADIOSITY IS FUCKING SLOW
 const uint SPH_MAX = (1024U);
 const uint SPILIST_MAX = (1024U+1024U);
 const uint LIGHT_MAX = (32U);
@@ -22,7 +23,9 @@ uniform sampler2D tex0;
 uniform sampler2D tex1;
 uniform usampler2D tex2;
 uniform sampler2D tex3;
+uniform sampler2D tex_rand;
 
+uniform float sec_current;
 uniform int sph_count;
 //uniform vec4 sph_data[SPH_MAX];
 
@@ -32,6 +35,7 @@ uniform vec3 light_pos[LIGHT_MAX];
 uniform vec3 light_dir[LIGHT_MAX];
 uniform float light_cos[LIGHT_MAX];
 uniform float light_pow[LIGHT_MAX];
+uniform float light_amb;
 
 uniform vec3 bmin, bmax;
 //vec3 bmin, bmax;
@@ -57,6 +61,8 @@ float kd_tmax;
 //uniform int kd_data_spilen[KD_MAX];
 //uniform int kd_data_spilist[SPILIST_MAX];
 
+bool tinside;
+bool tentered;
 float tshine;
 float ttime;
 float tdiff;
@@ -76,4 +82,15 @@ const vec3 kd_axis_select[3] = vec3[](
 
 uniform mat4 in_cam_inverse;
 uniform vec2 in_aspect;
+
+bvec3 bor(bvec3 a, bvec3 b)
+{
+	return lessThan(uvec3(0U), uvec3(a) + uvec3(b));
+}
+
+bvec3 band(bvec3 a, bvec3 b)
+{
+	return lessThanEqual(uvec3(2U), uvec3(a) + uvec3(b));
+}
+
 

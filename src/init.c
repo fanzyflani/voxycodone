@@ -5,9 +5,12 @@ GLint shader_ray_tex0;
 GLint shader_ray_tex1;
 GLint shader_ray_tex2;
 GLint shader_ray_tex3;
+GLint shader_ray_tex_rand;
+GLint shader_ray_sec_current;
 GLint shader_ray_sph_count;
 GLint shader_ray_sph_data;
 GLint shader_ray_light_count;
+GLint shader_ray_light_amb;
 GLint shader_ray_light0_col;
 GLint shader_ray_light0_pos;
 GLint shader_ray_light0_dir;
@@ -28,6 +31,7 @@ GLuint tex_ray0;
 GLuint tex_ray1;
 GLuint tex_ray2;
 GLuint tex_ray3;
+GLuint tex_ray_rand;
 GLuint va_ray_vbo;
 GLuint va_ray_vao;
 
@@ -86,9 +90,12 @@ void init_gfx(void)
 	shader_ray_tex1 = glGetUniformLocation(shader_ray, "tex1");
 	shader_ray_tex2 = glGetUniformLocation(shader_ray, "tex2");
 	shader_ray_tex3 = glGetUniformLocation(shader_ray, "tex3");
+	shader_ray_tex_rand = glGetUniformLocation(shader_ray, "tex_rand");
+	shader_ray_sec_current = glGetUniformLocation(shader_ray, "sec_current");
 	shader_ray_sph_count = glGetUniformLocation(shader_ray, "sph_count");
 	shader_ray_sph_data = glGetUniformLocation(shader_ray, "sph_data");
 	shader_ray_light_count = glGetUniformLocation(shader_ray, "light_count");
+	shader_ray_light_amb = glGetUniformLocation(shader_ray, "light_amb");
 	shader_ray_light0_col = glGetUniformLocation(shader_ray, "light_col");
 	shader_ray_light0_pos = glGetUniformLocation(shader_ray, "light_pos");
 	shader_ray_light0_dir = glGetUniformLocation(shader_ray, "light_dir");
@@ -111,6 +118,7 @@ void init_gfx(void)
 	glGenTextures(1, &tex_ray1);
 	glGenTextures(1, &tex_ray2);
 	glGenTextures(1, &tex_ray3);
+	glGenTextures(1, &tex_ray_rand);
 	if(!epoxy_has_gl_extension("GL_ARB_texture_storage"))
 	{
 		printf("Eww yuck no glTexStorage2D update your drivers you scrub\n");
@@ -142,6 +150,13 @@ void init_gfx(void)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, KD_MAX, 4, 0, GL_RGBA, GL_FLOAT, NULL);
 		printf("%i\n", glGetError());
+
+		glBindTexture(GL_TEXTURE_2D, tex_ray_rand);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 128, 128, 0, GL_RGBA, GL_FLOAT, NULL);
+		printf("%i\n", glGetError());
 	} else {
 		glGetError();
 		glBindTexture(GL_TEXTURE_2D, tex_ray0);
@@ -171,7 +186,15 @@ void init_gfx(void)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, KD_MAX, 4);
 		printf("%i\n", glGetError());
+
+		glBindTexture(GL_TEXTURE_2D, tex_ray_rand);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, 128, 128);
+		printf("%i\n", glGetError());
 	}
+
 	glBindTexture(GL_TEXTURE_2D, 0);
 	printf("Got texture\n");
 
