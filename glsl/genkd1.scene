@@ -1,15 +1,16 @@
 // vim: syntax=c
 
-void trace_scene(bool shadow_mode)
+void trace_scene(inout Trace T, bool shadow_mode)
 {
-	idir = sign(wdir)/max(vec3(EPSILON), abs(wdir));
+	T.idir = sign(T.wdir)/max(vec3(EPSILON), abs(T.wdir));
 
 	// Trace to plane
-	trace_plane(shadow_mode
+	trace_plane(T, shadow_mode
 		, vec3(0.0, 1.0, 0.0), -3.0
 		, vec3(0.9, 0.9, 0.9)
 		, vec3(0.1, 0.1, 0.1)
 		);
+	float plane_time = T.ttime;
 
 	/*
 	trace_plane(vec3(0.0, -1.0, 0.0), -143.0
@@ -18,16 +19,16 @@ void trace_scene(bool shadow_mode)
 		);
 	*/
 
-	float base_ttime = ttime;
+	float base_ttime = T.ttime;
 	float base_pretime = 0.0;
-	float old_ttime = ttime;
+	float old_ttime = T.ttime;
 
 	// Discern boxness
 
 	if(do_bbox)
 	{
-		vec3 hitmin = idir*(bmin-wpos);
-		vec3 hitmax = idir*(bmax-wpos);
+		vec3 hitmin = T.idir*(bmin-T.wpos);
+		vec3 hitmax = T.idir*(bmax-T.wpos);
 		//vec3 hitf = (hitmin+hitmax)/2.0 + sign(wdir)*(hitmin-hitmax)/2.0;
 		//vec3 hitg = (hitmin+hitmax)/2.0 + sign(wdir)*(hitmax-hitmin)/2.0;
 		vec3 hitf = min(hitmin, hitmax);
@@ -41,25 +42,25 @@ void trace_scene(bool shadow_mode)
 		//if(facf > facg || facf > ttime || facg < EPSILON)
 		//if(facf > facg)
 		//if(facf > facg || facg < EPSILON)
-		if(facf > facg || facf > ttime || facg < EPSILON)
+		if(facf > facg || facf > T.ttime || facg < EPSILON)
 		{
 			//ccol = vec3(1.0, 0.0, 0.0);
+			T.tshine = 0.0;
 			return;
 		}
 
-		base_ttime = min(ttime, facg);
+		base_ttime = min(T.ttime, facg);
 		base_pretime = max(0.0, facf);
 	}
 
-	ttime = base_ttime;
-	trace_spi = -1;
+	T.ttime = base_ttime;
 
 	if(do_kdtree)
 	{
 		// Trace through kd-tree
 		kd_trace_head = 0;
 		kd_tmin = base_pretime;
-		kd_tmax = ttime;
+		kd_tmax = T.ttime;
 		kd_trace_node = 0U;
 		float kd_old_ttime;
 
@@ -67,11 +68,11 @@ void trace_scene(bool shadow_mode)
 		{
 			// KD TRACE MODE
 
-			if(kd_tmin > ttime) break;
+			if(kd_tmin > T.ttime) break;
 
 			if(kd_tmin >= kd_tmax)
 			{
-				if(kd_fetch_plane())
+				if(kd_fetch_plane(T))
 					continue;
 				else
 					break;
@@ -100,18 +101,18 @@ void trace_scene(bool shadow_mode)
 				switch(split_axis)
 				{
 					case 0U:
-						cmp_pos = wpos.x;
-						cmp_idir = idir.x;
+						cmp_pos = T.wpos.x;
+						cmp_idir = T.idir.x;
 						break;
 
 					case 1U:
-						cmp_pos = wpos.y;
-						cmp_idir = idir.y;
+						cmp_pos = T.wpos.y;
+						cmp_idir = T.idir.y;
 						break;
 
 					default:
-						cmp_pos = wpos.z;
-						cmp_idir = idir.z;
+						cmp_pos = T.wpos.z;
+						cmp_idir = T.idir.z;
 						break;
 				}
 
@@ -192,7 +193,7 @@ void trace_scene(bool shadow_mode)
 
 				if(spilen > 0U)
 				{
-					kd_old_ttime = ttime;
+					kd_old_ttime = T.ttime;
 					uint spibeg = (data >> 2) & 0xFFFU;
 
 					// SPHERE TRACE MODE
@@ -203,16 +204,17 @@ void trace_scene(bool shadow_mode)
 						int spi = int(texelFetch(tex2, ivec2(1,spibeg+j), 0).r);
 						//vec4 spd = sph_data[spi];
 						vec4 spd = texelFetch(tex3, ivec2(spi,0), 0);
+						vec3 spc = texelFetch(tex0, ivec2(0,spi), 0).rgb;
 
-						trace_sphere(spi, shadow_mode, spd.xyz, spd.w);
+						trace_sphere(T, shadow_mode, spd.xyz, spd.w, spc.rgb);
 					}
 
-					if(ttime == kd_tmax)
-						ttime = kd_old_ttime;
+					if(T.ttime == kd_tmax)
+						T.ttime = kd_old_ttime;
 
-					if(ttime < kd_tmax) break;
+					if(T.ttime < kd_tmax) break;
 
-					if(kd_fetch_plane())
+					if(kd_fetch_plane(T))
 						continue;
 					else
 						break;
@@ -225,20 +227,20 @@ void trace_scene(bool shadow_mode)
 		{
 			//vec4 spd = sph_data[i];
 			vec4 spd = texelFetch(tex3, ivec2(i,0), 0);
+			vec3 spc = texelFetch(tex0, ivec2(0,i), 0).rgb;
 
-			trace_sphere(i, shadow_mode, spd.xyz, spd.w);
+			trace_sphere(T, shadow_mode, spd.xyz, spd.w, spc.rgb);
 
-			if(shadow_mode && ttime < base_ttime) break;
+			if(shadow_mode && T.ttime < base_ttime) break;
 		}
 	}
 
-	if(trace_spi >= 0)
+	if(T.ttime >= base_ttime)
 	{
-		vec3 spd = texelFetch(tex3, ivec2(trace_spi,0), 0).xyz;
-		shade_sphere(spd, texelFetch(tex0, ivec2(0, trace_spi), 0).rgb);
+		T.ttime = old_ttime;
 	}
 
-	if(ttime == base_ttime)
-		ttime = old_ttime;
+	if(plane_time == T.ttime)
+		T.tshine = 0.0;
 }
 

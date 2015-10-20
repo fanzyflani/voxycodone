@@ -6,6 +6,8 @@ double cam_pos_x = 0.0;
 double cam_pos_y = 0.0;
 double cam_pos_z = 0.0;
 
+#define SCENE_GENKD 0
+
 int sent_shit = false;
 void h_render_main(void)
 {
@@ -34,7 +36,7 @@ void h_render_main(void)
 	}
 	*/
 
-	/*
+#if SCENE_GENKD != 0
 	sph_count = 50;
 	double fx, fy, fz;
 	fx = 0.0;
@@ -54,12 +56,13 @@ void h_render_main(void)
 			255);
 
 	}
-	*/
 
-	//sph_count = 16;
+	kd_generate();
+#else
 	sph_count=0;
-	//kd_generate();
+#endif
 
+#if SCENE_GENKD != 0
 	static uint32_t sph_buf1[SPH_MAX];
 	static float sph_buf2[12*KD_MAX];
 	for(i = 0; i < sph_count; i++)
@@ -93,6 +96,7 @@ void h_render_main(void)
 	{
 		kd_buf2[2*i + 1] = spilist[i];
 	}
+#endif
 
 	if(!sent_shit)
 	{
@@ -108,6 +112,7 @@ void h_render_main(void)
 	}
 
 	glGetError();
+#if SCENE_GENKD != 0
 	glBindTexture(GL_TEXTURE_2D, tex_ray0);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 1, sph_count, GL_RGBA, GL_UNSIGNED_BYTE, sph_buf1);
 	//printf("tex0 %i\n", glGetError());
@@ -120,18 +125,23 @@ void h_render_main(void)
 	glBindTexture(GL_TEXTURE_2D, tex_ray3);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, sph_count, 3, GL_RGBA, GL_FLOAT, sph_buf2);
 	//printf("tex3 %i\n", glGetError());
+#endif
 
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo0);
+#if SCENE_GENKD != 0
 	glActiveTexture(GL_TEXTURE0 + 1);
 	glBindTexture(GL_TEXTURE_2D, tex_ray1);
 	glActiveTexture(GL_TEXTURE0 + 2);
 	glBindTexture(GL_TEXTURE_2D, tex_ray2);
 	glActiveTexture(GL_TEXTURE0 + 3);
 	glBindTexture(GL_TEXTURE_2D, tex_ray3);
+#endif
 	glActiveTexture(GL_TEXTURE0 + 4);
 	glBindTexture(GL_TEXTURE_2D, tex_ray_rand);
+#if SCENE_GENKD != 0
 	glActiveTexture(GL_TEXTURE0 + 0);
 	glBindTexture(GL_TEXTURE_2D, tex_ray0);
+#endif
 	glUseProgram(shader_ray);
 
 	mat4x4_invert(mat_cam2, mat_cam1);
@@ -190,7 +200,10 @@ void h_render_main(void)
 	ldir[2*3 + 2] = 0.0;
 	lcos[2] = cos((45.0+15.0*-cos(render_sec_current*0.4))*M_PI/180.0);
 	lpow[2] = 1.0/4.0;
+
+	float light_amb = 0.2;
 	*/
+
 	int light_count = (
 		render_sec_current < 1.0
 		? 0
@@ -209,7 +222,7 @@ void h_render_main(void)
 	ldir[0*3 + 0] = 0.0;
 	ldir[0*3 + 1] = 0.0;
 	ldir[0*3 + 2] = -1.0;
-	lcos[0] = 1.0 - 0.9;
+	lcos[0] = 1.0 - 0.6;
 	lpow[0] = 1.0/4.0;
 
 	lcol[1*3 + 0] = 0.1;
@@ -221,7 +234,7 @@ void h_render_main(void)
 	ldir[1*3 + 0] = 0.0;
 	ldir[1*3 + 1] = 0.0;
 	ldir[1*3 + 2] = -1.0;
-	lcos[1] = 1.0 - 0.9;
+	lcos[1] = 1.0 - 0.6;
 	lpow[1] = 1.0/4.0;
 
 	lcol[2*3 + 0] = 1.0;

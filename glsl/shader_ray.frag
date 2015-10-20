@@ -105,7 +105,7 @@ void main()
 			// INDIRECT LIGHTING
 			// Cast from light to random direction
 			Trace Ti;
-			if(RADIOSITY_BOUNCES_WARNING_THIS_IS_FUCKING_SLOW > 0U)
+			if(do_indirect && RADIOSITY_BOUNCES_WARNING_THIS_IS_FUCKING_SLOW > 0U)
 			{
 				Ti = T1;
 
@@ -114,6 +114,7 @@ void main()
 				Ti.wpos = light_pos[lidx];
 			}
 
+			if(do_indirect)
 			for(uint rb = 0U; rb < RADIOSITY_BOUNCES_WARNING_THIS_IS_FUCKING_SLOW; rb++)
 			{
 				// Calculate light
@@ -174,7 +175,7 @@ void main()
 		// Accumulate colour
 		ccol += acol * ccol_fac;
 		ccol_gi += acol_gi * ccol_fac;
-		ccol_fac *= T0.tshine;
+		ccol_fac *= T1.tshine;
 		if(ccol_fac <= 1.0/255.0/2.0) break;
 
 	}
@@ -208,6 +209,6 @@ void main()
 
 	//out_frag_color = vec4(ccol + ccol_gi, 1.0);
 	out_frag_color = vec4(ccol, 1.0);
-	out_frag_color_gi = vec4(ccol_gi, 1.0);
+	out_frag_color_gi = vec4(ccol_gi, any(greaterThan(ccol_gi, vec3(0.0))) ? 1.0 : 0.0);
 }
 
