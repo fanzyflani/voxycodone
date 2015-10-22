@@ -10,6 +10,7 @@ GLint shader_ray_tex1;
 GLint shader_ray_tex2;
 GLint shader_ray_tex3;
 GLint shader_ray_tex_rand;
+GLint shader_ray_tex_vox;
 GLint shader_ray_sec_current;
 GLint shader_ray_sph_count;
 GLint shader_ray_sph_data;
@@ -36,6 +37,7 @@ GLuint tex_ray1;
 GLuint tex_ray2;
 GLuint tex_ray3;
 GLuint tex_ray_rand;
+GLuint tex_ray_vox;
 GLuint va_ray_vbo;
 GLuint va_ray_vao;
 GLuint tex_fbo0_0;
@@ -50,6 +52,84 @@ const int16_t va_ray_data[12] = {
 	-1, 1,
 	 1,-1,
 };
+
+void fill_voxygen_subchunk(uint8_t **voxygen_buf, int layer, int sx, int sy, int sz, uint8_t c)
+{
+	int lsize = 128>>layer;
+	assert(layer >= 0);
+	assert(layer <= 4);
+	assert((sx>>layer) >= 0);
+	assert((sy>>layer) >= 0);
+	assert((sz>>layer) >= 0);
+	assert((sx>>layer) < (128>>layer));
+	assert((sy>>layer) < (128>>layer));
+	assert((sz>>layer) < (128>>layer));
+	assert((sx>>layer)+lsize*((sz>>layer)+lsize*(sy>>layer)) >= 0);
+	assert((sx>>layer)+lsize*((sz>>layer)+lsize*(sy>>layer)) < (128>>layer)*(128>>layer)*(128>>layer));
+	if(layer == 0) c &= ~0x80;
+	voxygen_buf[layer][(sx>>layer)+lsize*((sz>>layer)+lsize*(sy>>layer))] = c;
+
+	if(layer > 0)
+	{
+		layer--;
+
+		int l0 = 0;
+		int l1 = 1<<layer;
+
+		fill_voxygen_subchunk(voxygen_buf, layer, sx+l0, sy+l0, sz+l0, c);
+		fill_voxygen_subchunk(voxygen_buf, layer, sx+l1, sy+l0, sz+l0, c);
+		fill_voxygen_subchunk(voxygen_buf, layer, sx+l0, sy+l0, sz+l1, c);
+		fill_voxygen_subchunk(voxygen_buf, layer, sx+l1, sy+l0, sz+l1, c);
+		fill_voxygen_subchunk(voxygen_buf, layer, sx+l0, sy+l1, sz+l0, c);
+		fill_voxygen_subchunk(voxygen_buf, layer, sx+l1, sy+l1, sz+l0, c);
+		fill_voxygen_subchunk(voxygen_buf, layer, sx+l0, sy+l1, sz+l1, c);
+		fill_voxygen_subchunk(voxygen_buf, layer, sx+l1, sy+l1, sz+l1, c);
+	}
+}
+
+void decode_voxygen_subchunk(uint8_t **voxygen_buf, FILE *fp, int layer, int sx, int sy, int sz)
+{
+	int c = fgetc(fp);
+	assert(c >= 0);
+	assert(c <= 0xFF); // juuuuust in case your libc sucks (this IS being overcautious though)
+
+	if((c & 0x80) != 0)
+	{
+		assert(layer > 0);
+
+		// Write
+		int lsize = 128>>layer;
+		voxygen_buf[layer][(sx>>layer)+lsize*((sz>>layer)+lsize*(sy>>layer))] = c;
+
+		// Descend
+		layer--;
+		int l0 = 0;
+		int l1 = 1<<layer;
+		decode_voxygen_subchunk(voxygen_buf, fp, layer, sx+l0, sy+l0, sz+l0);
+		decode_voxygen_subchunk(voxygen_buf, fp, layer, sx+l0, sy+l1, sz+l0);
+		decode_voxygen_subchunk(voxygen_buf, fp, layer, sx+l1, sy+l0, sz+l0);
+		decode_voxygen_subchunk(voxygen_buf, fp, layer, sx+l1, sy+l1, sz+l0);
+		decode_voxygen_subchunk(voxygen_buf, fp, layer, sx+l0, sy+l0, sz+l1);
+		decode_voxygen_subchunk(voxygen_buf, fp, layer, sx+l0, sy+l1, sz+l1);
+		decode_voxygen_subchunk(voxygen_buf, fp, layer, sx+l1, sy+l0, sz+l1);
+		decode_voxygen_subchunk(voxygen_buf, fp, layer, sx+l1, sy+l1, sz+l1);
+
+	} else {
+		// Fill
+		fill_voxygen_subchunk(voxygen_buf, layer, sx, sy, sz, c);
+	}
+
+}
+
+void decode_voxygen_chunk(uint8_t **voxygen_buf, FILE *fp)
+{
+	int sx, sy, sz;
+
+	for(sz = 0; sz < 128; sz += 16)
+	for(sx = 0; sx < 128; sx += 16)
+	for(sy = 0; sy < 128; sy += 16)
+		decode_voxygen_subchunk(voxygen_buf, fp, 4, sx, sy, sz);
+}
 
 void print_shader_log(GLuint shader)
 {
@@ -187,6 +267,7 @@ void init_gfx(void)
 	shader_ray_tex2 = glGetUniformLocation(shader_ray, "tex2");
 	shader_ray_tex3 = glGetUniformLocation(shader_ray, "tex3");
 	shader_ray_tex_rand = glGetUniformLocation(shader_ray, "tex_rand");
+	shader_ray_tex_vox = glGetUniformLocation(shader_ray, "tex_vox");
 	shader_ray_sec_current = glGetUniformLocation(shader_ray, "sec_current");
 	shader_ray_sph_count = glGetUniformLocation(shader_ray, "sph_count");
 	shader_ray_sph_data = glGetUniformLocation(shader_ray, "sph_data");
@@ -215,6 +296,7 @@ void init_gfx(void)
 	glGenTextures(1, &tex_ray2);
 	glGenTextures(1, &tex_ray3);
 	glGenTextures(1, &tex_ray_rand);
+	glGenTextures(1, &tex_ray_vox);
 	if(!epoxy_has_gl_extension("GL_ARB_texture_storage"))
 	{
 		printf("Eww yuck no glTexStorage2D update your drivers you scrub\n");
@@ -253,6 +335,15 @@ void init_gfx(void)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 128, 128, 0, GL_RGBA, GL_FLOAT, NULL);
 		printf("%i\n", glGetError());
+
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glBindTexture(GL_TEXTURE_3D, tex_ray_vox);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAX_LEVEL, 4);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexImage3D(GL_TEXTURE_3D, 0, GL_R8UI, 256, 256, 256, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, NULL);
+		glBindTexture(GL_TEXTURE_3D, 0);
+		printf("%i\n", glGetError());
 	} else {
 		glGetError();
 		glBindTexture(GL_TEXTURE_2D, tex_ray0);
@@ -288,6 +379,16 @@ void init_gfx(void)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, 128, 128);
+		printf("%i\n", glGetError());
+
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glBindTexture(GL_TEXTURE_3D, tex_ray_vox);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAX_LEVEL, 0);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		//glTexStorage3D(GL_TEXTURE_3D, 1, GL_R8UI, 256, 256, 128+64+32+16+8);
+		glTexStorage3D(GL_TEXTURE_3D, 1, GL_R8UI, 256, 256, 256);
+		glBindTexture(GL_TEXTURE_3D, 0);
 		printf("%i\n", glGetError());
 	}
 
@@ -341,5 +442,55 @@ void init_gfx(void)
 	assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// Send voxel landscape
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glBindTexture(GL_TEXTURE_3D, tex_ray_vox);
+
+	FILE *fp = fopen("dat/voxel1.voxygen", "rb");
+
+	// TODO: load more than a chunk
+	// Layer 1: 128^3 chunks in a [z][x]
+	// Layer 2: 32^3 outer layers in a 4^3 arrangement [z][x][y]
+	// Layer 3: Descend the damn layers
+	// in this engine we rearrange it to [y][z][x]
+	int cx, cz;
+	const int cy = 0;
+	int sx, sy, sz;
+	uint8_t *voxygen_buf[5];
+
+	voxygen_buf[0] = malloc(128*128*128);
+	voxygen_buf[1] = malloc(64*64*64);
+	voxygen_buf[2] = malloc(32*32*32);
+	voxygen_buf[3] = malloc(16*16*16);
+	voxygen_buf[4] = malloc(8*8*8);
+
+	decode_voxygen_chunk(voxygen_buf, fp);
+
+	int layer;
+	for(layer = 0; layer <= 4; layer++)
+	{
+		int lsize = 128>>layer;
+		int ly = 128*2-(lsize*2);
+		for(sz = 0; sz < 256; sz += lsize)
+		for(sx = 0; sx < 256; sx += lsize)
+		for(sy = 0; sy < lsize; sy += lsize)
+		{
+			glTexSubImage3D(GL_TEXTURE_3D, 0, sx, sz, sy + ly, lsize, lsize, lsize, GL_RED_INTEGER, GL_UNSIGNED_BYTE, voxygen_buf[layer]);
+			//printf("%i - %i %i %i %i\n", glGetError(), sx, sy, sz, ly);
+		}
+	}
+
+	free(voxygen_buf[0]);
+	free(voxygen_buf[1]);
+	free(voxygen_buf[2]);
+	free(voxygen_buf[3]);
+	free(voxygen_buf[4]);
+
+	fclose(fp);
+
+	glBindTexture(GL_TEXTURE_3D, 0);
+	printf("tex_vox %i\n", glGetError());
+
 }
 

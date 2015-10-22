@@ -1,0 +1,139 @@
+// vim: syntax=c
+void scene_trace_voxygen(inout Trace T, bool shadow_mode)
+{
+	int i;
+
+	const int base_layer = 4;
+	const int VOXYGEN_TRACES = 40;
+	const int VOXYGEN_TRACE_RANGE = 200;
+
+	vec3 bcpos = T.wpos + EPSILON + vec3(0.0, 96.0, 0.0);
+	vec3 cpos = floor((bcpos/float(1<<base_layer)))*float(1<<base_layer);
+	ivec3 cell = ivec3(cpos);
+	vec3 adir = abs(T.wdir);
+	vec3 aidir = 1.0/max(vec3(EPSILON), adir);
+	bvec3 sign_neg = lessThan(T.wdir, vec3(0.0));
+	ivec3 sidir = ivec3(mix(ivec3(1), ivec3(-1), sign_neg));
+	vec3 subcell = vec3(bcpos - cpos);
+	subcell = mix(float(1<<base_layer) - subcell, subcell, sign_neg);
+
+	//cell.xz %= 256;
+
+	float atime = 0.0;
+	int layer = base_layer;
+
+	bvec3 bound_crossed = bvec3(false, false, true);
+
+	for(i = 0; i < 5000 && atime < T.ttime; i++)
+	//for(i = 0; i < VOXYGEN_TRACES; i++)
+	//for(i = 0; i < VOXYGEN_TRACE_RANGE; i+=(1<<layer))
+	{
+		if(cell.y < 0 && sidir.y < 0) break;
+		if(cell.y >= 128 && sidir.y > 0) break;
+
+		uint v = (cell.y >= 0 && cell.y < 128
+			? texelFetch(tex_vox, (cell.xzy>>layer) + ivec3(128, 128, 256-(256>>layer)), 0).x
+			: 0x00U);
+
+		if((v & 0x80U) != 0U)
+		{
+			// We need to go deeper
+			// TODO: range check for outer layers
+			while(layer > 0)
+			{
+				if(any(lessThan(cell.xz, vec2(-64<<layer))) ||
+						any(greaterThanEqual(cell.xz, vec2(64<<layer))))
+					break;
+
+				//if(!shadow_mode)ccol.r += 0.2;
+				layer--;
+				//i++;
+				bvec3 subc_over = greaterThanEqual(subcell, vec3(float(1<<layer)));
+				bvec3 sidir_neg = lessThan(sidir, ivec3(0));
+				bvec3 change_cell = equal(subc_over, sidir_neg);
+				subcell -= vec3(subc_over)*float(1<<layer);
+				cell += ivec3(change_cell)<<layer;
+
+				// sidir neg = add 1 if subcell >= 1<<layer
+				// sidir pos = add 1 if subcell < 1<<layer
+
+				v = (cell.y >= 0 && cell.y < 128
+					? texelFetch(tex_vox, (cell.xzy>>layer) + ivec3(128, 128, 256-(256>>layer)), 0).x
+					: 0x00U);
+
+				// cell.y is guaranteed to be in range
+				// XXX: apparently not!
+				//v = texelFetch(tex_vox, (cell.xzy>>layer) + ivec3(0, 0, 256-(256>>layer)), 0).x;
+
+				if((v & 0x80U) == 0U)
+					break;
+			}
+		}
+		
+		if(v != 0x00U) {
+
+			// We hit a block
+			if(atime > T.ttime) return;
+			T.ttime = atime;
+			if(shadow_mode) break;
+
+			//T.tshine = 0.3;
+			T.tshine = 0.0;
+			//T.tcol = ((v & 0x80U) != 0U) ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 1.0, 0.0);
+			T.tcol = vec3(0.5, 0.5, 0.5);
+			T.tnorm = -normalize(
+				mix(vec3(0.0), vec3(1.0), bound_crossed)*sidir);
+
+			return;
+		}
+
+		// Only necessary if we don't have ascension
+		if(false)
+		if(any(lessThan(cell.xz, vec2(-128<<layer))) ||
+				any(greaterThanEqual(cell.xz, vec2(128<<layer))))
+			break;
+
+		vec3 btime = subcell*aidir;
+		float mintime = min(min(btime.x, btime.y), btime.z);
+		atime += mintime;
+		bound_crossed = lessThanEqual(btime, vec3(mintime));
+		subcell += vec3(ivec3(bound_crossed)<<layer) - adir*mintime;
+		cell += ivec3(bound_crossed) * (sidir<<layer);
+
+		// Check for alignment
+		if(true)
+		if(layer < base_layer && dot((cell*ivec3(bound_crossed)) & ((2<<layer)-1), ivec3(1)) == 0)
+		if(cell.y < 0 || cell.y >= 128
+			|| (texelFetch(tex_vox, (cell.xzy>>(layer+1)) + ivec3(128, 128, 256-(256>>(layer+1))), 0).x & 0x80U) == 0U)
+		{
+			// Ascend
+			// TODO: investigate multiple ascensions per ray
+			//ivec3 cbit = cell&((2<<layer)-1);
+			ivec3 cbit = cell&(1<<layer);
+			cell &= ~((2<<layer)-1);
+
+			// sidir neg = add 1 to subcell if bit 1
+			// sidir pos = add 1 to subcell if bit 0
+			bvec3 cell_bit = notEqual(cbit, ivec3(0));
+			bvec3 sidir_neg = lessThan(sidir, ivec3(0));
+			bvec3 change_cell = equal(cell_bit, sidir_neg);
+			subcell += vec3(change_cell)*float(1<<layer);
+			layer++;
+		}
+
+	}
+}
+
+void trace_scene(inout Trace T, bool shadow_mode)
+{
+	T.tshine = 0.0;
+	T.idir = sign(T.wdir)/max(vec3(EPSILON), abs(T.wdir));
+
+	scene_trace_voxygen(T, shadow_mode);
+
+	//float old_ttime_2 = T.ttime;
+	//trace_sphere(T, shadow_mode, vec3( 6.0, 0.0, -35.0), 3.0, vec3(1.0, 0.5, 1.0));
+	//if(T.ttime < old_ttime_2) T.tshine = 0.3;
+}
+
+

@@ -16,7 +16,7 @@ out vec4 out_frag_color_gi;
 %include glsl/donut.obj
 %include glsl/plane.obj
 
-%include glsl/facroom1.scene
+%include glsl/voxygen.scene
 
 void main()
 {
@@ -80,11 +80,11 @@ void main()
 			{
 				T0.zfar = T0.ttime = length(light_pos[lidx] - T0.wpos);
 
-				if(false)
+				if(true)
 				{
 					// Cast from light
-					// disabled: causes fringing on the shadows
-					// and no real performance improvements
+					// notably faster for voxel scene
+					// can cause fringing though
 					T0.wdir = normalize(T0.wpos - light_pos[lidx]);
 					T0.wpos = light_pos[lidx];
 				} else {
@@ -100,6 +100,8 @@ void main()
 					unshadowed = false;
 					mcol = vec3(0.0);
 				}
+			} else if(!do_shadow) {
+				mcol = T0.tcol * T0.tdiff;
 			}
 
 			// INDIRECT LIGHTING
@@ -201,7 +203,7 @@ void main()
 		camt += texture(tex_rand, scol*(1.0/4.0), 0).r*0.05;
 		camt *= 1.3;
 		camt = min(1.0, camt);
-		ccol = (ccol0 + (ccol1 - ccol0)*camt);
+		ccol += (ccol0 + (ccol1 - ccol0)*camt);
 		//ccol = texture(tex_rand, scol).rgb;
 	}
 

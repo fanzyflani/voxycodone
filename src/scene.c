@@ -7,6 +7,7 @@ double cam_pos_y = 0.0;
 double cam_pos_z = 0.0;
 
 #define SCENE_GENKD 0
+#define SCENE_VOXYGEN 1
 
 int sent_shit = false;
 void h_render_main(void)
@@ -35,6 +36,9 @@ void h_render_main(void)
 			y*255/cube_units, x*255/cube_units, z*255/cube_units, 255);
 	}
 	*/
+
+#if SCENE_VOXYGEN != 0
+#endif
 
 #if SCENE_GENKD != 0
 	sph_count = 50;
@@ -100,6 +104,7 @@ void h_render_main(void)
 
 	if(!sent_shit)
 	{
+		// Random noise
 		static float rand_noise[128*128*4];
 		for(i = 0; i < 128*128*4; i++)
 			rand_noise[i] = (rand()%65537)/65537.0;
@@ -107,7 +112,8 @@ void h_render_main(void)
 		glGetError();
 		glBindTexture(GL_TEXTURE_2D, tex_ray_rand);
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 128, 128, GL_RGBA, GL_FLOAT, rand_noise);
-		//printf("tex_rand %i\n", glGetError());
+		printf("tex_rand %i\n", glGetError());
+
 		sent_shit = true;
 	}
 
@@ -138,6 +144,8 @@ void h_render_main(void)
 #endif
 	glActiveTexture(GL_TEXTURE0 + 4);
 	glBindTexture(GL_TEXTURE_2D, tex_ray_rand);
+	glActiveTexture(GL_TEXTURE0 + 5);
+	glBindTexture(GL_TEXTURE_3D, tex_ray_vox);
 #if SCENE_GENKD != 0
 	glActiveTexture(GL_TEXTURE0 + 0);
 	glBindTexture(GL_TEXTURE_2D, tex_ray0);
@@ -153,6 +161,7 @@ void h_render_main(void)
 	glUniform1i(shader_ray_tex2, 2);
 	glUniform1i(shader_ray_tex3, 3);
 	glUniform1i(shader_ray_tex_rand, 4);
+	glUniform1i(shader_ray_tex_vox, 5);
 	glUniform1i(shader_ray_sph_count, sph_count);
 	glUniform1f(shader_ray_sec_current, render_sec_current);
 
@@ -162,12 +171,38 @@ void h_render_main(void)
 	float lcos[LIGHT_MAX];
 	float lpow[LIGHT_MAX];
 
+#if 1
+	int light_count = 1;
+
+	lcol[0*3 + 0] = 1.0;
+	lcol[0*3 + 1] = 1.0;
+	lcol[0*3 + 2] = 1.0;
+	lpos[0*3 + 0] = cam_pos_x;
+	lpos[0*3 + 1] = cam_pos_y;
+	lpos[0*3 + 2] = cam_pos_z;
+	ldir[0*3 + 0] = -cos(cam_rot_x)*sin(cam_rot_y);
+	ldir[0*3 + 1] = -sin(cam_rot_x);
+	ldir[0*3 + 2] = -cos(cam_rot_x)*cos(cam_rot_y);
 	/*
+	lpos[0*3 + 0] = 0.0;
+	lpos[0*3 + 1] = 128.0;
+	lpos[0*3 + 2] = 0.0;
+	ldir[0*3 + 0] = 0.0;
+	ldir[0*3 + 1] = -1.0;
+	ldir[0*3 + 2] = 0.0;
+	*/
+	lcos[0] = 1.0 - 0.7;
+	//lpow[0] = 1.0/4.0;
+	lpow[0] = 1.0/4.0;
+
+	float light_amb = 0.1;
+#else
+#if 0
 	int light_count = 3;
 
 	lcol[0*3 + 0] = 1.0;
-	lcol[0*3 + 1] = 0.0;
-	lcol[0*3 + 2] = 0.0;
+	lcol[0*3 + 1] = 0.5;
+	lcol[0*3 + 2] = 0.5;
 	lpos[0*3 + 0] = 0.0;
 	lpos[0*3 + 1] = 5.0;
 	lpos[0*3 + 2] = -10.0;
@@ -177,8 +212,8 @@ void h_render_main(void)
 	lcos[0] = 1.0 - 0.7;
 	lpow[0] = 1.0/4.0;
 
-	lcol[1*3 + 0] = 0.0;
-	lcol[1*3 + 1] = 0.0;
+	lcol[1*3 + 0] = 0.5;
+	lcol[1*3 + 1] = 0.5;
 	lcol[1*3 + 2] = 1.0;
 	lpos[1*3 + 0] = 0.0;
 	lpos[1*3 + 1] = 5.0;
@@ -189,9 +224,9 @@ void h_render_main(void)
 	lcos[1] = 1.0 - 0.7;
 	lpow[1] = 1.0/4.0;
 
-	lcol[2*3 + 0] = 0.0;
+	lcol[2*3 + 0] = 0.5;
 	lcol[2*3 + 1] = 1.0;
-	lcol[2*3 + 2] = 0.0;
+	lcol[2*3 + 2] = 0.5;
 	lpos[2*3 + 0] = 20.0;
 	lpos[2*3 + 1] = 40.0;
 	lpos[2*3 + 2] = -30.0;
@@ -202,21 +237,21 @@ void h_render_main(void)
 	lpow[2] = 1.0/4.0;
 
 	float light_amb = 0.2;
-	*/
 
+#else
 	int light_count = (
 		render_sec_current < 1.0
 		? 0
 		: render_sec_current < 3.0
-		? 2
+		? 1
 		: render_sec_current < 4.0
-		? 4
-		: 6);
+		? 3
+		: 5);
 
-	lcol[0*3 + 0] = 0.1;
-	lcol[0*3 + 1] = 0.1;
-	lcol[0*3 + 2] = 0.1;
-	lpos[0*3 + 0] = 0.0-0.1;
+	lcol[0*3 + 0] = 0.3;
+	lcol[0*3 + 1] = 0.3;
+	lcol[0*3 + 2] = 0.3;
+	lpos[0*3 + 0] = 0.0;
 	lpos[0*3 + 1] = 0.0;
 	lpos[0*3 + 2] = 9.0;
 	ldir[0*3 + 0] = 0.0;
@@ -225,22 +260,22 @@ void h_render_main(void)
 	lcos[0] = 1.0 - 0.6;
 	lpow[0] = 1.0/4.0;
 
-	lcol[1*3 + 0] = 0.1;
-	lcol[1*3 + 1] = 0.1;
-	lcol[1*3 + 2] = 0.1;
-	lpos[1*3 + 0] = 0.0+0.1;
-	lpos[1*3 + 1] = 0.0;
-	lpos[1*3 + 2] = 9.0;
+	lcol[1*3 + 0] = 1.0;
+	lcol[1*3 + 1] = 1.0;
+	lcol[1*3 + 2] = 1.0;
+	lpos[1*3 + 0] = 5.0;
+	lpos[1*3 + 1] = 5.0;
+	lpos[1*3 + 2] = -10.0;
 	ldir[1*3 + 0] = 0.0;
-	ldir[1*3 + 1] = 0.0;
-	ldir[1*3 + 2] = -1.0;
-	lcos[1] = 1.0 - 0.6;
-	lpow[1] = 1.0/4.0;
+	ldir[1*3 + 1] = -1.0;
+	ldir[1*3 + 2] = 0.0;
+	lcos[1] = cos(45.0*M_PI/180.0);
+	lpow[1] = 1.0/2.0;
 
 	lcol[2*3 + 0] = 1.0;
 	lcol[2*3 + 1] = 1.0;
 	lcol[2*3 + 2] = 1.0;
-	lpos[2*3 + 0] = 5.0;
+	lpos[2*3 + 0] =-5.0;
 	lpos[2*3 + 1] = 5.0;
 	lpos[2*3 + 2] = -10.0;
 	ldir[2*3 + 0] = 0.0;
@@ -252,9 +287,9 @@ void h_render_main(void)
 	lcol[3*3 + 0] = 1.0;
 	lcol[3*3 + 1] = 1.0;
 	lcol[3*3 + 2] = 1.0;
-	lpos[3*3 + 0] =-5.0;
+	lpos[3*3 + 0] = 5.0;
 	lpos[3*3 + 1] = 5.0;
-	lpos[3*3 + 2] = -10.0;
+	lpos[3*3 + 2] = -30.0;
 	ldir[3*3 + 0] = 0.0;
 	ldir[3*3 + 1] = -1.0;
 	ldir[3*3 + 2] = 0.0;
@@ -264,7 +299,7 @@ void h_render_main(void)
 	lcol[4*3 + 0] = 1.0;
 	lcol[4*3 + 1] = 1.0;
 	lcol[4*3 + 2] = 1.0;
-	lpos[4*3 + 0] = 5.0;
+	lpos[4*3 + 0] =-5.0;
 	lpos[4*3 + 1] = 5.0;
 	lpos[4*3 + 2] = -30.0;
 	ldir[4*3 + 0] = 0.0;
@@ -273,37 +308,27 @@ void h_render_main(void)
 	lcos[4] = cos(45.0*M_PI/180.0);
 	lpow[4] = 1.0/2.0;
 
-	lcol[5*3 + 0] = 1.0;
-	lcol[5*3 + 1] = 1.0;
-	lcol[5*3 + 2] = 1.0;
-	lpos[5*3 + 0] =-5.0;
-	lpos[5*3 + 1] = 5.0;
-	lpos[5*3 + 2] = -30.0;
-	ldir[5*3 + 0] = 0.0;
-	ldir[5*3 + 1] = -1.0;
-	ldir[5*3 + 2] = 0.0;
-	lcos[5] = cos(45.0*M_PI/180.0);
-	lpow[5] = 1.0/2.0;
-
 	for(i = 0; i < 2; i++)
 	{
 		if(render_sec_current < 1.6)
 		for(j = 0; j < 3; j++)
-			lcol[3*(0+i) + j] *= (render_sec_current-1.0)/0.6;
+			lcol[3*(0) + j] *= (render_sec_current-1.0)/0.6;
 
 		if(render_sec_current < 3.1)
 		for(j = 0; j < 3; j++)
-			lcol[3*(2+i) + j] *= (render_sec_current-3.0)/0.1;
+			lcol[3*(1+i) + j] *= (render_sec_current-3.0)/0.1;
 
 		if(render_sec_current < 4.1)
 		for(j = 0; j < 3; j++)
-			lcol[3*(4+i) + j] *= (render_sec_current-4.0)/0.1;
+			lcol[3*(3+i) + j] *= (render_sec_current-4.0)/0.1;
 
 	}
 
 	float light_amb = (render_sec_current < 1.0
 		? 0.0
 		: lcol[3*0 + 0]) * 0.2;
+#endif
+#endif
 
 	glUniform1ui(shader_ray_light_count, light_count);
 	glUniform1f(shader_ray_light_amb, light_amb);

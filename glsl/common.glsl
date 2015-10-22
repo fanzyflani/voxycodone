@@ -1,13 +1,13 @@
 // vim: syntax=c
 const bool do_debug = false;
 const bool do_kdtree = true;
-const bool do_shadow = true;
+const bool do_shadow = false;
 const bool do_bbox = true;
 
 const bool do_kd_restart = false;
 
 const float EPSILON = 0.0001;
-const float ZFAR = 1000.0;
+const float ZFAR = 10000.0;
 const uint BOUNCES = 2U;
 const bool do_indirect = false;
 const uint RADIOSITY_BOUNCES_WARNING_THIS_IS_FUCKING_SLOW = 1U; // WARNING INDIRECT BOUNCES ARE FUCKING SLOW
@@ -23,6 +23,7 @@ uniform sampler2D tex1;
 uniform usampler2D tex2;
 uniform sampler2D tex3;
 uniform sampler2D tex_rand;
+uniform usampler3D tex_vox;
 
 uniform float sec_current;
 uniform int sph_count;
