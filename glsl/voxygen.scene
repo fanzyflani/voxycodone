@@ -43,7 +43,7 @@ void scene_trace_voxygen(inout Trace T, bool shadow_mode)
 		if(cell.y >= 128 && sidir.y > 0) break;
 
 		uint v = (cell.y >= 0 && cell.y < 128
-			? texelFetch(tex_vox, (cell.xzy>>layer) + ivec3(128, 128, 256-(256>>layer)), 0).x
+			? texelFetch(tex_vox, (cell.xzy>>layer) + ivec3(256, 256, 256-(256>>layer)), 0).x
 			: 0x00U);
 
 		if((v & 0x80U) != 0U)
@@ -52,8 +52,8 @@ void scene_trace_voxygen(inout Trace T, bool shadow_mode)
 			// TODO: range check for outer layers
 			while(layer > 0)
 			{
-				if(any(lessThan(cell.xz, vec2(-64<<layer))) ||
-						any(greaterThanEqual(cell.xz, vec2(64<<layer))))
+				if(any(lessThan(cell.xz, vec2(-128<<layer))) ||
+						any(greaterThanEqual(cell.xz, vec2(128<<layer))))
 					break;
 
 				//if(!shadow_mode)ccol.r += 0.2;
@@ -62,14 +62,15 @@ void scene_trace_voxygen(inout Trace T, bool shadow_mode)
 				bvec3 subc_over = greaterThanEqual(subcell, vec3(float(1<<layer)));
 				bvec3 sidir_neg = lessThan(sidir, ivec3(0));
 				bvec3 change_cell = equal(subc_over, sidir_neg);
-				subcell -= vec3(subc_over)*float(1<<layer);
+				vec3 subc_diff = vec3(subc_over)*float(1<<layer);
+				subcell -= subc_diff;
 				cell += ivec3(change_cell)<<layer;
 
 				// sidir neg = add 1 if subcell >= 1<<layer
 				// sidir pos = add 1 if subcell < 1<<layer
 
 				v = (cell.y >= 0 && cell.y < 128
-					? texelFetch(tex_vox, (cell.xzy>>layer) + ivec3(128, 128, 256-(256>>layer)), 0).x
+					? texelFetch(tex_vox, (cell.xzy>>layer) + ivec3(256, 256, 256-(256>>layer)), 0).x
 					: 0x00U);
 
 				// cell.y is guaranteed to be in range
@@ -93,16 +94,47 @@ void scene_trace_voxygen(inout Trace T, bool shadow_mode)
 			//T.tcol = ((v & 0x80U) != 0U) ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 1.0, 0.0);
 			T.tcol = vec3(0.5, 0.5, 0.5);
 			//T.tcol = lcol[layer];
-			T.tnorm = -normalize(
-				mix(vec3(0.0), vec3(1.0), bound_crossed)*sidir);
+
+			if(false)
+			{
+				// this just looks wrong
+				uint v0 = (cell.y-(1<<layer) >= 0 && cell.y-(1<<layer) < 128
+					? texelFetch(tex_vox, (cell.xzy>>layer) + ivec3(256, 256, 256-(256>>layer)-1), 0).x
+					: 0x00U);
+				uint v1 = (cell.y+(1<<layer) >= 0 && cell.y+(1<<layer) < 128
+					? texelFetch(tex_vox, (cell.xzy>>layer) + ivec3(256, 256, 256-(256>>layer)+1), 0).x
+					: 0x00U);
+				uint v2 = (cell.y >= 0 && cell.y < 128
+					? texelFetch(tex_vox, (cell.xzy>>layer) + ivec3(256-1, 256, 256-(256>>layer)), 0).x
+					: 0x00U);
+				uint v3 = (cell.y >= 0 && cell.y < 128
+					? texelFetch(tex_vox, (cell.xzy>>layer) + ivec3(256+1, 256, 256-(256>>layer)), 0).x
+					: 0x00U);
+				uint v4 = (cell.y >= 0 && cell.y < 128
+					? texelFetch(tex_vox, (cell.xzy>>layer) + ivec3(256, 256-1, 256-(256>>layer)), 0).x
+					: 0x00U);
+				uint v5 = (cell.y >= 0 && cell.y < 128
+					? texelFetch(tex_vox, (cell.xzy>>layer) + ivec3(256, 256+1, 256-(256>>layer)), 0).x
+					: 0x00U);
+
+				//
+				T.tnorm = normalize(vec3(
+					float(v2 != 0U) - float(v3 != 0U),
+					float(v0 != 0U) - float(v1 != 0U),
+					float(v4 != 0U) - float(v5 != 0U)));
+
+			} else {
+				T.tnorm = -normalize(
+					mix(vec3(0.0), vec3(1.0), bound_crossed)*sidir);
+			}
 
 			return;
 		}
 
 		// Only necessary if we don't have ascension
 		if(false)
-		if(any(lessThan(cell.xz, vec2(-128<<layer))) ||
-				any(greaterThanEqual(cell.xz, vec2(128<<layer))))
+		if(any(lessThan(cell.xz, vec2(-256<<layer))) ||
+				any(greaterThanEqual(cell.xz, vec2(256<<layer))))
 			break;
 
 		vec3 btime = subcell*aidir;
@@ -117,7 +149,7 @@ void scene_trace_voxygen(inout Trace T, bool shadow_mode)
 		//if(layer < base_layer && dot((cell*ivec3(bound_crossed)) & ((2<<layer)-1), ivec3(1)) == 0)
 		if(layer < base_layer)
 		if(cell.y < 0 || cell.y >= 128
-			|| (texelFetch(tex_vox, (cell.xzy>>(layer+1)) + ivec3(128, 128, 256-(256>>(layer+1))), 0).x & 0x80U) == 0U)
+			|| (texelFetch(tex_vox, (cell.xzy>>(layer+1)) + ivec3(256, 256, 256-(256>>(layer+1))), 0).x & 0x80U) == 0U)
 		{
 			// Ascend
 			// TODO: investigate multiple ascensions per ray

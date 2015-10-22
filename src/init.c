@@ -342,7 +342,7 @@ void init_gfx(void)
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAX_LEVEL, 4);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexImage3D(GL_TEXTURE_3D, 0, GL_R8UI, 256, 256, 256, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, NULL);
+		glTexImage3D(GL_TEXTURE_3D, 0, GL_R8UI, 512, 512, 256, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, NULL);
 		glBindTexture(GL_TEXTURE_3D, 0);
 		printf("%i\n", glGetError());
 	} else {
@@ -388,7 +388,7 @@ void init_gfx(void)
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		//glTexStorage3D(GL_TEXTURE_3D, 1, GL_R8UI, 256, 256, 128+64+32+16+8);
-		glTexStorage3D(GL_TEXTURE_3D, 1, GL_R8UI, 256, 256, 256);
+		glTexStorage3D(GL_TEXTURE_3D, 1, GL_R8UI, 512, 512, 256);
 		glBindTexture(GL_TEXTURE_3D, 0);
 		printf("%i\n", glGetError());
 	}
@@ -480,8 +480,8 @@ void init_gfx(void)
 	{
 		int lsize = 128>>layer;
 		int ly = 128*2-(lsize*2);
-		for(sz = 0; sz < 256; sz += lsize)
-		for(sx = 0; sx < 256; sx += lsize)
+		for(sz = 0; sz < 512; sz += lsize)
+		for(sx = 0; sx < 512; sx += lsize)
 		for(sy = 0; sy < lsize; sy += lsize)
 		{
 			glTexSubImage3D(GL_TEXTURE_3D, 0, sx, sz, sy + ly, lsize, lsize, lsize, GL_RED_INTEGER, GL_UNSIGNED_BYTE, voxygen_buf[layer]);
