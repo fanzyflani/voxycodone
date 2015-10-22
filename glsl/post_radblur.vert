@@ -2,7 +2,7 @@
 #version 150
 
 out vec2 tc;
-attribute vec2 in_vertex;
+in vec2 in_vertex;
 
 void main()
 {

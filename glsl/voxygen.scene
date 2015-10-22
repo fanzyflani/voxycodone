@@ -13,7 +13,7 @@ void scene_trace_voxygen(inout Trace T, bool shadow_mode)
 	vec3 adir = abs(T.wdir);
 	vec3 aidir = 1.0/max(vec3(EPSILON), adir);
 	bvec3 sign_neg = lessThan(T.wdir, vec3(0.0));
-	ivec3 sidir = ivec3(mix(ivec3(1), ivec3(-1), sign_neg));
+	ivec3 sidir = ivec3(mix(vec3(1.0), vec3(-1.0), sign_neg));
 	vec3 subcell = vec3(bcpos - cpos);
 	subcell = mix(float(1<<base_layer) - subcell, subcell, sign_neg);
 

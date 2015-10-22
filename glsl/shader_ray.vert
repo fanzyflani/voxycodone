@@ -5,7 +5,7 @@
 
 invariant out vec3 wpos_in;
 out vec3 wdir_in;
-attribute vec2 in_vertex;
+in vec2 in_vertex;
 
 void main()
 {
