@@ -466,8 +466,15 @@ void init_gfx(void)
 	voxygen_buf[3] = malloc(16*16*16);
 	voxygen_buf[4] = malloc(8*8*8);
 
-	decode_voxygen_chunk(voxygen_buf, fp);
+	printf("Decoding voxel data\n");
+	//int i;
+	//for(i = 0; i < 50; i++)
+	{
+		//fseek(fp, 0, SEEK_SET);
+		decode_voxygen_chunk(voxygen_buf, fp);
+	}
 
+	printf("Uploading voxel data\n");
 	int layer;
 	for(layer = 0; layer <= 4; layer++)
 	{
@@ -481,6 +488,7 @@ void init_gfx(void)
 			//printf("%i - %i %i %i %i\n", glGetError(), sx, sy, sz, ly);
 		}
 	}
+	printf("Freeing voxel data\n");
 
 	free(voxygen_buf[0]);
 	free(voxygen_buf[1]);
