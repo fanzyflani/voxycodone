@@ -8,7 +8,7 @@ const bool do_kd_restart = false;
 
 const float EPSILON = 0.0001;
 const float ZFAR = 10000.0;
-const uint BOUNCES = 2U;
+const uint BOUNCES = 0U;
 const bool do_indirect = false;
 const uint RADIOSITY_BOUNCES_WARNING_THIS_IS_FUCKING_SLOW = 1U; // WARNING INDIRECT BOUNCES ARE FUCKING SLOW
 const uint SPH_MAX = (1024U);
