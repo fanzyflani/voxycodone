@@ -7,6 +7,17 @@ const vec3[] lcol = vec3[](
 	vec3(0.7, 0.1, 0.7)
 );
 
+uint voxel_fetch(int layer, ivec3 cell)
+{
+	//
+	return (cell.y >= 0 && cell.y < 128
+		? texelFetch(tex_vox, ((cell.xzy>>(layer)) + ivec3(256, 256, 256-(256>>(layer))) & ivec3(511, 511, 255)), 0).x
+		: 0x00U);
+	//if(cell.y >= 128) return 0x00U;
+	//return texelFetch(tex_vox, (cell.xzy>>(layer)) + ivec3(256, 256, 256-(256>>(layer))), 0).x;
+
+}
+
 void scene_trace_voxygen(inout Trace T, bool shadow_mode)
 {
 	int i;
@@ -42,14 +53,11 @@ void scene_trace_voxygen(inout Trace T, bool shadow_mode)
 		if(cell.y < 0 && sidir.y < 0) break;
 		if(cell.y >= 128 && sidir.y > 0) break;
 
-		uint v = (cell.y >= 0 && cell.y < 128
-			? texelFetch(tex_vox, (cell.xzy>>layer) + ivec3(256, 256, 256-(256>>layer)), 0).x
-			: 0x00U);
+		uint v = voxel_fetch(layer, cell);
 
 		if((v & 0x80U) != 0U)
 		{
-			// We need to go deeper
-			// TODO: range check for outer layers
+			// Descend
 			while(layer > 0)
 			{
 				if(any(lessThan(cell.xz, vec2(-128<<layer))) ||
@@ -69,13 +77,7 @@ void scene_trace_voxygen(inout Trace T, bool shadow_mode)
 				// sidir neg = add 1 if subcell >= 1<<layer
 				// sidir pos = add 1 if subcell < 1<<layer
 
-				v = (cell.y >= 0 && cell.y < 128
-					? texelFetch(tex_vox, (cell.xzy>>layer) + ivec3(256, 256, 256-(256>>layer)), 0).x
-					: 0x00U);
-
-				// cell.y is guaranteed to be in range
-				// XXX: apparently not!
-				//v = texelFetch(tex_vox, (cell.xzy>>layer) + ivec3(0, 0, 256-(256>>layer)), 0).x;
+				v = voxel_fetch(layer, cell);
 
 				if((v & 0x80U) == 0U)
 					break;
@@ -91,42 +93,37 @@ void scene_trace_voxygen(inout Trace T, bool shadow_mode)
 
 			//T.tshine = 0.3;
 			T.tshine = 0.3;
+
+			// Get texcoord modulus
+			vec3 cmc = ((fract(subcell)-0.5)*vec3(sidir))+0.5;
+			vec2 tc;
+
+			if(bound_crossed.y)
+			{
+				tc = vec2(cmc.x, cmc.z);
+			} else {
+				tc = vec2(((cmc.x-cmc.z)-0.5)*float(dot(vec2(sidir.xz),vec2(bound_crossed.xz)))+0.5, cmc.y);
+			}
+
+			tc = fract(tc);
+			//T.tcol = (texture(tex_rand, tc/16.0, 0).r*0.5+0.5)
+			T.tcol = (texelFetch(tex_rand, ivec2(tc*16), 0).r*0.5+0.5)
+			*(
+				voxel_fetch(layer, cell + ivec3(0, 4<<layer, 0)) == 0x01U
+				? vec3(0.4, 0.4, 0.4)
+			:
+				voxel_fetch(layer, cell + ivec3(0, 1<<layer, 0)) != 0x01U
+				&& ((cmc.y < 0.2 && (!(bound_crossed.y && sidir.y > 0)))
+				|| (bound_crossed.y && sidir.y < 0))
+				? vec3(0.3, 1.0, 0.3)
+				: vec3(0.6, 0.4, 0.2)
+			);
+
 			//T.tcol = ((v & 0x80U) != 0U) ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 1.0, 0.0);
-			T.tcol = vec3(0.5, 0.5, 0.5);
+			//T.tcol = vec3(0.5, 0.5, 0.5);
 			//T.tcol = lcol[layer];
 
-			if(false)
-			{
-				// this just looks wrong
-				uint v0 = (cell.y-(1<<layer) >= 0 && cell.y-(1<<layer) < 128
-					? texelFetch(tex_vox, (cell.xzy>>layer) + ivec3(256, 256, 256-(256>>layer)-1), 0).x
-					: 0x00U);
-				uint v1 = (cell.y+(1<<layer) >= 0 && cell.y+(1<<layer) < 128
-					? texelFetch(tex_vox, (cell.xzy>>layer) + ivec3(256, 256, 256-(256>>layer)+1), 0).x
-					: 0x00U);
-				uint v2 = (cell.y >= 0 && cell.y < 128
-					? texelFetch(tex_vox, (cell.xzy>>layer) + ivec3(256-1, 256, 256-(256>>layer)), 0).x
-					: 0x00U);
-				uint v3 = (cell.y >= 0 && cell.y < 128
-					? texelFetch(tex_vox, (cell.xzy>>layer) + ivec3(256+1, 256, 256-(256>>layer)), 0).x
-					: 0x00U);
-				uint v4 = (cell.y >= 0 && cell.y < 128
-					? texelFetch(tex_vox, (cell.xzy>>layer) + ivec3(256, 256-1, 256-(256>>layer)), 0).x
-					: 0x00U);
-				uint v5 = (cell.y >= 0 && cell.y < 128
-					? texelFetch(tex_vox, (cell.xzy>>layer) + ivec3(256, 256+1, 256-(256>>layer)), 0).x
-					: 0x00U);
-
-				//
-				T.tnorm = normalize(vec3(
-					float(v2 != 0U) - float(v3 != 0U),
-					float(v0 != 0U) - float(v1 != 0U),
-					float(v4 != 0U) - float(v5 != 0U)));
-
-			} else {
-				T.tnorm = -normalize(
-					mix(vec3(0.0), vec3(1.0), bound_crossed)*sidir);
-			}
+			T.tnorm = -normalize(mix(vec3(0.0), vec3(1.0), bound_crossed)*sidir);
 
 			return;
 		}
@@ -147,9 +144,8 @@ void scene_trace_voxygen(inout Trace T, bool shadow_mode)
 		// Check for alignment
 		if(true)
 		//if(layer < base_layer && dot((cell*ivec3(bound_crossed)) & ((2<<layer)-1), ivec3(1)) == 0)
-		if(layer < base_layer)
-		if(cell.y < 0 || cell.y >= 128
-			|| (texelFetch(tex_vox, (cell.xzy>>(layer+1)) + ivec3(256, 256, 256-(256>>(layer+1))), 0).x & 0x80U) == 0U)
+		if(layer < base_layer && (cell.y < 0 || cell.y >= 128
+			|| (voxel_fetch(layer+1, cell) & 0x80U) == 0U))
 		{
 			// Ascend
 			// TODO: investigate multiple ascensions per ray

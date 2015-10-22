@@ -387,6 +387,9 @@ void init_gfx(void)
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAX_LEVEL, 0);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		//glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		//glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		//glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_);
 		//glTexStorage3D(GL_TEXTURE_3D, 1, GL_R8UI, 256, 256, 128+64+32+16+8);
 		glTexStorage3D(GL_TEXTURE_3D, 1, GL_R8UI, 512, 512, 256);
 		glBindTexture(GL_TEXTURE_3D, 0);
