@@ -161,7 +161,8 @@ void print_shader_log(GLuint shader)
 		int n_file = 0;
 		int n_line = 0;
 		int n_chr = 0;
-		sscanf(v, "%d:%d(%d)", &n_file, &n_line, &n_chr);
+		sscanf(v, "%d:%d(%d)", &n_file, &n_line, &n_chr); // Intel
+		sscanf(v, "%d(%d)", &n_file, &n_line); // nVidia
 
 		char *s = src;
 		int i;
