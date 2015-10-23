@@ -58,7 +58,7 @@ void main()
 		// Apply ambient
 		vec3 acol_gi = vec3(0.0);
 		vec3 acol = (
-			RADIOSITY_BOUNCES_WARNING_THIS_IS_FUCKING_SLOW > 0U
+			do_indirect && RADIOSITY_BOUNCES_WARNING_THIS_IS_FUCKING_SLOW > 0U
 			? vec3(0.0)
 			: T0.tcol * light_amb);
 

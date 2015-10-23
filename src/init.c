@@ -180,6 +180,8 @@ GLuint init_shader(const char *fname_vert, const char *fname_frag)
 
 void init_gfx(void)
 {
+	int i;
+
 	shader_blur = init_shader("glsl/post_radblur.vert", "glsl/post_radblur.frag");
 	shader_blur_tex0 = glGetUniformLocation(shader_blur, "tex0");
 	shader_blur_tex1 = glGetUniformLocation(shader_blur, "tex1");
@@ -253,10 +255,11 @@ void init_gfx(void)
 		printf("%i\n", glGetError());
 
 		glBindTexture(GL_TEXTURE_2D, tex_ray_rand);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 7);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 128, 128, 0, GL_RGBA, GL_FLOAT, NULL);
+		for(i = 0; i <= 7; i++)
+			glTexImage2D(GL_TEXTURE_2D, i, GL_RGBA32F, 128>>i, 128>>i, 0, GL_RGBA, GL_FLOAT, NULL);
 		printf("%i\n", glGetError());
 
 		glBindTexture(GL_TEXTURE_2D, 0);
@@ -298,10 +301,10 @@ void init_gfx(void)
 		printf("%i\n", glGetError());
 
 		glBindTexture(GL_TEXTURE_2D, tex_ray_rand);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 7);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, 128, 128);
+		glTexStorage2D(GL_TEXTURE_2D, 8, GL_RGBA32F, 128, 128);
 		printf("%i\n", glGetError());
 
 		glBindTexture(GL_TEXTURE_2D, 0);

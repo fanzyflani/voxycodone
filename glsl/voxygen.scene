@@ -150,13 +150,21 @@ void scene_trace_voxygen(inout Trace T, bool shadow_mode)
 
 			tc = fract(tc);
 			//T.tcol = vec3(texture(tex_rand, tc/16.0, 0).r*0.5+0.5);
+			int mip = 0;
+			float miptmp = 720.0/16.0/2.0;
+			while(mip < 4 && atime >= miptmp)
+			{
+				mip++;
+				miptmp *= 2.0;
+			}
+
 			T.tcol = (
 				voxel_fetch(layer, cell + ivec3(0, 4<<layer, 0)) == 0x01U
 				? 
-				(texelFetch(tex_rand, ivec2(tc*vec2(4.0, 16.0)), 0).r*0.5+0.5)
+				(texelFetch(tex_rand, ivec2(tc*vec2(4.0, 16.0))>>mip, mip).r*0.5+0.5)
 				* vec3(0.4, 0.4, 0.4)
 			:
-			(texelFetch(tex_rand, ivec2(tc*16), 0).r*0.5+0.5)*(
+			(texelFetch(tex_rand, ivec2(tc*16)>>mip, mip).r*0.5+0.5)*(
 				voxel_fetch(layer, cell + ivec3(0, 1<<layer, 0)) != 0x01U
 				&& ((cmc.y < 0.2 && (!(bound_crossed.y && sidir.y > 0)))
 				|| (bound_crossed.y && sidir.y < 0))

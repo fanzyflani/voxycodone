@@ -105,13 +105,30 @@ void h_render_main(void)
 	if(!sent_shit)
 	{
 		// Random noise
-		static float rand_noise[128*128*4];
+		static float rand_noise[2][128*128*4];
 		for(i = 0; i < 128*128*4; i++)
-			rand_noise[i] = (rand()%65537)/65537.0;
+			rand_noise[0][i] = (rand()%65537)/65537.0;
 
 		glGetError();
 		glBindTexture(GL_TEXTURE_2D, tex_ray_rand);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 128, 128, GL_RGBA, GL_FLOAT, rand_noise);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 128, 128, GL_RGBA, GL_FLOAT, rand_noise[0]);
+
+		for(j = 1; j < 8; j++)
+		{
+			for(x = 0; x < (128>>j); x++)
+			for(y = 0; y < (128>>j); y++)
+			for(i = 0; i < 4; i++)
+				rand_noise[j&1][(128>>j)*y + x]
+					= (0.0
+					+ rand_noise[(j-1)&1][(128>>(j-1))*(2*y+0) + (2*x+0)]
+					+ rand_noise[(j-1)&1][(128>>(j-1))*(2*y+0) + (2*x+1)]
+					+ rand_noise[(j-1)&1][(128>>(j-1))*(2*y+1) + (2*x+0)]
+					+ rand_noise[(j-1)&1][(128>>(j-1))*(2*y+1) + (2*x+1)])
+						/ 4.0;
+
+			glTexSubImage2D(GL_TEXTURE_2D, j, 0, 0, 128>>j, 128>>j, GL_RGBA, GL_FLOAT, rand_noise[j&1]);
+		}
+
 		printf("tex_rand %i\n", glGetError());
 
 		sent_shit = true;
