@@ -12,9 +12,33 @@ void init_lua(void)
 	// TODO cherry-pick once we make this into a game engine
 	luaL_openlibs(L);
 
-	// TODO: other things!
-	lua_getglobal(L, "print");
-	lua_pushstring(L, "Hello World!");
-	lua_call(L, 1, 0);
+	//
+	// Create tables to fill in
+	//
+
+	// --- draw
+	lua_newtable(L);
+	lua_setglobal(L, "draw");
+
+	// --- matrix
+	lua_newtable(L);
+	lua_setglobal(L, "matrix");
+
+	// --- texture
+	lua_newtable(L);
+	lua_setglobal(L, "texture");
+
+	// --- shader
+	lua_newtable(L);
+	lua_setglobal(L, "shader");
+
+	// --- voxel
+	lua_newtable(L);
+	lua_setglobal(L, "voxel");
+
+	// Run main.lua
+	printf("Running lua/main.lua\n");
+	luaL_loadfile(L, "lua/main.lua");
+	lua_call(L, 0, 0); // if it's broken, it needs to crash
 }
 
