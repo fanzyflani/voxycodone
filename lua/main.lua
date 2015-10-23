@@ -275,6 +275,9 @@ cam_rot_y = 0.0
 cam_pos_x = 0.0
 cam_pos_y = 0.0
 cam_pos_z = 0.0
+cam_vel_x = 0.0
+cam_vel_y = 0.0
+cam_vel_z = 0.0
 
 function hook_key(key, state)
 	if key == SDLK_ESCAPE and not state then
@@ -339,9 +342,14 @@ function hook_tick(sec_current, sec_delta)
 	local hx, hy, hz = yc, 0, -ys
 	local vx, vy, vz = -xs*ys, xc, -xs*yc
 
-	cam_pos_x = cam_pos_x + hx*ldh + fx*ldw + vx*ldv
-	cam_pos_y = cam_pos_y + hy*ldh + fy*ldw + vy*ldv
-	cam_pos_z = cam_pos_z + hz*ldh + fz*ldw + vz*ldv
+	local mvspeedef = mvspeed*(1.0 - math.exp(-sec_delta*0.1));
+	cam_vel_x = cam_vel_x + (hx*ldh + fx*ldw + vx*ldv - cam_vel_x)*mvspeedef
+	cam_vel_y = cam_vel_y + (hy*ldh + fy*ldw + vy*ldv - cam_vel_y)*mvspeedef
+	cam_vel_z = cam_vel_z + (hz*ldh + fz*ldw + vz*ldv - cam_vel_z)*mvspeedef
+
+	cam_pos_x = cam_pos_x + cam_vel_x
+	cam_pos_y = cam_pos_y + cam_vel_y
+	cam_pos_z = cam_pos_z + cam_vel_z
 
 	-- TODO: set camera
 	draw.cam_set_pa(cam_pos_x, cam_pos_y, cam_pos_z, cam_rot_x, cam_rot_y);
