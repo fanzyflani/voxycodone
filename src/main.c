@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
-	window = SDL_CreateWindow("WIP RAYTRACER",
+	window = SDL_CreateWindow("OBEY AUTHORITY CEASE REPRODUCTION EAT MCDONALDS",
 		SDL_WINDOWPOS_UNDEFINED,
 		SDL_WINDOWPOS_UNDEFINED,
 		1280, 720,
@@ -104,15 +104,29 @@ int main(int argc, char *argv[])
 			case SDL_KEYUP:
 			case SDL_KEYDOWN:
 				hook_key(ev.key.keysym.sym, ev.type == SDL_KEYDOWN);
+				lua_getglobal(Lbase, "hook_key");
+				lua_pushinteger(Lbase, ev.key.keysym.sym);
+				lua_pushboolean(Lbase, ev.type == SDL_KEYDOWN);
+				lua_call(Lbase, 2, 0);
 				break;
 
 			case SDL_MOUSEBUTTONUP:
 			case SDL_MOUSEBUTTONDOWN:
 				hook_mouse_button(ev.button.button, ev.type == SDL_MOUSEBUTTONDOWN);
+				lua_getglobal(Lbase, "hook_mouse_button");
+				lua_pushinteger(Lbase, ev.button.button);
+				lua_pushboolean(Lbase, ev.type == SDL_MOUSEBUTTONDOWN);
+				lua_call(Lbase, 2, 0);
 				break;
 
 			case SDL_MOUSEMOTION:
 				hook_mouse_motion(ev.motion.x, ev.motion.y, ev.motion.xrel, ev.motion.yrel);
+				lua_getglobal(Lbase, "hook_mouse_motion");
+				lua_pushinteger(Lbase, ev.motion.x);
+				lua_pushinteger(Lbase, ev.motion.y);
+				lua_pushinteger(Lbase, ev.motion.xrel);
+				lua_pushinteger(Lbase, ev.motion.yrel);
+				lua_call(Lbase, 4, 0);
 				break;
 		}
 
@@ -135,6 +149,10 @@ int main(int argc, char *argv[])
 		double sec_delta = ((double)(ticks_now - ticks_prev))/1000.0;
 		render_sec_current = ((double)(ticks_now))/1000.0;
 		hook_tick(render_sec_current, sec_delta);
+		lua_getglobal(Lbase, "hook_tick");
+		lua_pushnumber(Lbase, render_sec_current);
+		lua_pushnumber(Lbase, sec_delta);
+		lua_call(Lbase, 2, 0);
 		h_render_main();
 		glFinish();
 		SDL_GL_SwapWindow(window);

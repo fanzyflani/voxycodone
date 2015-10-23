@@ -142,6 +142,8 @@ extern int spilist_len;
 void kd_generate(void);
 
 // lbind.c
+extern lua_State *Lbase;
+
 void init_lua(void);
 
 // scene.c

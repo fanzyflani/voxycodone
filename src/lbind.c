@@ -36,9 +36,19 @@ void init_lua(void)
 	lua_newtable(L);
 	lua_setglobal(L, "voxel");
 
+	// --- misc
+	lua_newtable(L);
+	lua_setglobal(L, "misc");
+
 	// Run main.lua
 	printf("Running lua/main.lua\n");
-	luaL_loadfile(L, "lua/main.lua");
+	if(luaL_loadfile(L, "lua/main.lua") != LUA_OK)
+	{
+		printf("ERROR LOADING: %s\n", lua_tostring(L, 1));
+		fflush(stdout);
+		abort();
+	}
+
 	lua_call(L, 0, 0); // if it's broken, it needs to crash
 }
 

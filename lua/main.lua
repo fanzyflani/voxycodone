@@ -254,3 +254,100 @@ for k, v in pairs(OBJLIST) do
 	print("-----\n")
 end
 
+-- from SDL_keycode.h
+SDLK_ESCAPE = 27
+SDLK_SPACE = 32
+SDLK_w = ("w"):byte()
+SDLK_s = ("s"):byte()
+SDLK_a = ("a"):byte()
+SDLK_d = ("d"):byte()
+SDLK_LCTRL = (1<<30)+224
+
+key_pos_dzp = false
+key_pos_dzn = false
+key_pos_dxn = false
+key_pos_dxp = false
+key_pos_dyn = false
+key_pos_dyp = false
+
+cam_rot_x = 0.0
+cam_rot_y = 0.0
+cam_pos_x = 0.0
+cam_pos_y = 0.0
+cam_pos_z = 0.0
+
+do_exit = false -- just in case we were to bother with this
+
+function hook_key(key, state)
+	if key == SDLK_ESCAPE and not state then
+		do_exit = true
+	elseif key == SDLK_w then key_pos_dzp = state
+	elseif key == SDLK_s then key_pos_dzn = state
+	elseif key == SDLK_a then key_pos_dxn = state
+	elseif key == SDLK_d then key_pos_dxp = state
+	elseif key == SDLK_LCTRL then key_pos_dyn = state
+	elseif key == SDLK_SPACE then key_pos_dyp = state
+	end
+end
+
+function hook_mouse_button(button, state)
+	if button == 1 and not state then
+		mouse_locked = not mouse_locked
+		-- TODO provide API
+		--misc.cursor_visible_set(not mouse_locked)
+		--misc.mouse_grab_set(mouse_locked)
+	end
+end
+
+function hook_mouse_motion(x, y, dx, dy)
+	if not mouse_locked then return end
+
+	cam_rot_y = cam_rot_y - dx*math.pi/1000.0
+	cam_rot_x = cam_rot_x + dy*math.pi/1000.0
+	local clamp = math.pi/2.0-0.0001
+	if cam_rot_x < -clamp then cam_rot_x = -clamp end
+	if cam_rot_x >  clamp then cam_rot_x =  clamp end
+end
+
+function hook_tick(sec_current, sec_delta)
+	-- This is a Lua implementation
+	-- of a C function
+	-- which was originally written in Lua.
+
+	local mvspeed = 20.0
+	--local mvspeed = 2.0
+	local mvspeedf = mvspeed * sec_delta
+
+	local ldx = 0.0
+	local ldy = 0.0
+	local ldz = 0.0
+	if key_pos_dxn then ldx = ldx - 1 end
+	if key_pos_dxp then ldx = ldx + 1 end
+	if key_pos_dyn then ldy = ldy - 1 end
+	if key_pos_dyp then ldy = ldy + 1 end
+	if key_pos_dzn then ldz = ldz - 1 end
+	if key_pos_dzp then ldz = ldz + 1 end
+
+	ldx = ldx * mvspeedf
+	ldy = ldy * mvspeedf
+	ldz = ldz * mvspeedf
+
+	local ldw = ldz
+	local ldh = ldx
+	local ldv = ldy
+
+	local xs, xc = math.sin(cam_rot_x), math.cos(cam_rot_x)
+	local ys, yc = math.sin(cam_rot_y), math.cos(cam_rot_y)
+	local fx, fy, fz = -xc*ys, -xs, -xc*yc
+	local wx, wy, wz = -ys, 0, -yc
+	local hx, hy, hz = yc, 0, -ys
+	local vx, vy, vz = -xs*ys, xc, -xs*yc
+
+	cam_pos_x = cam_pos_x + hx*ldh + fx*ldw + vx*ldv
+	cam_pos_y = cam_pos_y + hy*ldh + fy*ldw + vy*ldv
+	cam_pos_z = cam_pos_z + hz*ldh + fz*ldw + vz*ldv
+
+	-- TODO: set camera
+	--print(sec_delta)
+end
+
