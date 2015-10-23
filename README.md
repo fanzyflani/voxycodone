@@ -3,7 +3,7 @@ WIP raytracer for demosplash 2015
 
 by GreaseMonkey
 
-dependencies: SDL2, libepoxy
+dependencies: SDL2, libepoxy, Lua 5.3
 
 uses datenwolf's linmath.h "licensed" under WTFPLv2 (Public Domain)
 

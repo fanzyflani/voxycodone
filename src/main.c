@@ -83,6 +83,7 @@ int main(int argc, char *argv[])
 #endif
 
 	init_gfx();
+	init_lua();
 
 	int32_t ticks_prev = SDL_GetTicks();
 	int32_t ticks_get_fps = ticks_prev;

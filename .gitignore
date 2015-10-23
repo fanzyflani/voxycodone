@@ -1,6 +1,7 @@
 # final builds
 tfiy
 tfiy.exe
+dumps/
 
 # libs
 *.dll

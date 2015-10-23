@@ -17,6 +17,10 @@
 #include <epoxy/wgl.h>
 #endif
 
+#include <lua.h>
+#include <lualib.h>
+#include <lauxlib.h>
+
 #ifdef WIN32
 // libepoxy calls wglGetProcAddress for stuff that's core in 1.1
 // at least on Wine this returns NULL for a lot of things
@@ -137,6 +141,9 @@ extern int spilist_len;
 
 void kd_generate(void);
 
+// lbind.c
+void init_lua(void);
+
 // scene.c
 extern double cam_rot_x;
 extern double cam_rot_y;
@@ -153,6 +160,8 @@ extern struct sph sph_list[SPH_MAX];
 
 void sph_set(int i, double x, double y, double z, double rad, int r, int g, int b, int a);
 
+// voxel.c
+void decode_voxygen_chunk(uint8_t **voxygen_buf, FILE *fp);
 
 // main.c
 extern SDL_Window *window;
