@@ -66,12 +66,16 @@ void fill_voxygen_subchunk(uint8_t **voxygen_buf, int layer, int sx, int sy, int
 	assert((sz>>layer) < (128>>layer));
 	assert((sx>>layer)+lsize*((sz>>layer)+lsize*(sy>>layer)) >= 0);
 	assert((sx>>layer)+lsize*((sz>>layer)+lsize*(sy>>layer)) < (128>>layer)*(128>>layer)*(128>>layer));
-	if(layer == 0) c &= ~0x80;
+	assert((c & 0x80) == 0);
+	//if(layer == 0) c &= ~0x80;
 	voxygen_buf[layer][(sx>>layer)+lsize*((sz>>layer)+lsize*(sy>>layer))] = c;
 
 	if(layer > 0)
 	{
 		layer--;
+		assert((c & 0x80) == 0);
+		//c &= ~0x80;
+		c |= 0x40;
 
 		int l0 = 0;
 		int l1 = 1<<layer;
@@ -92,6 +96,7 @@ void decode_voxygen_subchunk(uint8_t **voxygen_buf, FILE *fp, int layer, int sx,
 	int c = fgetc(fp);
 	assert(c >= 0);
 	assert(c <= 0xFF); // juuuuust in case your libc sucks (this IS being overcautious though)
+	assert((c & 0x40) == 0);
 
 	if((c & 0x80) != 0)
 	{
