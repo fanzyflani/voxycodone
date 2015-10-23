@@ -195,6 +195,7 @@ void main()
 		//vec2 scol = scol3.xz + scol3.yx - scol3.zy;
 		//vec2 scol = vec2(atan(scol3.x, scol3.z)*2.0/3.141593, scol3.y);
 		vec2 scol = vec2(scol3.x, scol3.y);
+		//vec2 scol = vec2(scol3.x, scol3.z);
 
 		float camt = 0.0;
 		camt += texture(tex_rand, scol*(1.0/32.0), 0).r*0.5;

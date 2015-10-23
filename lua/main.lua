@@ -276,11 +276,9 @@ cam_pos_x = 0.0
 cam_pos_y = 0.0
 cam_pos_z = 0.0
 
-do_exit = false -- just in case we were to bother with this
-
 function hook_key(key, state)
 	if key == SDLK_ESCAPE and not state then
-		do_exit = true
+		misc.exit()
 	elseif key == SDLK_w then key_pos_dzp = state
 	elseif key == SDLK_s then key_pos_dzn = state
 	elseif key == SDLK_a then key_pos_dxn = state
@@ -293,9 +291,7 @@ end
 function hook_mouse_button(button, state)
 	if button == 1 and not state then
 		mouse_locked = not mouse_locked
-		-- TODO provide API
-		--misc.cursor_visible_set(not mouse_locked)
-		--misc.mouse_grab_set(mouse_locked)
+		misc.mouse_grab_set(mouse_locked)
 	end
 end
 
@@ -348,6 +344,8 @@ function hook_tick(sec_current, sec_delta)
 	cam_pos_z = cam_pos_z + hz*ldh + fz*ldw + vz*ldv
 
 	-- TODO: set camera
+	draw.cam_set_pa(cam_pos_x, cam_pos_y, cam_pos_z, cam_rot_x, cam_rot_y);
+
 	--print(sec_delta)
 end
 

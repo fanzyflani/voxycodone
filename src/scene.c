@@ -396,39 +396,3 @@ void h_render_main(void)
 	glUseProgram(0);
 }
 
-void hook_tick(double sec_current, double sec_delta)
-{
-	double mvspeed = 20.0;
-	//double mvspeed = 2.0;
-	double mvspeedf = mvspeed * sec_delta;
-
-	double ldx = 0.0;
-	double ldy = 0.0;
-	double ldz = 0.0;
-	if (key_pos_dxn) ldx = ldx - 1;
-	if (key_pos_dxp) ldx = ldx + 1;
-	if (key_pos_dyn) ldy = ldy - 1;
-	if (key_pos_dyp) ldy = ldy + 1;
-	if (key_pos_dzn) ldz = ldz - 1;
-	if (key_pos_dzp) ldz = ldz + 1;
-
-	ldx = ldx * mvspeedf;
-	ldy = ldy * mvspeedf;
-	ldz = ldz * mvspeedf;
-
-	double ldw = ldz;
-	double ldh = ldx;
-	double ldv = ldy;
-
-	double xs = sin(cam_rot_x), xc = cos(cam_rot_x);
-	double ys = sin(cam_rot_y), yc = cos(cam_rot_y);
-	double fx = -xc*ys, fy = -xs, fz = -xc*yc;
-	double wx = -ys, wy = 0, wz = -yc;
-	double hx = yc, hy = 0, hz = -ys;
-	double vx = -xs*ys, vy = xc, vz = -xs*yc;
-
-	cam_pos_x = cam_pos_x + hx*ldh + fx*ldw + vx*ldv;
-	cam_pos_y = cam_pos_y + hy*ldh + fy*ldw + vy*ldv;
-	cam_pos_z = cam_pos_z + hz*ldh + fz*ldw + vz*ldv;
-}
-

@@ -7,48 +7,6 @@ int mouse_locked = false;
 
 double render_sec_current = 0.0;
 
-int key_pos_dxn = false;
-int key_pos_dxp = false;
-int key_pos_dyn = false;
-int key_pos_dyp = false;
-int key_pos_dzn = false;
-int key_pos_dzp = false;
-
-void hook_key(SDL_Keycode key, int state)
-{
-	if(key == SDLK_ESCAPE && !state)
-		do_exit = true;
-	else if(key == SDLK_w) key_pos_dzp = state;
-	else if(key == SDLK_s) key_pos_dzn = state;
-	else if(key == SDLK_a) key_pos_dxn = state;
-	else if(key == SDLK_d) key_pos_dxp = state;
-	else if(key == SDLK_LCTRL) key_pos_dyn = state;
-	else if(key == SDLK_SPACE) key_pos_dyp = state;
-}
-
-void hook_mouse_button(int button, int state)
-{
-	if(button == 1 && !state)
-	{
-		mouse_locked = !mouse_locked;
-		SDL_ShowCursor(!mouse_locked);
-		SDL_SetWindowGrab(window, mouse_locked);
-		SDL_SetRelativeMouseMode(mouse_locked);
-	}
-}
-
-void hook_mouse_motion(int x, int y, int dx, int dy)
-{
-	if(!mouse_locked)
-		return;
-
-	cam_rot_y = cam_rot_y - dx*M_PI/1000.0;
-	cam_rot_x = cam_rot_x + dy*M_PI/1000.0;
-	double clamp = M_PI/2.0-0.0001;
-	if(cam_rot_x < -clamp) cam_rot_x = -clamp;
-	if(cam_rot_x >  clamp) cam_rot_x =  clamp;
-}
-
 int main(int argc, char *argv[])
 {
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE);
@@ -103,7 +61,6 @@ int main(int argc, char *argv[])
 
 			case SDL_KEYUP:
 			case SDL_KEYDOWN:
-				hook_key(ev.key.keysym.sym, ev.type == SDL_KEYDOWN);
 				lua_getglobal(Lbase, "hook_key");
 				lua_pushinteger(Lbase, ev.key.keysym.sym);
 				lua_pushboolean(Lbase, ev.type == SDL_KEYDOWN);
@@ -112,7 +69,6 @@ int main(int argc, char *argv[])
 
 			case SDL_MOUSEBUTTONUP:
 			case SDL_MOUSEBUTTONDOWN:
-				hook_mouse_button(ev.button.button, ev.type == SDL_MOUSEBUTTONDOWN);
 				lua_getglobal(Lbase, "hook_mouse_button");
 				lua_pushinteger(Lbase, ev.button.button);
 				lua_pushboolean(Lbase, ev.type == SDL_MOUSEBUTTONDOWN);
@@ -120,7 +76,6 @@ int main(int argc, char *argv[])
 				break;
 
 			case SDL_MOUSEMOTION:
-				hook_mouse_motion(ev.motion.x, ev.motion.y, ev.motion.xrel, ev.motion.yrel);
 				lua_getglobal(Lbase, "hook_mouse_motion");
 				lua_pushinteger(Lbase, ev.motion.x);
 				lua_pushinteger(Lbase, ev.motion.y);
@@ -148,7 +103,6 @@ int main(int argc, char *argv[])
 		}
 		double sec_delta = ((double)(ticks_now - ticks_prev))/1000.0;
 		render_sec_current = ((double)(ticks_now))/1000.0;
-		hook_tick(render_sec_current, sec_delta);
 		lua_getglobal(Lbase, "hook_tick");
 		lua_pushnumber(Lbase, render_sec_current);
 		lua_pushnumber(Lbase, sec_delta);

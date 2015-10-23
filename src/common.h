@@ -154,7 +154,6 @@ extern double cam_pos_y;
 extern double cam_pos_z;
 
 void h_render_main(void);
-void hook_tick(double sec_current, double sec_delta);
 
 // sph.c
 extern int sph_count;
@@ -166,6 +165,8 @@ void sph_set(int i, double x, double y, double z, double rad, int r, int g, int 
 void decode_voxygen_chunk(uint8_t **voxygen_buf, FILE *fp);
 
 // main.c
+extern int do_exit;
+extern int mouse_locked;
 extern SDL_Window *window;
 extern double render_sec_current;
 extern int key_pos_dxn;
