@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
 		lua_pushnumber(Lbase, sec_delta);
 		lua_call(Lbase, 2, 0);
 		h_render_main();
-		glFinish();
+		//glFinish();
 		SDL_GL_SwapWindow(window);
 		ticks_prev = ticks_now;
 

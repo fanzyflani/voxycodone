@@ -117,7 +117,7 @@ void h_render_main(void)
 		{
 			for(x = 0; x < (128>>j); x++)
 			for(y = 0; y < (128>>j); y++)
-			for(i = 0; i < 4; i++)
+			//for(i = 0; i < 4; i++)
 				rand_noise[j&1][(128>>j)*y + x]
 					= (0.0
 					+ rand_noise[(j-1)&1][(128>>(j-1))*(2*y+0) + (2*x+0)]
@@ -376,7 +376,7 @@ void h_render_main(void)
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 	glBindVertexArray(0);
 
-	glDrawBuffer(GL_FRONT);
+	glDrawBuffer(GL_BACK);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glActiveTexture(GL_TEXTURE0 + 1);
 	glBindTexture(GL_TEXTURE_2D, tex_fbo0_1);

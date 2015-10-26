@@ -22,7 +22,14 @@ void fill_voxygen_subchunk(uint8_t **voxygen_buf, int layer, int sx, int sy, int
 		layer--;
 		assert((c & 0x80) == 0);
 		//c &= ~0x80;
+
 		c |= 0x40;
+		/*
+		if((c & 0x40) == 0)
+		{
+			c = 0x40 + (layer+1);
+		}
+		*/
 
 		int l0 = 0;
 		int l1 = 1<<layer;
