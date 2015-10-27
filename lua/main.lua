@@ -58,28 +58,32 @@ end
 
 sent_shit = false
 function init_gfx()
+	local x, y, i, j
+
 	-- Random noise
 	local rand_noise = {{}, {}}
 	for i = 1,128*128*4 do
 		rand_noise[1][i] = math.random()
 	end
 
-	tex_ray_rand = texture.new()
-	misc.gl_error()
+	tex_ray_rand = texture.new("2", 8, "4f", 128, 128, "ll", "4f")
 	texture.unit_set(0, "2", tex_ray_rand)
 	texture.load_sub(tex_ray_rand, "2", 0, 0, 0, 128, 128, "4f", rand_noise[1])
 
-	for j=1,8 do
+	for j=1,8-1 do
+		rand_noise[(j&1)+1] = {}
 		for x=0,(128>>j)-1 do
 		for y=0,(128>>j)-1 do
-			rand_noise[(j&1)+1][(128>>j)*y + x]
+		for i=0,3 do
+			rand_noise[(j&1)+1][((128>>j)*y + x)*4 + i + 1]
 				= (0.0
-				+ rand_noise[((j-1)&1)+1][(128>>(j-1))*(2*y+0) + (2*x+0) + 1]
-				+ rand_noise[((j-1)&1)+1][(128>>(j-1))*(2*y+0) + (2*x+1) + 1]
-				+ rand_noise[((j-1)&1)+1][(128>>(j-1))*(2*y+1) + (2*x+0) + 1]
-				+ rand_noise[((j-1)&1)+1][(128>>(j-1))*(2*y+1) + (2*x+1) + 1])
+				+ rand_noise[((j-1)&1)+1][((128>>(j-1))*(2*y+0) + (2*x+0))*4 + i + 1]
+				+ rand_noise[((j-1)&1)+1][((128>>(j-1))*(2*y+0) + (2*x+1))*4 + i + 1]
+				+ rand_noise[((j-1)&1)+1][((128>>(j-1))*(2*y+1) + (2*x+0))*4 + i + 1]
+				+ rand_noise[((j-1)&1)+1][((128>>(j-1))*(2*y+1) + (2*x+1))*4 + i + 1])
 					/ 4.0;
 
+		end
 		end
 		end
 
@@ -106,7 +110,7 @@ function hook_render(sec_current)
 	fbo.bind(fbo0)
 	texture.unit_set(1, "2", tex_ray_rand)
 	texture.unit_set(0, "3", tex_ray_vox)
-	S("use", shader_ray)
+	S.USE(shader_ray)
 
 	matrix.invert(mat_cam2, mat_cam1);
 	shader.uniform_matrix_4f(S.in_cam_inverse, 1, false, mat_cam2)
@@ -161,7 +165,7 @@ function hook_render(sec_current)
 	fbo.bind(nil)
 	texture.unit_set(1, "2", tex_fbo0_1)
 	texture.unit_set(0, "2", tex_fbo0_0)
-	S("use", shader_blur)
+	S.USE(shader_blur)
 
 	shader.uniform_1i(S.tex0, 0);
 	shader.uniform_1i(S.tex1, 1);
@@ -218,5 +222,5 @@ function hook_tick(sec_current, sec_delta)
 end
 
 -- TODO: get these working
---init_gfx()
+init_gfx()
 

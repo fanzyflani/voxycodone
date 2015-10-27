@@ -117,13 +117,13 @@ void h_render_main(void)
 		{
 			for(x = 0; x < (128>>j); x++)
 			for(y = 0; y < (128>>j); y++)
-			//for(i = 0; i < 4; i++)
-				rand_noise[j&1][(128>>j)*y + x]
+			for(i = 0; i < 4; i++)
+				rand_noise[j&1][((128>>j)*y + x)*4 + i]
 					= (0.0
-					+ rand_noise[(j-1)&1][(128>>(j-1))*(2*y+0) + (2*x+0)]
-					+ rand_noise[(j-1)&1][(128>>(j-1))*(2*y+0) + (2*x+1)]
-					+ rand_noise[(j-1)&1][(128>>(j-1))*(2*y+1) + (2*x+0)]
-					+ rand_noise[(j-1)&1][(128>>(j-1))*(2*y+1) + (2*x+1)])
+					+ rand_noise[(j-1)&1][((128>>(j-1))*(2*y+0) + (2*x+0))*4 + i]
+					+ rand_noise[(j-1)&1][((128>>(j-1))*(2*y+0) + (2*x+1))*4 + i]
+					+ rand_noise[(j-1)&1][((128>>(j-1))*(2*y+1) + (2*x+0))*4 + i]
+					+ rand_noise[(j-1)&1][((128>>(j-1))*(2*y+1) + (2*x+1))*4 + i])
 						/ 4.0;
 
 			glTexSubImage2D(GL_TEXTURE_2D, j, 0, 0, 128>>j, 128>>j, GL_RGBA, GL_FLOAT, rand_noise[j&1]);

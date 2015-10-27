@@ -19,10 +19,20 @@ end
 S = {}
 do
 	local priv = {}
+	local fns = {}
 	priv.shader = nil
 	priv.uniflist = {}
+
+	function fns.USE(shader)
+		priv.shader = shader
+	end
+
 	setmetatable(S, {
 		__index = function(t, key)
+			if fns[key] then
+				return fns[key]
+			end
+
 			if priv.shader == nil then
 				error("cannot get uniform locations for nil")
 			end
@@ -33,13 +43,6 @@ do
 			end
 			return l[key]
 		end,
-		__call = function(func, typ, ...)
-			if typ == "use" then
-				priv.shader = ...
-			else
-				error(string.format("unhandled method call to S: %s", typ or "(nil/false)"))
-			end
-		end
 	})
 end
 
