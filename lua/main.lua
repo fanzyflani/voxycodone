@@ -60,6 +60,24 @@ sent_shit = false
 function init_gfx()
 	local x, y, i, j
 
+	-- Initial texstorage
+	SPH_MAX = 1024
+	SPILIST_MAX = 2048
+	KD_MAX = 2048
+	LIGHT_MAX = 32
+
+	misc.gl_error()
+	tex_ray0 = texture.new("2", 1, "4nb", 1, SPH_MAX, "nn", "4nb")
+	print(misc.gl_error())
+	tex_ray1 = texture.new("2", 1, "1f", 1, KD_MAX, "nn", "1f")
+	print(misc.gl_error())
+	tex_ray2 = texture.new("2", 1, "1ui", 2, KD_MAX, "nn", "1ui")
+	print(misc.gl_error())
+	tex_ray3 = texture.new("2", 1, "4f", KD_MAX, 4, "nn", "4f")
+	print(misc.gl_error())
+	tex_ray_vox = texture.new("3", 1, "1ub", 512, 512, 256, "nn", "1ub")
+	print(misc.gl_error())
+
 	-- Random noise
 	local rand_noise = {{}, {}}
 	for i = 1,128*128*4 do
@@ -114,16 +132,16 @@ function hook_render(sec_current)
 
 	matrix.invert(mat_cam2, mat_cam1);
 	shader.uniform_matrix_4f(S.in_cam_inverse, 1, false, mat_cam2)
-	shader.uniform_2f(S.in_aspect, 720.0/1280.0, 1.0);
+	shader.uniform_f(S.in_aspect, 720.0/1280.0, 1.0);
 
-	shader.uniform_1i(S.tex0, 0);
-	shader.uniform_1i(S.tex1, 1);
-	shader.uniform_1i(S.tex2, 2);
-	shader.uniform_1i(S.tex3, 3);
-	shader.uniform_1i(S.tex_rand, 4);
-	shader.uniform_1i(S.tex_vox, 5);
-	shader.uniform_1i(S.sph_count, sph_count);
-	shader.uniform_1f(S.sec_current, sec_current);
+	shader.uniform_i(S.tex0, 0);
+	shader.uniform_i(S.tex1, 1);
+	shader.uniform_i(S.tex2, 2);
+	shader.uniform_i(S.tex3, 3);
+	shader.uniform_i(S.tex_rand, 4);
+	shader.uniform_i(S.tex_vox, 5);
+	shader.uniform_i(S.sph_count, sph_count);
+	shader.uniform_f(S.sec_current, sec_current);
 
 	local lcol = {}
 	local lpos = {}
@@ -147,16 +165,16 @@ function hook_render(sec_current)
 
 	local light_amb = 0.1;
 
-	shader.uniform_1ui(S.light_count, light_count);
-	shader.uniform_1f(S.light_amb, light_amb);
-	shader.uniform_3fv(S.light0_col, light_count, lcol);
-	shader.uniform_3fv(S.light0_pos, light_count, lpos);
-	shader.uniform_3fv(S.light0_dir, light_count, ldir);
-	shader.uniform_1fv(S.light0_cos, light_count, lcos);
-	shader.uniform_1fv(S.light0_pow, light_count, lpow);
+	shader.uniform_ui(S.light_count, light_count);
+	shader.uniform_f(S.light_amb, light_amb);
+	shader.uniform_fv(S.light0_col, light_count, 3, lcol);
+	shader.uniform_fv(S.light0_pos, light_count, 3, lpos);
+	shader.uniform_fv(S.light0_dir, light_count, 3, ldir);
+	shader.uniform_fv(S.light0_cos, light_count, 1, lcos);
+	shader.uniform_fv(S.light0_pow, light_count, 1, lpow);
 
-	shader.uniform_3f(S.bmin, bmin_x, bmin_y, bmin_z);
-	shader.uniform_3f(S.bmax, bmax_x, bmax_y, bmax_z);
+	shader.uniform_f(S.bmin, bmin_x, bmin_y, bmin_z);
+	shader.uniform_f(S.bmax, bmax_x, bmax_y, bmax_z);
 
 	draw.buffers_set(0, 1)
 	draw.blit()

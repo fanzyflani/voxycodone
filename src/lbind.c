@@ -263,7 +263,7 @@ static int lbind_texture_load_sub(lua_State *L)
 		if(btotal < becount || btotal < data_fmt_ebytes)
 			return luaL_error(L, "texture size overflow");
 
-		// XXX: Do we use rawlen/rawget instead of len/gettable?
+		// XXX: Do we use rawlen/rawgeti instead of len/geti?
 		lua_len(L, 9);
 		size_t len = lua_tointeger(L, -1);
 		lua_pop(L, 1);
@@ -280,9 +280,8 @@ static int lbind_texture_load_sub(lua_State *L)
 			case GL_FLOAT:
 				for(i = 0; i < becount; i++)
 				{
-					lua_pushinteger(L, i+1);
-					lua_gettable(L, 9);
-					float f = lua_tonumber(L, i);
+					lua_geti(L, 9, i+1);
+					float f = lua_tonumber(L, -1);
 					lua_pop(L, 1);
 					((float *)data)[i] = f;
 				}
@@ -340,10 +339,11 @@ static int lbind_texture_new(lua_State *L)
 	// fun thing, the last argument is only for glTexImage[123]D
 	// if we use glTex\(ture\)\=Storage[123]D it's not necessary
 
-	GLuint tex;
+	GLuint tex = 0;
 	glGenTextures(1, &tex);
 	glBindTexture(tex_target, tex);
 	glTexParameteri(tex_target, GL_TEXTURE_MAX_LEVEL, levels-1);
+	printf("%04X %u\n", tex_target, tex);
 
 	if(filter_fmt_str[0] == 'n')
 		glTexParameteri(tex_target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -377,6 +377,8 @@ static int lbind_texture_new(lua_State *L)
 	{
 		if(dims == 2)
 			glTexStorage2D(tex_target, levels, internal_fmt, xlen, ylen);
+		else if(dims == 3)
+			glTexStorage3D(tex_target, levels, internal_fmt, xlen, ylen, zlen);
 		else
 			return luaL_error(L, "TODO: fill in other dimensions");
 
@@ -391,6 +393,10 @@ static int lbind_texture_new(lua_State *L)
 		if(dims == 2)
 			for(i = 0; i < levels; i++)
 				glTexImage2D(tex_target, i, internal_fmt, xlen>>i, ylen>>i, 0,
+					data_fmt_format, data_fmt_typ, NULL);
+		else if(dims == 3)
+			for(i = 0; i < levels; i++)
+				glTexImage3D(tex_target, i, internal_fmt, xlen>>i, ylen>>i, zlen>>i, 0,
 					data_fmt_format, data_fmt_typ, NULL);
 		else
 			return luaL_error(L, "TODO: fill in other dimensions");

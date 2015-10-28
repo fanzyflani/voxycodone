@@ -104,32 +104,83 @@ void h_render_main(void)
 
 	if(!sent_shit)
 	{
-		// Random noise
-		static float rand_noise[2][128*128*4];
-		for(i = 0; i < 128*128*4; i++)
-			rand_noise[0][i] = (rand()%65537)/65537.0;
+		// Get textures from Lua state
+		lua_getglobal(Lbase, "tex_ray0"); tex_ray0 = lua_tointeger(Lbase, -1); lua_pop(Lbase, 1);
+		lua_getglobal(Lbase, "tex_ray1"); tex_ray1 = lua_tointeger(Lbase, -1); lua_pop(Lbase, 1);
+		lua_getglobal(Lbase, "tex_ray2"); tex_ray2 = lua_tointeger(Lbase, -1); lua_pop(Lbase, 1);
+		lua_getglobal(Lbase, "tex_ray3"); tex_ray3 = lua_tointeger(Lbase, -1); lua_pop(Lbase, 1);
+		lua_getglobal(Lbase, "tex_ray_rand"); tex_ray_rand = lua_tointeger(Lbase, -1); lua_pop(Lbase, 1);
+		lua_getglobal(Lbase, "tex_ray_vox"); tex_ray_vox = lua_tointeger(Lbase, -1); lua_pop(Lbase, 1);
 
+		printf("textures: %i %i %i %i %i %i\n"
+			, tex_ray0
+			, tex_ray1
+			, tex_ray2
+			, tex_ray3
+			, tex_ray_vox
+			, tex_ray_rand
+		);
+
+		// Send voxel landscape
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glBindTexture(GL_TEXTURE_3D, tex_ray_vox);
 		glGetError();
-		glBindTexture(GL_TEXTURE_2D, tex_ray_rand);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 128, 128, GL_RGBA, GL_FLOAT, rand_noise[0]);
 
-		for(j = 1; j < 8; j++)
+		FILE *fp = fopen("dat/voxel1.voxygen", "rb");
+
+		// TODO: load more than a chunk
+		// Layer 1: 128^3 chunks in a [z][x]
+		// Layer 2: 32^3 outer layers in a 4^3 arrangement [z][x][y]
+		// Layer 3: Descend the damn layers
+		// in this engine we rearrange it to [y][z][x]
+		int cx, cz;
+		const int cy = 0;
+		int sx, sy, sz;
+		uint8_t *voxygen_buf[5];
+
+		// TODO: shift *all* the voxygen stuff into src/voxel.c
+		voxygen_buf[0] = malloc(128*128*128);
+		voxygen_buf[1] = malloc(64*64*64);
+		voxygen_buf[2] = malloc(32*32*32);
+		voxygen_buf[3] = malloc(16*16*16);
+		voxygen_buf[4] = malloc(8*8*8);
+
+		printf("Decoding voxel data\n");
+		//int i;
+		//for(i = 0; i < 50; i++)
 		{
-			for(x = 0; x < (128>>j); x++)
-			for(y = 0; y < (128>>j); y++)
-			for(i = 0; i < 4; i++)
-				rand_noise[j&1][((128>>j)*y + x)*4 + i]
-					= (0.0
-					+ rand_noise[(j-1)&1][((128>>(j-1))*(2*y+0) + (2*x+0))*4 + i]
-					+ rand_noise[(j-1)&1][((128>>(j-1))*(2*y+0) + (2*x+1))*4 + i]
-					+ rand_noise[(j-1)&1][((128>>(j-1))*(2*y+1) + (2*x+0))*4 + i]
-					+ rand_noise[(j-1)&1][((128>>(j-1))*(2*y+1) + (2*x+1))*4 + i])
-						/ 4.0;
-
-			glTexSubImage2D(GL_TEXTURE_2D, j, 0, 0, 128>>j, 128>>j, GL_RGBA, GL_FLOAT, rand_noise[j&1]);
+			//fseek(fp, 0, SEEK_SET);
+			decode_voxygen_chunk(voxygen_buf, fp);
 		}
 
-		printf("tex_rand %i\n", glGetError());
+		printf("Uploading voxel data\n");
+		int layer;
+		for(layer = 0; layer <= 4; layer++)
+		{
+			int lsize = 128>>layer;
+			int ly = 128*2-(lsize*2);
+			for(sz = 0; sz < 512; sz += lsize)
+			for(sx = 0; sx < 512; sx += lsize)
+			for(sy = 0; sy < lsize; sy += lsize)
+			{
+				glTexSubImage3D(GL_TEXTURE_3D, 0, sx, sz, sy + ly, lsize, lsize, lsize, GL_RED_INTEGER, GL_UNSIGNED_BYTE, voxygen_buf[layer]);
+				//printf("%i - %i %i %i %i\n", glGetError(), sx, sy, sz, ly);
+			}
+		}
+		printf("Freeing voxel data\n");
+
+		free(voxygen_buf[0]);
+		free(voxygen_buf[1]);
+		free(voxygen_buf[2]);
+		free(voxygen_buf[3]);
+		free(voxygen_buf[4]);
+
+		fclose(fp);
+
+		glBindTexture(GL_TEXTURE_3D, 0);
+		int err = glGetError();
+		printf("tex_vox %i\n", err);
+		assert(err == 0);
 
 		sent_shit = true;
 	}
