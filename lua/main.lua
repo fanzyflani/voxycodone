@@ -160,7 +160,7 @@ function hook_render(sec_current)
 	S.USE(shader_ray)
 
 	matrix.invert(mat_cam2, mat_cam1);
-	shader.uniform_matrix_4f(S.in_cam_inverse, 1, false, mat_cam2)
+	shader.uniform_matrix_4f(S.in_cam_inverse, mat_cam2)
 	shader.uniform_f(S.in_aspect, 720.0/1280.0, 1.0);
 
 	shader.uniform_i(S.tex0, 0);
@@ -196,16 +196,17 @@ function hook_render(sec_current)
 
 	shader.uniform_ui(S.light_count, light_count);
 	shader.uniform_f(S.light_amb, light_amb);
-	shader.uniform_fv(S.light0_col, light_count, 3, lcol);
-	shader.uniform_fv(S.light0_pos, light_count, 3, lpos);
-	shader.uniform_fv(S.light0_dir, light_count, 3, ldir);
-	shader.uniform_fv(S.light0_cos, light_count, 1, lcos);
-	shader.uniform_fv(S.light0_pow, light_count, 1, lpow);
+	shader.uniform_fv(S.light_col, light_count, 3, lcol);
+	shader.uniform_fv(S.light_pos, light_count, 3, lpos);
+	shader.uniform_fv(S.light_dir, light_count, 3, ldir);
+	shader.uniform_fv(S.light_cos, light_count, 1, lcos);
+	shader.uniform_fv(S.light_pow, light_count, 1, lpow);
 
 	shader.uniform_f(S.bmin, bmin_x, bmin_y, bmin_z);
 	shader.uniform_f(S.bmax, bmax_x, bmax_y, bmax_z);
 
-	draw.buffers_set(0, 1)
+	-- TODO!
+	--[[draw.buffers_set(0, 1)
 	draw.blit()
 
 	draw.buffer_set_front()
@@ -220,6 +221,7 @@ function hook_render(sec_current)
 	draw.blit()
 
 	shader.use(nil)
+	]]
 end
 
 function hook_tick(sec_current, sec_delta)

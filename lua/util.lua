@@ -25,6 +25,7 @@ do
 
 	function fns.USE(shader)
 		priv.shader = shader
+		priv.uniflist[shader] = priv.uniflist[shader] or {}
 	end
 
 	setmetatable(S, {
@@ -38,8 +39,12 @@ do
 			end
 
 			local l = priv.uniflist[priv.shader]
-			if l[key] == nil then
+			if l[key] == nil or l[key] == -1 then
+				local spew = (l[key] == nil)
 				l[key] = shader.uniform_location_get(priv.shader, key)
+				if spew then
+					print(priv.shader, l[key], misc.gl_error(), key)
+				end
 			end
 			return l[key]
 		end,
