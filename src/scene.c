@@ -104,6 +104,39 @@ void h_render_main(void)
 
 	if(!sent_shit)
 	{
+		// Get shaders from Lua state
+		lua_getglobal(Lbase, "shader_blur"); shader_blur = lua_tointeger(Lbase, -1); lua_pop(Lbase, 1);
+		shader_blur_tex0 = glGetUniformLocation(shader_blur, "tex0");
+		shader_blur_tex1 = glGetUniformLocation(shader_blur, "tex1");
+
+		lua_getglobal(Lbase, "shader_ray"); shader_ray = lua_tointeger(Lbase, -1); lua_pop(Lbase, 1);
+		shader_ray_tex0 = glGetUniformLocation(shader_ray, "tex0");
+		shader_ray_tex1 = glGetUniformLocation(shader_ray, "tex1");
+		shader_ray_tex2 = glGetUniformLocation(shader_ray, "tex2");
+		shader_ray_tex3 = glGetUniformLocation(shader_ray, "tex3");
+		shader_ray_tex_rand = glGetUniformLocation(shader_ray, "tex_rand");
+		shader_ray_tex_vox = glGetUniformLocation(shader_ray, "tex_vox");
+		shader_ray_sec_current = glGetUniformLocation(shader_ray, "sec_current");
+		shader_ray_sph_count = glGetUniformLocation(shader_ray, "sph_count");
+		shader_ray_sph_data = glGetUniformLocation(shader_ray, "sph_data");
+		shader_ray_light_count = glGetUniformLocation(shader_ray, "light_count");
+		shader_ray_light_amb = glGetUniformLocation(shader_ray, "light_amb");
+		shader_ray_light0_col = glGetUniformLocation(shader_ray, "light_col");
+		shader_ray_light0_pos = glGetUniformLocation(shader_ray, "light_pos");
+		shader_ray_light0_dir = glGetUniformLocation(shader_ray, "light_dir");
+		shader_ray_light0_cos = glGetUniformLocation(shader_ray, "light_cos");
+		shader_ray_light0_pow = glGetUniformLocation(shader_ray, "light_pow");
+		shader_ray_bmin = glGetUniformLocation(shader_ray, "bmin");
+		shader_ray_bmax = glGetUniformLocation(shader_ray, "bmax");
+		shader_ray_in_cam_inverse = glGetUniformLocation(shader_ray, "in_cam_inverse");
+		shader_ray_in_aspect = glGetUniformLocation(shader_ray, "in_aspect");
+		//shader_ray_kd_data_split_axis = glGetUniformLocation(shader_ray, "kd_data_split_axis");
+		//shader_ray_kd_data_split_point = glGetUniformLocation(shader_ray, "kd_data_split_point");
+		//shader_ray_kd_data_child1 = glGetUniformLocation(shader_ray, "kd_data_child1");
+		//shader_ray_kd_data_spibeg = glGetUniformLocation(shader_ray, "kd_data_spibeg");
+		//shader_ray_kd_data_spilen = glGetUniformLocation(shader_ray, "kd_data_spilen");
+		shader_ray_kd_data_spilist = glGetUniformLocation(shader_ray, "kd_data_spilist");
+
 		// Get textures from Lua state
 		lua_getglobal(Lbase, "tex_ray0"); tex_ray0 = lua_tointeger(Lbase, -1); lua_pop(Lbase, 1);
 		lua_getglobal(Lbase, "tex_ray1"); tex_ray1 = lua_tointeger(Lbase, -1); lua_pop(Lbase, 1);
@@ -417,9 +450,11 @@ void h_render_main(void)
 		GL_COLOR_ATTACHMENT0 + 1,
 	};
 	glDrawBuffers(2, bufs2);
+	glViewport(0, 0, 1280/1, 720/1);
 	glBindVertexArray(va_ray_vao);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 	glBindVertexArray(0);
+	glViewport(0, 0, 1280, 720);
 
 	glDrawBuffer(GL_BACK);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);

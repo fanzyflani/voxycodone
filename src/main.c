@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
 
 			char fpsbuf[64];
 			fpsbuf[64-1] = '\x00';
-			snprintf(fpsbuf, 64-1, "TheFutureIsYesterday :D-%c-< FPS: %i", hands, fps);
+			snprintf(fpsbuf, 64-1, ":D-%c-< FPS: %i", hands, fps);
 			hands ^= ('/' ^ '\\');
 			SDL_SetWindowTitle(window, fpsbuf);
 			fps = 0;

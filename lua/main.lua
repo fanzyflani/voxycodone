@@ -114,6 +114,7 @@ function init_gfx()
 	print("tex_rand", misc.gl_error());
 
 	-- FBO
+	screen_w, screen_h = screen_w/1, screen_h/1
 	tex_fbo0_0 = texture.new("2", 1, "4nb", screen_w, screen_h, "nn", "4nb")
 	print(misc.gl_error())
 	tex_fbo0_1 = texture.new("2", 1, "4nb", screen_w, screen_h, "nn", "4nb")
@@ -125,7 +126,18 @@ function init_gfx()
 	fbo.bind_tex(fbo0, 1, "2", tex_fbo0_1, 0)
 	assert(fbo.validate(fbo0))
 	fbo.target_set(nil)
-	print(misc.gl_error())
+	print("FBO", misc.gl_error())
+
+	-- Shader
+	local vert = glslpp_parse(bin_load("glsl/post_radblur.vert"))
+	local frag = glslpp_parse(bin_load("glsl/post_radblur.frag"))
+	shader_blur = shader.new(vert, frag, {"in_vertex"}, {"out_frag_color", "out_frag_color_gi"})
+	print("shader_blur", misc.gl_error())
+
+	local vert = glslpp_parse(bin_load("glsl/shader_ray.vert"))
+	local frag = glslpp_parse(bin_load("glsl/shader_ray.frag"))
+	shader_ray = shader.new(vert, frag, {"in_vertex"}, {"out_frag_color", "out_frag_color_gi"})
+	print("shader_ray", misc.gl_error())
 end
 
 function hook_render(sec_current)

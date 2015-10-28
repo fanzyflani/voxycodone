@@ -46,4 +46,31 @@ do
 	})
 end
 
+function bin_load(fname)
+	local fp = io.open(fname, "rb")
+	local ret = fp:read("a"):gsub("\r\n", "\n"):gsub("\r", "\n")
+	fp:close()
+	return ret
+end
+
+function glslpp_parse(s)
+	local idx
+
+	while true do
+		idx = s:find("\n%", 1, true)
+		if not idx then break end
+		idx = idx + 1
+		local nidx = s:find("\n", idx+1, true) or s:len()
+		if s:sub(idx, idx+8) == "%include " then
+			local fname = s:sub(idx+8+1, nidx-1)
+			print("{"..fname.."}")
+			s = s:sub(1, idx-1) .. bin_load(fname) .. s:sub(nidx+1)
+		else
+			print(s:sub(idx, nidx-1))
+			error("unhandled preproc statement")
+		end
+	end
+
+	return s
+end
 

@@ -72,6 +72,8 @@ struct kd {
 };
 
 // glslpp.c
+GLuint init_shader_str(const char *ray_v_src, const char *ray_f_src);
+GLuint init_shader_fname(const char *fname_vert, const char *fname_frag);
 char *load_str(const char *fname);
 char *glslpp_load_str(const char *fname, size_t *len);
 
