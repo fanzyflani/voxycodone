@@ -60,6 +60,9 @@ sent_shit = false
 function init_gfx()
 	local x, y, i, j
 
+	screen_w, screen_h = draw.screen_size_get()
+	print("Screen size:", screen_w, screen_h)
+
 	-- Initial texstorage
 	SPH_MAX = 1024
 	SPILIST_MAX = 2048
@@ -109,6 +112,20 @@ function init_gfx()
 	end
 
 	print("tex_rand", misc.gl_error());
+
+	-- FBO
+	tex_fbo0_0 = texture.new("2", 1, "4nb", screen_w, screen_h, "nn", "4nb")
+	print(misc.gl_error())
+	tex_fbo0_1 = texture.new("2", 1, "4nb", screen_w, screen_h, "nn", "4nb")
+	print(misc.gl_error())
+
+	fbo0 = fbo.new()
+	print(misc.gl_error())
+	fbo.bind_tex(fbo0, 0, "2", tex_fbo0_0, 0)
+	fbo.bind_tex(fbo0, 1, "2", tex_fbo0_1, 0)
+	assert(fbo.validate(fbo0))
+	fbo.target_set(nil)
+	print(misc.gl_error())
 end
 
 function hook_render(sec_current)
@@ -125,7 +142,7 @@ function hook_render(sec_current)
 	sph_count=0
 
 	misc.gl_error()
-	fbo.bind(fbo0)
+	fbo.target_set(fbo0)
 	texture.unit_set(1, "2", tex_ray_rand)
 	texture.unit_set(0, "3", tex_ray_vox)
 	S.USE(shader_ray)
@@ -180,7 +197,7 @@ function hook_render(sec_current)
 	draw.blit()
 
 	draw.buffer_set_front()
-	fbo.bind(nil)
+	fbo.target_set(nil)
 	texture.unit_set(1, "2", tex_fbo0_1)
 	texture.unit_set(0, "2", tex_fbo0_0)
 	S.USE(shader_blur)

@@ -237,32 +237,5 @@ void init_gfx(void)
 	SDL_GetWindowSize(window, &wnd_w, &wnd_h);
 	printf("Window size: %i x %i\n", wnd_w, wnd_h);
 
-	glGetError();
-	glGenTextures(1, &tex_fbo0_0);
-	glBindTexture(GL_TEXTURE_2D, tex_fbo0_0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, wnd_w, wnd_h);
-	printf("Got FBO tex 0\n");
-
-	glGenTextures(1, &tex_fbo0_1);
-	glBindTexture(GL_TEXTURE_2D, tex_fbo0_1);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, wnd_w, wnd_h);
-	printf("Got FBO tex 1\n");
-
-	glGenFramebuffers(1, &fbo0);
-	glBindFramebuffer(GL_FRAMEBUFFER, fbo0);
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + 0, GL_TEXTURE_2D, tex_fbo0_0, 0);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + 1, GL_TEXTURE_2D, tex_fbo0_1, 0);
-	printf("Got FBO %i\n", glGetError());
-	assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
-
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
 }
 

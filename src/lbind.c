@@ -2,46 +2,6 @@
 
 lua_State *Lbase = NULL;
 
-static int lbind_draw_cam_set_pa(lua_State *L)
-{
-	if(lua_gettop(L) < 5)
-		return luaL_error(L, "expected 5 arguments to draw.cam_set_pa");
-
-	cam_pos_x = lua_tonumber(L, 1);
-	cam_pos_y = lua_tonumber(L, 2);
-	cam_pos_z = lua_tonumber(L, 3);
-	cam_rot_x = lua_tonumber(L, 4);
-	cam_rot_y = lua_tonumber(L, 5);
-
-	return 0;
-}
-
-static int lbind_misc_mouse_grab_set(lua_State *L)
-{
-	if(lua_gettop(L) < 1)
-		return luaL_error(L, "expected 1 argument to misc.mouse_grab_set");
-
-	mouse_locked = lua_toboolean(L, 1);
-	SDL_ShowCursor(!mouse_locked);
-	SDL_SetWindowGrab(window, mouse_locked);
-	SDL_SetRelativeMouseMode(mouse_locked);
-
-	return 0;
-}
-
-static int lbind_misc_exit(lua_State *L)
-{
-	do_exit = true;
-
-	return 0;
-}
-
-static int lbind_misc_gl_error(lua_State *L)
-{
-	lua_pushinteger(L, glGetError());
-	return 1;
-}
-
 static GLenum texture_get_target(lua_State *L, const char *fmt)
 {
 	if(fmt == NULL) fmt = "*** INVALID";
@@ -185,6 +145,124 @@ static void texture_get_data_fmt(lua_State *L, const char *fmt,
 			default: luaL_error(L, "EDOOFUS invalid elem byte count"); break;
 		}
 	}
+}
+
+
+static int lbind_draw_cam_set_pa(lua_State *L)
+{
+	if(lua_gettop(L) < 5)
+		return luaL_error(L, "expected 5 arguments to draw.cam_set_pa");
+
+	cam_pos_x = lua_tonumber(L, 1);
+	cam_pos_y = lua_tonumber(L, 2);
+	cam_pos_z = lua_tonumber(L, 3);
+	cam_rot_x = lua_tonumber(L, 4);
+	cam_rot_y = lua_tonumber(L, 5);
+
+	return 0;
+}
+
+static int lbind_draw_screen_size_get(lua_State *L)
+{
+	int wnd_w, wnd_h;
+	SDL_GetWindowSize(window, &wnd_w, &wnd_h);
+	
+	lua_pushinteger(L, wnd_w);
+	lua_pushinteger(L, wnd_h);
+	return 2;
+}
+
+static int lbind_misc_mouse_grab_set(lua_State *L)
+{
+	if(lua_gettop(L) < 1)
+		return luaL_error(L, "expected 1 argument to misc.mouse_grab_set");
+
+	mouse_locked = lua_toboolean(L, 1);
+	SDL_ShowCursor(!mouse_locked);
+	SDL_SetWindowGrab(window, mouse_locked);
+	SDL_SetRelativeMouseMode(mouse_locked);
+
+	return 0;
+}
+
+static int lbind_misc_exit(lua_State *L)
+{
+	do_exit = true;
+
+	return 0;
+}
+
+static int lbind_misc_gl_error(lua_State *L)
+{
+	lua_pushinteger(L, glGetError());
+	return 1;
+}
+
+static int lbind_fbo_new(lua_State *L)
+{
+	GLuint fbo;
+	glGenFramebuffers(1, &fbo);
+
+	lua_pushinteger(L, fbo);
+	return 1;
+}
+
+static int lbind_fbo_bind_tex(lua_State *L)
+{
+	if(lua_gettop(L) < 5)
+		return luaL_error(L, "expected 5 arguments to fbo.bind_tex");
+
+	GLuint fbo = lua_tointeger(L, 1);
+	int attachment = lua_tointeger(L, 2);
+	const char *tex_fmt_str = lua_tostring(L, 3);
+	GLuint tex = lua_tointeger(L, 4);
+	int level = lua_tointeger(L, 5);
+	GLenum tex_target = texture_get_target(L, tex_fmt_str);
+
+	GLenum attachment_enum;
+	if(attachment >= 0)
+		attachment_enum = GL_COLOR_ATTACHMENT0 + attachment;
+	else if(attachment == -1)
+		attachment_enum = GL_DEPTH_ATTACHMENT;
+	else if(attachment == -2)
+		attachment_enum = GL_STENCIL_ATTACHMENT;
+	else if(attachment == -3)
+		attachment_enum = GL_DEPTH_STENCIL_ATTACHMENT;
+	else
+		return luaL_error(L, "invalid attachment number");
+
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, attachment_enum, tex_target, tex, level);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	return 0;
+}
+
+static int lbind_fbo_target_set(lua_State *L)
+{
+	if(lua_gettop(L) < 1)
+		return luaL_error(L, "expected 1 argument to fbo.target_set");
+
+	GLuint fbo = lua_tointeger(L, 1);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+	return 0;
+}
+
+static int lbind_fbo_validate(lua_State *L)
+{
+	if(lua_gettop(L) < 1)
+		return luaL_error(L, "expected 1 argument to fbo.validate");
+
+	GLuint fbo = lua_tointeger(L, 1);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	lua_pushboolean(L, glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+	//printf("%04X\n", glCheckFramebufferStatus(GL_FRAMEBUFFER));
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	return 1;
 }
 
 static int lbind_texture_unit_set(lua_State *L)
@@ -343,7 +421,7 @@ static int lbind_texture_new(lua_State *L)
 	glGenTextures(1, &tex);
 	glBindTexture(tex_target, tex);
 	glTexParameteri(tex_target, GL_TEXTURE_MAX_LEVEL, levels-1);
-	printf("%04X %u\n", tex_target, tex);
+	//printf("%04X %u\n", tex_target, tex);
 
 	if(filter_fmt_str[0] == 'n')
 		glTexParameteri(tex_target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -424,7 +502,16 @@ void init_lua(void)
 	// --- draw
 	lua_newtable(L);
 	lua_pushcfunction(L, lbind_draw_cam_set_pa); lua_setfield(L, -2, "cam_set_pa");
+	lua_pushcfunction(L, lbind_draw_screen_size_get); lua_setfield(L, -2, "screen_size_get");
 	lua_setglobal(L, "draw");
+
+	// --- fbo
+	lua_newtable(L);
+	lua_pushcfunction(L, lbind_fbo_new); lua_setfield(L, -2, "new");
+	lua_pushcfunction(L, lbind_fbo_bind_tex); lua_setfield(L, -2, "bind_tex");
+	lua_pushcfunction(L, lbind_fbo_target_set); lua_setfield(L, -2, "target_set");
+	lua_pushcfunction(L, lbind_fbo_validate); lua_setfield(L, -2, "validate");
+	lua_setglobal(L, "fbo");
 
 	// --- matrix
 	lua_newtable(L);

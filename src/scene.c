@@ -111,15 +111,9 @@ void h_render_main(void)
 		lua_getglobal(Lbase, "tex_ray3"); tex_ray3 = lua_tointeger(Lbase, -1); lua_pop(Lbase, 1);
 		lua_getglobal(Lbase, "tex_ray_rand"); tex_ray_rand = lua_tointeger(Lbase, -1); lua_pop(Lbase, 1);
 		lua_getglobal(Lbase, "tex_ray_vox"); tex_ray_vox = lua_tointeger(Lbase, -1); lua_pop(Lbase, 1);
-
-		printf("textures: %i %i %i %i %i %i\n"
-			, tex_ray0
-			, tex_ray1
-			, tex_ray2
-			, tex_ray3
-			, tex_ray_vox
-			, tex_ray_rand
-		);
+		lua_getglobal(Lbase, "tex_fbo0_0"); tex_fbo0_0 = lua_tointeger(Lbase, -1); lua_pop(Lbase, 1);
+		lua_getglobal(Lbase, "tex_fbo0_1"); tex_fbo0_1 = lua_tointeger(Lbase, -1); lua_pop(Lbase, 1);
+		lua_getglobal(Lbase, "fbo0"); fbo0 = lua_tointeger(Lbase, -1); lua_pop(Lbase, 1);
 
 		// Send voxel landscape
 		glBindTexture(GL_TEXTURE_2D, 0);
