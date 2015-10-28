@@ -90,3 +90,59 @@ void decode_voxygen_chunk(uint8_t **voxygen_buf, FILE *fp)
 		decode_voxygen_subchunk(voxygen_buf, fp, 4, sx, sy, sz);
 }
 
+void voxygen_load_repeated_chunk(const char *fname)
+{
+	glGetError();
+
+	FILE *fp = fopen("dat/voxel1.voxygen", "rb");
+
+	// TODO: load more than a chunk
+	// Layer 1: 128^3 chunks in a [z][x]
+	// Layer 2: 32^3 outer layers in a 4^3 arrangement [z][x][y]
+	// Layer 3: Descend the damn layers
+	// in this engine we rearrange it to [y][z][x]
+	int cx, cz;
+	const int cy = 0;
+	int sx, sy, sz;
+	uint8_t *voxygen_buf[5];
+
+	// TODO: shift *all* the voxygen stuff into src/voxel.c
+	voxygen_buf[0] = malloc(128*128*128);
+	voxygen_buf[1] = malloc(64*64*64);
+	voxygen_buf[2] = malloc(32*32*32);
+	voxygen_buf[3] = malloc(16*16*16);
+	voxygen_buf[4] = malloc(8*8*8);
+
+	printf("Decoding voxel data\n");
+
+	decode_voxygen_chunk(voxygen_buf, fp);
+
+	printf("Uploading voxel data\n");
+	int layer;
+	for(layer = 0; layer <= 4; layer++)
+	{
+		int lsize = 128>>layer;
+		int ly = 128*2-(lsize*2);
+		for(sz = 0; sz < 512; sz += lsize)
+		for(sx = 0; sx < 512; sx += lsize)
+		for(sy = 0; sy < lsize; sy += lsize)
+		{
+			glTexSubImage3D(GL_TEXTURE_3D, 0, sx, sz, sy + ly, lsize, lsize, lsize, GL_RED_INTEGER, GL_UNSIGNED_BYTE, voxygen_buf[layer]);
+			//printf("%i - %i %i %i %i\n", glGetError(), sx, sy, sz, ly);
+		}
+	}
+	printf("Freeing voxel data\n");
+
+	free(voxygen_buf[0]);
+	free(voxygen_buf[1]);
+	free(voxygen_buf[2]);
+	free(voxygen_buf[3]);
+	free(voxygen_buf[4]);
+
+	fclose(fp);
+
+	int err = glGetError();
+	printf("tex_vox %i\n", err);
+	assert(err == 0);
+}
+

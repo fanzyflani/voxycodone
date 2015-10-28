@@ -172,6 +172,70 @@ static int lbind_draw_screen_size_get(lua_State *L)
 	return 2;
 }
 
+static int lbind_draw_viewport_set(lua_State *L)
+{
+	if(lua_gettop(L) < 4)
+		return luaL_error(L, "expected 4 arguments to draw.viewport_set");
+
+	GLint x = lua_tointeger(L, 1);
+	GLint y = lua_tointeger(L, 2);
+	GLsizei xlen = lua_tointeger(L, 3);
+	GLsizei ylen = lua_tointeger(L, 4);
+	glViewport(x, y, xlen, ylen);
+
+	return 0;
+}
+
+static int lbind_draw_buffers_set(lua_State *L)
+{
+	int i;
+
+	if(lua_gettop(L) < 1)
+		return luaL_error(L, "expected 1 argument to draw.buffers_set");
+
+	lua_len(L, 1);
+	int len = lua_tointeger(L, -1);
+	if(len <= 0 || len > 256) // arbitrary upper limit
+		return luaL_error(L, "invalid length");
+	lua_pop(L, 1);
+
+	//
+	int blen = len * sizeof(GLenum);
+	if(blen < len)
+		return luaL_error(L, "size overflow");
+
+	GLenum *list = malloc(blen);
+	for(i = 0; i < len; i++)
+	{
+		lua_geti(L, 1, i+1);
+		int v = lua_tointeger(L, -1);
+		lua_pop(L, 1);
+		if(v >= 0 && v < 256)
+			list[i] = GL_COLOR_ATTACHMENT0 + v;
+		else {
+			free(list);
+			return luaL_error(L, "invalid output");
+		}
+	}
+
+	assert(len > 0);
+	glDrawBuffers(len, list);
+	free(list);
+
+	return 0;
+}
+
+
+
+static int lbind_draw_blit(lua_State *L)
+{
+	glBindVertexArray(va_ray_vao);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+	glBindVertexArray(0);
+
+	return 0;
+}
+
 static int lbind_misc_mouse_grab_set(lua_State *L)
 {
 	if(lua_gettop(L) < 1)
@@ -592,6 +656,21 @@ static int lbind_shader_new(lua_State *L)
 	return 1;
 }
 
+static int lbind_shader_use(lua_State *L)
+{
+	int i;
+
+	if(lua_gettop(L) < 1)
+		return luaL_error(L, "expected at least 1 argument to shader.use");
+	
+	if(lua_isnil(L, 1))
+		glUseProgram(0);
+	else
+		glUseProgram(lua_tointeger(L, 1));
+
+	return 0;
+}
+
 static int lbind_shader_uniform_location_get(lua_State *L)
 {
 	int i;
@@ -848,6 +927,9 @@ void init_lua(void)
 	lua_newtable(L);
 	lua_pushcfunction(L, lbind_draw_cam_set_pa); lua_setfield(L, -2, "cam_set_pa");
 	lua_pushcfunction(L, lbind_draw_screen_size_get); lua_setfield(L, -2, "screen_size_get");
+	lua_pushcfunction(L, lbind_draw_blit); lua_setfield(L, -2, "blit");
+	lua_pushcfunction(L, lbind_draw_viewport_set); lua_setfield(L, -2, "viewport_set");
+	lua_pushcfunction(L, lbind_draw_buffers_set); lua_setfield(L, -2, "buffers_set");
 	lua_setglobal(L, "draw");
 
 	// --- fbo
@@ -878,6 +960,7 @@ void init_lua(void)
 	// --- shader
 	lua_newtable(L);
 	lua_pushcfunction(L, lbind_shader_new); lua_setfield(L, -2, "new");
+	lua_pushcfunction(L, lbind_shader_use); lua_setfield(L, -2, "use");
 	lua_pushcfunction(L, lbind_shader_uniform_location_get); lua_setfield(L, -2, "uniform_location_get");
 	lua_pushcfunction(L, lbind_shader_uniform_matrix_4f); lua_setfield(L, -2, "uniform_matrix_4f");
 	lua_pushcfunction(L, lbind_shader_uniform_f); lua_setfield(L, -2, "uniform_f");

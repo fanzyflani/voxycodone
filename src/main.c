@@ -29,6 +29,7 @@ int main(int argc, char *argv[])
 		1280, 720,
 		//800, 500,
 		//640, 360,
+		//320, 180,
 		SDL_WINDOW_OPENGL);
 
 	window_gl = SDL_GL_CreateContext(window);

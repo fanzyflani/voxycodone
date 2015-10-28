@@ -1,3 +1,6 @@
+-- pardon the low scale, my GPU wedged while working on this
+screen_scale = 8
+
 require("lua/util")
 require("lua/objects")
 require("lua/scene/test")
@@ -114,10 +117,9 @@ function init_gfx()
 	print("tex_rand", misc.gl_error());
 
 	-- FBO
-	screen_w, screen_h = screen_w/1, screen_h/1
-	tex_fbo0_0 = texture.new("2", 1, "4nb", screen_w, screen_h, "nn", "4nb")
+	tex_fbo0_0 = texture.new("2", 1, "4nb", screen_w/screen_scale, screen_h/screen_scale, "nn", "4nb")
 	print(misc.gl_error())
-	tex_fbo0_1 = texture.new("2", 1, "4nb", screen_w, screen_h, "nn", "4nb")
+	tex_fbo0_1 = texture.new("2", 1, "4nb", screen_w/screen_scale, screen_h/screen_scale, "nn", "4nb")
 	print(misc.gl_error())
 
 	fbo0 = fbo.new()
@@ -155,8 +157,8 @@ function hook_render(sec_current)
 
 	misc.gl_error()
 	fbo.target_set(fbo0)
-	texture.unit_set(1, "2", tex_ray_rand)
-	texture.unit_set(0, "3", tex_ray_vox)
+	texture.unit_set(4, "2", tex_ray_rand)
+	texture.unit_set(5, "3", tex_ray_vox)
 	S.USE(shader_ray)
 
 	matrix.invert(mat_cam2, mat_cam1);
@@ -205,23 +207,24 @@ function hook_render(sec_current)
 	shader.uniform_f(S.bmin, bmin_x, bmin_y, bmin_z);
 	shader.uniform_f(S.bmax, bmax_x, bmax_y, bmax_z);
 
-	-- TODO!
-	--[[draw.buffers_set(0, 1)
+	draw.buffers_set({0, 1})
+	draw.viewport_set(0, 0, screen_w/screen_scale, screen_h/screen_scale)
 	draw.blit()
 
-	draw.buffer_set_front()
+	--draw.buffer_set_front()
+	draw.buffers_set({0})
 	fbo.target_set(nil)
+	draw.viewport_set(0, 0, screen_w, screen_h)
 	texture.unit_set(1, "2", tex_fbo0_1)
 	texture.unit_set(0, "2", tex_fbo0_0)
 	S.USE(shader_blur)
 
-	shader.uniform_1i(S.tex0, 0);
-	shader.uniform_1i(S.tex1, 1);
+	shader.uniform_i(S.tex0, 0);
+	shader.uniform_i(S.tex1, 1);
 
 	draw.blit()
 
-	shader.use(nil)
-	]]
+	S.USE(nil)
 end
 
 function hook_tick(sec_current, sec_delta)

@@ -165,6 +165,7 @@ void sph_set(int i, double x, double y, double z, double rad, int r, int g, int 
 
 // voxel.c
 void decode_voxygen_chunk(uint8_t **voxygen_buf, FILE *fp);
+void voxygen_load_repeated_chunk(const char *fname);
 
 // main.c
 extern int do_exit;

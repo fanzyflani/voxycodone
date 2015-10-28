@@ -23,9 +23,14 @@ do
 	priv.shader = nil
 	priv.uniflist = {}
 
-	function fns.USE(shader)
-		priv.shader = shader
-		priv.uniflist[shader] = priv.uniflist[shader] or {}
+	function fns.USE(sh)
+		priv.shader = sh
+
+		if sh then
+			priv.uniflist[sh] = priv.uniflist[sh] or {}
+		end
+
+		shader.use(sh)
 	end
 
 	setmetatable(S, {
