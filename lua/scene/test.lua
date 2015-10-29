@@ -58,6 +58,7 @@ obj_sphere {
 ]]
 
 obj_box {
+	name = "box1",
 	pos1 = {-1, -1, -3},
 	pos2 = { 1,  1, -1},
 	mat = mat_solid { c0 = {0.3, 1.0, 0.3}, },
@@ -85,8 +86,8 @@ local csg_test = {
 	},
 }
 
---mode = "-"
-if mode == "*" then
+mode = "skip"
+if mode == "isect" then
 	src_main_frag = tracer_generate {
 		trace_scene = [=[
 
@@ -120,10 +121,11 @@ if mode == "*" then
 		}
 
 		obj_floor_trace(T, shadow_mode);
+		obj_box1_trace(T, shadow_mode);
 
 		]=],
 	}
-elseif mode == "-" then
+elseif mode == "sub" then
 	src_main_frag = tracer_generate {
 		trace_scene = [=[
 
@@ -161,6 +163,32 @@ elseif mode == "-" then
 		}
 
 		obj_floor_trace(T, shadow_mode);
+		obj_box1_trace(T, shadow_mode);
+
+		]=],
+	}
+elseif mode == "skip" then
+	src_main_frag = tracer_generate {
+		trace_scene = [=[
+
+		Trace T1 = T;
+		obj_s1_trace(T1, true);
+		obj_floor_trace(T1, true);
+		obj_box1_trace(T1, true);
+
+		Trace T2 = T;
+		obj_s2_trace(T2, true);
+
+		if(T2.hit_time < T2.zfar && T2.front_time < T1.hit_time)
+		{
+			T.znear = T2.back_time;
+		}
+
+		obj_s1_trace(T, shadow_mode);
+		obj_floor_trace(T, shadow_mode);
+		obj_box1_trace(T, shadow_mode);
+
+		T.znear = T1.znear;
 
 		]=],
 	}

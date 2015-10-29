@@ -8,9 +8,21 @@ function tracer_generate(settings)
 	out vec4 out_frag_color;
 	out vec4 out_frag_color_gi;
 
+	const int LIGHT_MAX = 32;
+
 	const float EPSILON = 0.0001;
 	const float ZFAR = 10000.0;
 	const uint BOUNCES = 1U;
+
+	const bool do_shadow = true;
+
+	uniform uint light_count;
+	uniform vec3 light_col[LIGHT_MAX];
+	uniform vec3 light_pos[LIGHT_MAX];
+	uniform vec3 light_dir[LIGHT_MAX];
+	uniform float light_cos[LIGHT_MAX];
+	uniform float light_pow[LIGHT_MAX];
+	uniform float light_amb;
 
 	vec3 ccol;
 
@@ -97,12 +109,32 @@ function tracer_generate(settings)
 
 			if(T0.hit_time == T0.zfar) break; // DIDN'T HIT ANYTHING
 
+			float diff = 0.0;
+			float spec = 0.0;
 			vec3 spec_dir = T0.src_wdir - 2.0*dot(T0.obj_norm, T0.src_wdir)*T0.obj_norm;
-			float diff = max(0.0, -dot(T0.src_wdir, T0.obj_norm));
-			float spec = max(0.0, -dot(T0.src_wdir, spec_dir));
-			spec = pow(spec, 128.0);
-			float amb = 0.1;
-			diff = diff * (1.0 - amb) + amb;
+
+			// Calc for light
+			float llen = length(light_pos[0] - T0.hit_pos);
+			vec3 ldir = (light_pos[0] - T0.hit_pos) / llen;
+
+			// Trace shadow
+			Trace T1 = T0;
+			T1.zfar = T1.hit_time = llen;
+			T1.src_wpos = T0.hit_pos;
+			T1.src_wdir = ldir;
+			trace_scene(T1, true);
+
+			// Check for occlusion
+			if(T1.hit_time == T1.zfar) // DIDN'T HIT ANYTHING
+			{
+				float ldiff = max(0.0, dot(ldir, T0.obj_norm));
+				float lspec = max(0.0, dot(ldir, spec_dir));
+				lspec = pow(lspec, 128.0);
+				diff += ldiff;
+				spec += lspec;
+			}
+
+			diff = diff * (1.0 - light_amb) + light_amb;
 			ccol += (T0.mat_col * diff + spec) * ccol_fac;
 			ccol_fac *= T0.mat_shine;
 			if(ccol_fac < 0.01) break;
