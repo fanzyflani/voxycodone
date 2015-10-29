@@ -1,4 +1,5 @@
 require("lua/objects")
+require("lua/tracer")
 
 -- DEFINITIONS
 m_chequer_bw = mat_chequer {
@@ -38,14 +39,5 @@ obj_plane {
 	mat = mat_solid { c0 = {1.0, 1.0, 0.0}, },
 }
 
-local k, v
-print("")
-for k, v in pairs(OBJLIST) do
-	print("processing", k)
-	print("-----")
-	process_src(v)
-	print("-----")
-	process_src(v[2].mat)
-	print("-----\n")
-end
+src_main_frag = tracer_generate()
 

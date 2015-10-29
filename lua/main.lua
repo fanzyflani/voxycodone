@@ -1,5 +1,5 @@
 -- pardon the low scale, my GPU wedged while working on this
-screen_scale = 8
+screen_scale = 1
 
 require("lua/util")
 require("lua/objects")
@@ -46,6 +46,13 @@ function hook_mouse_button(button, state)
 	if button == 1 and not state then
 		mouse_locked = not mouse_locked
 		misc.mouse_grab_set(mouse_locked)
+	elseif button == 3 and state then
+		light_pos_x = cam_pos_x;
+		light_pos_y = cam_pos_y;
+		light_pos_z = cam_pos_z;
+		light_dir_x = -math.cos(cam_rot_x)*math.sin(cam_rot_y);
+		light_dir_y = -math.sin(cam_rot_x);
+		light_dir_z = -math.cos(cam_rot_x)*math.cos(cam_rot_y);
 	end
 end
 
@@ -59,7 +66,6 @@ function hook_mouse_motion(x, y, dx, dy)
 	if cam_rot_x >  clamp then cam_rot_x =  clamp end
 end
 
-sent_shit = false
 function init_gfx()
 	local x, y, i, j
 
@@ -137,7 +143,8 @@ function init_gfx()
 	print("shader_blur", misc.gl_error())
 
 	local vert = glslpp_parse(bin_load("glsl/shader_ray.vert"))
-	local frag = glslpp_parse(bin_load("glsl/shader_ray.frag"))
+	--local frag = glslpp_parse(bin_load("glsl/shader_ray.frag"))
+	local frag = glslpp_parse(src_main_frag)
 	shader_ray = shader.new(vert, frag, {"in_vertex"}, {"out_frag_color", "out_frag_color_gi"})
 	print("shader_ray", misc.gl_error())
 end
@@ -185,12 +192,12 @@ function hook_render(sec_current)
 	lcol[1 + 0*3 + 0] = 1.0;
 	lcol[1 + 0*3 + 1] = 1.0;
 	lcol[1 + 0*3 + 2] = 1.0;
-	lpos[1 + 0*3 + 0] = cam_pos_x;
-	lpos[1 + 0*3 + 1] = cam_pos_y;
-	lpos[1 + 0*3 + 2] = cam_pos_z;
-	ldir[1 + 0*3 + 0] = -math.cos(cam_rot_x)*math.sin(cam_rot_y);
-	ldir[1 + 0*3 + 1] = -math.sin(cam_rot_x);
-	ldir[1 + 0*3 + 2] = -math.cos(cam_rot_x)*math.cos(cam_rot_y);
+	lpos[1 + 0*3 + 0] = light_pos_x or cam_pos_x;
+	lpos[1 + 0*3 + 1] = light_pos_y or cam_pos_y;
+	lpos[1 + 0*3 + 2] = light_pos_z or cam_pos_z;
+	ldir[1 + 0*3 + 0] = light_dir_x or -math.cos(cam_rot_x)*math.sin(cam_rot_y);
+	ldir[1 + 0*3 + 1] = light_dir_y or -math.sin(cam_rot_x);
+	ldir[1 + 0*3 + 2] = light_dir_z or -math.cos(cam_rot_x)*math.cos(cam_rot_y);
 	lcos[1] = 1.0 - 0.7;
 	lpow[1] = 1.0/4.0;
 

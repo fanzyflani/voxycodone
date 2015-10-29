@@ -46,7 +46,7 @@ local proc_idx_main = 0
 function process_src(o)
 	local i = 1
 	local src = fix_indent(o[2].src)
-	print(o[1])
+	--print(o[1])
 	--print(src:sub(i))
 
 	local proc_src = ""
@@ -80,7 +80,7 @@ function process_src(o)
 			--print("CALC_HIT")
 			varout = fix_indent([=[
 				// CALC_HIT {
-				if(T.obj_time < T.hit_time)
+				if(T.obj_time >= T.hit_time)
 					return;
 
 				T.hit_time = T.obj_time;
@@ -94,7 +94,8 @@ function process_src(o)
 		proc_src = proc_src .. varout
 		i = k+1
 	end
-	print(proc_src)
+	--print(proc_src)
+	return proc_src
 end
 
 function var_float(v) return {"float", v} end
@@ -136,9 +137,9 @@ function mat_chequer(settings)
 	}
 
 	this.src = [=[
-		${mat_col} = int(dot(vec3(ivec3(${hit_pos} + ${.bias}) % 2), vec3(1.0))) % 2 >= 1
+		${mat_col} = int(dot(vec3(ivec3(floor(${hit_pos} + ${.bias})) & 1), vec3(1.0))) % 2 >= 1
 			? ${.c0}
-			: ${.c1}
+			: ${.c1};
 	]=]
 
 	return {"mat", this}
@@ -172,7 +173,7 @@ function obj_plane(settings)
 		float ${_offs_plane} = dot(${.dir}, ${.pos});
 		float ${_offs_wpos} = dot(${.dir}, ${src_wpos});
 		float ${_doffs} = ${_offs_plane} - ${_offs_wpos};
-		float ${_time} = ${_doffs} * dot(${.dir}, ${src_wdir});
+		float ${_time} = ${_doffs} * dot(${.dir}, 1.0 / ${src_wdir});
 
 		if(${_time} < EPSILON)
 			return;

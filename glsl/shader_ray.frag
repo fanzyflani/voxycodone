@@ -16,7 +16,7 @@ out vec4 out_frag_color_gi;
 %include glsl/donut.obj
 %include glsl/plane.obj
 
-%include glsl/voxygen.scene
+%include glsl/donut.scene
 
 void main()
 {
