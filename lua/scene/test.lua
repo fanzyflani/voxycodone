@@ -100,9 +100,9 @@ if mode == "*" then
 
 			} else if(T2.front_time < T1.front_time && T1.front_time < T2.back_time) {
 				// Hit s1
-				T.znear = T1.front_time;
+				T.znear = T2.front_time;
 				obj_s1_trace(T, shadow_mode);
-				T.znear = T1.znear;
+				T.znear = T2.znear;
 
 			} else if(T1.front_time < T2.front_time && T2.front_time < T1.back_time) {
 				// Hit s2
