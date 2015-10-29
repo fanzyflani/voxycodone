@@ -27,7 +27,7 @@ function tracer_generate(settings)
 		float obj_time;
 		vec3 mat_col;
 
-		float zfar;
+		float znear, zfar;
 
 		float mat_shine;
 	};
@@ -84,6 +84,7 @@ function tracer_generate(settings)
 		// Set up boundary
 		T0.obj_norm = vec3(0.0);
 		T0.hit_time = T0.zfar = ZFAR;
+		T0.znear = EPSILON;
 
 		ccol = vec3(0.0);
 		vec3 ccol_gi = vec3(0.0);

@@ -62,18 +62,24 @@ local csg_test = {
 		name = "s1",
 		pos = {-3, 3.0, -10},
 		rad = 5.0,
-		mat = mat_solid { c0 = {1.0, 0.5, 0.0}, },
+		--mat = mat_solid { c0 = {1.0, 0.5, 0.0}, },
+		mat = mat_chequer {
+			c0 = {1.0, 0.5, 0.0},
+			c1 = {0.0, 0.5, 1.0},
+			sq_size = 0.5,
+		},
 	},
 
 	o2 = obj_sphere {
 		name = "s2",
 		pos = {3, 3.0, -10},
 		rad = 5.0,
-		mat = mat_solid { c0 = {0.0, 0.5, 1.0}, },
+		--mat = mat_solid { c0 = {0.0, 0.5, 1.0}, },
+		mat = mat_solid { c0 = {0.5, 0.3, 0.0}, },
 	},
 }
 
-mode = "-"
+mode = "*"
 if mode == "*" then
 	src_main_frag = tracer_generate {
 		trace_scene = [=[
@@ -86,37 +92,23 @@ if mode == "*" then
 		// Ensure we hit both
 		if(T1.hit_time < T1.zfar && T2.hit_time < T2.zfar)
 		{
-			// Compare fronts and backs
-			if(T2.front_time < T1.front_time && T1.front_time < T2.back_time)
+			if(T1.hit_time == T1.back_time && T2.hit_time == T2.back_time)
 			{
+				// Inside both
+				obj_s1_trace(T, shadow_mode);
+				obj_s2_trace(T, shadow_mode);
+
+			} else if(T2.front_time < T1.front_time && T1.front_time < T2.back_time) {
 				// Hit s1
-				T1.src_wpos += T1.src_wdir * (T1.hit_time + EPSILON * 16.0);
-				T1.zfar = T1.hit_time = (T1.zfar - T1.hit_time);
-
-				obj_s1_trace(T1, shadow_mode);
-
-				if(T1.hit_time < T1.zfar)
-				{
-					T.hit_time = T1.hit_time;
-					T.hit_pos = T1.hit_pos;
-					T.obj_norm = T1.obj_norm;
-					T.mat_col = T1.mat_col;
-				}
+				T.znear = T1.front_time;
+				obj_s1_trace(T, shadow_mode);
+				T.znear = T1.znear;
 
 			} else if(T1.front_time < T2.front_time && T2.front_time < T1.back_time) {
 				// Hit s2
-				T2.src_wpos += T2.src_wdir * (T2.hit_time + EPSILON * 16.0);
-				T2.zfar = T2.hit_time = (T2.zfar - T2.hit_time);
-
-				obj_s2_trace(T2, shadow_mode);
-
-				if(T2.hit_time < T2.zfar)
-				{
-					T.hit_time = T2.hit_time;
-					T.hit_pos = T2.hit_pos;
-					T.obj_norm = T2.obj_norm;
-					T.mat_col = T2.mat_col;
-				}
+				T.znear = T1.front_time;
+				obj_s2_trace(T, shadow_mode);
+				T.znear = T1.znear;
 			}
 
 		}
@@ -155,20 +147,9 @@ elseif mode == "-" then
 				// PASS THROUGH
 
 			} else {
-				float base_hit = T1.hit_time;
-				T1.src_wpos += T1.src_wdir * (T1.hit_time + EPSILON * 16.0);
-				T1.zfar = T1.hit_time = (T1.zfar - T1.hit_time);
-
-				obj_s2_trace(T1, shadow_mode);
-
-				if(T1.hit_time < T1.zfar)
-				{
-					T.hit_time = T1.hit_time + base_hit;
-					T.hit_pos = T1.hit_pos;
-					T.obj_norm = T1.obj_norm;
-					T.mat_col = T1.mat_col;
-				}
-
+				T.znear = T1.hit_time;
+				obj_s2_trace(T, shadow_mode);
+				T.znear = T1.znear;
 			}
 
 		}

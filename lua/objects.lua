@@ -85,7 +85,7 @@ function process_src(o, settings)
 					return;
 
 				T.hit_time = T.obj_time;
-				T.hit_pos = T.src_wpos + (T.src_wdir * (T.obj_time - EPSILON*8.0));
+				T.hit_pos = T.src_wpos + (T.src_wdir * (T.obj_time - EPSILON));
 				// } CALC_HIT
 			]=])
 		elseif name == "RETURN" then
@@ -181,7 +181,7 @@ function obj_plane(settings)
 		float ${_doffs} = ${_offs_plane} - ${_offs_wpos};
 		float ${_time} = ${_doffs} * dot(${.dir}, 1.0 / ${src_wdir});
 
-		if(${_time} < EPSILON)
+		if(${_time} <= ${znear})
 			${RETURN}
 
 		${obj_time} = ${_time};
@@ -221,10 +221,10 @@ function obj_sphere(settings)
 		float ${_tX} = ${_tA}-${_tB};
 		float ${_tY} = ${_tA}+${_tB};
 
-		if(${_tY} < EPSILON)
+		if(${_tY} <= ${znear})
 			${RETURN}
 
-		bool ${_is_inside} = (${_tX} < EPSILON);
+		bool ${_is_inside} = (${_tX} <= ${znear});
 
 		${obj_time} = (${_is_inside} ? ${_tY} : ${_tX});
 
