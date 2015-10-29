@@ -10,7 +10,7 @@ function tracer_generate(settings)
 
 	const float EPSILON = 0.0001;
 	const float ZFAR = 10000.0;
-	const uint BOUNCES = 0U;
+	const uint BOUNCES = 1U;
 
 	vec3 ccol;
 
@@ -109,6 +109,8 @@ function tracer_generate(settings)
 			// Reflect
 			T0.src_wpos = T0.hit_pos;
 			T0.src_wdir = spec_dir;
+			T0.zfar -= T0.hit_time;
+			T0.hit_time = T0.zfar;
 		}
 
 		out_frag_color = vec4(ccol, 1.0);
