@@ -43,7 +43,8 @@ function fix_indent(s)
 end
 
 local proc_idx_main = 0
-function process_src(o)
+function process_src(o, settings)
+	settings = settings or {}
 	local i = 1
 	local src = fix_indent(o[2].src)
 	--print(o[1])
@@ -84,9 +85,11 @@ function process_src(o)
 					return;
 
 				T.hit_time = T.obj_time;
-				T.hit_pos = T.src_wpos + (T.src_wdir * T.obj_time);
+				T.hit_pos = T.src_wpos + (T.src_wdir * (T.obj_time - EPSILON*8.0));
 				// } CALC_HIT
 			]=])
+		elseif name == "RETURN" then
+			varout = settings.code_return or "return;"
 		else
 			--print("GLB", "<"..name..">")
 			varout = "T."..name
@@ -132,12 +135,13 @@ function mat_chequer(settings)
 
 	this.vars = {
 		bias = var_float(settings.bias or 0.01),
+		sq_size = var_float(settings.sq_size or 1.0),
 		c0 = var_vec3(settings.c0),
 		c1 = var_vec3(settings.c1),
 	}
 
 	this.src = [=[
-		${mat_col} = int(dot(vec3(ivec3(floor(${hit_pos} + ${.bias})) & 1), vec3(1.0))) % 2 >= 1
+		${mat_col} = int(dot(vec3(ivec3(floor(${hit_pos}/${.sq_size} + ${.bias})) & 1), vec3(1.0))) % 2 >= 1
 			? ${.c0}
 			: ${.c1};
 	]=]
@@ -162,6 +166,8 @@ end
 function obj_plane(settings)
 	local this = {}
 
+	this.name = settings.name
+
 	this.vars = {
 		dir = var_dir_vec3(settings.dir),
 		pos = var_vec3(settings.pos),
@@ -176,13 +182,58 @@ function obj_plane(settings)
 		float ${_time} = ${_doffs} * dot(${.dir}, 1.0 / ${src_wdir});
 
 		if(${_time} < EPSILON)
-			return;
+			${RETURN}
 
 		${obj_time} = ${_time};
 
 		${CALC_HIT}
 
+		${front_time} = ${back_time} = ${obj_time};
 		${obj_norm} = ${.dir};
+	]=]
+
+	return add_obj(this)
+end
+
+function obj_sphere(settings)
+	local this = {}
+
+	this.name = settings.name
+
+	this.vars = {
+		rad = var_float(settings.rad),
+		pos = var_vec3(settings.pos),
+	}
+
+	this.mat = settings.mat
+
+	this.src = [=[
+		vec3 ${_rel_pos} = ${src_wpos} - ${.pos};
+		float ${_tA} = -dot(${src_wdir}, ${_rel_pos});
+		float ${_srad2} = ${.rad} * ${.rad};
+		float ${_slen2} = dot(${_rel_pos}, ${_rel_pos});
+		float ${_tB2} = ${_tA}*${_tA} + ${_srad2} - ${_slen2};
+
+		if(${_tB2} < 0.0)
+			${RETURN}
+
+		float ${_tB} = sqrt(${_tB2});
+		float ${_tX} = ${_tA}-${_tB};
+		float ${_tY} = ${_tA}+${_tB};
+
+		if(${_tY} < EPSILON)
+			${RETURN}
+
+		bool ${_is_inside} = (${_tX} < EPSILON);
+
+		${obj_time} = (${_is_inside} ? ${_tY} : ${_tX});
+
+		${CALC_HIT}
+
+		${front_time} = ${_tX};
+		${back_time} = ${_tY};
+		${obj_norm} = normalize(${hit_pos} - ${.pos});
+		if(${_is_inside}) ${obj_norm} = -${obj_norm};
 	]=]
 
 	return add_obj(this)

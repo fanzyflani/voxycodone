@@ -1,4 +1,4 @@
-function tracer_generate()
+function tracer_generate(settings)
 	local k, v
 
 	local src_main_frag = "#version 150\n"
@@ -16,16 +16,20 @@ function tracer_generate()
 
 	struct Trace
 	{
-		vec3 src_wpos, src_idir, src_wdir;
+		vec3 src_wpos, src_wdir;
 
 		vec3 hit_pos;
 		float hit_time;
+		float front_time;
+		float back_time;
 
 		vec3 obj_norm;
 		float obj_time;
 		vec3 mat_col;
 
 		float zfar;
+
+		float mat_shine;
 	};
 
 
@@ -36,7 +40,7 @@ function tracer_generate()
 		local src_obj = process_src(v)
 		local src_mat = process_src(v[2].mat)
 		local src_cmb = (
-			"void obj"..k.."_trace(inout Trace T, bool shadow_mode) {\n" ..
+			"void obj_"..(v[2].name or k).."_trace(inout Trace T, bool shadow_mode) {\n" ..
 			src_obj ..
 			[=[
 				if(shadow_mode) return;
@@ -56,8 +60,12 @@ function tracer_generate()
 
 	]=]
 
-	for k, v in pairs(OBJLIST) do
-		src_main_frag = src_main_frag .. "\tobj"..k.."_trace(T, shadow_mode);\n"
+	if settings.trace_scene then
+		src_main_frag = src_main_frag .. settings.trace_scene
+	else
+		for k, v in pairs(OBJLIST) do
+			src_main_frag = src_main_frag .. "\tobj_"..(v[2].name or k).."_trace(T, shadow_mode);\n"
+		end
 	end
 
 	src_main_frag = src_main_frag .. [=[
@@ -71,7 +79,7 @@ function tracer_generate()
 
 		T0.src_wpos = wpos_in;
 		T0.src_wdir = normalize(wdir_in);
-		T0.src_idir = sign(wdir_in)/max(vec3(EPSILON), abs(wdir_in));
+		T0.mat_shine = 0.3;
 
 		// Set up boundary
 		T0.obj_norm = vec3(0.0);
@@ -88,7 +96,19 @@ function tracer_generate()
 
 			if(T0.hit_time == T0.zfar) break; // DIDN'T HIT ANYTHING
 
-			ccol = T0.mat_col;
+			vec3 spec_dir = T0.src_wdir - 2.0*dot(T0.obj_norm, T0.src_wdir)*T0.obj_norm;
+			float diff = max(0.0, -dot(T0.src_wdir, T0.obj_norm));
+			float spec = max(0.0, -dot(T0.src_wdir, spec_dir));
+			spec = pow(spec, 128.0);
+			float amb = 0.1;
+			diff = diff * (1.0 - amb) + amb;
+			ccol += (T0.mat_col * diff + spec) * ccol_fac;
+			ccol_fac *= T0.mat_shine;
+			if(ccol_fac < 0.01) break;
+
+			// Reflect
+			T0.src_wpos = T0.hit_pos;
+			T0.src_wdir = spec_dir;
 		}
 
 		out_frag_color = vec4(ccol, 1.0);
