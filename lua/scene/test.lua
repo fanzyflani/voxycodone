@@ -57,6 +57,12 @@ obj_sphere {
 }
 ]]
 
+obj_box {
+	pos1 = {-1, -1, -3},
+	pos2 = { 1,  1, -1},
+	mat = mat_solid { c0 = {0.3, 1.0, 0.3}, },
+}
+
 local csg_test = {
 	o1 = obj_sphere {
 		name = "s1",
@@ -79,7 +85,7 @@ local csg_test = {
 	},
 }
 
-mode = "*"
+--mode = "-"
 if mode == "*" then
 	src_main_frag = tracer_generate {
 		trace_scene = [=[

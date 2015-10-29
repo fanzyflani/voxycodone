@@ -85,7 +85,7 @@ function process_src(o, settings)
 					return;
 
 				T.hit_time = T.obj_time;
-				T.hit_pos = T.src_wpos + (T.src_wdir * (T.obj_time - EPSILON));
+				T.hit_pos = T.src_wpos + (T.src_wdir * (T.obj_time - EPSILON*1.0));
 				// } CALC_HIT
 			]=])
 		elseif name == "RETURN" then
@@ -233,6 +233,52 @@ function obj_sphere(settings)
 		${front_time} = ${_tX};
 		${back_time} = ${_tY};
 		${obj_norm} = normalize(${hit_pos} - ${.pos});
+		if(${_is_inside}) ${obj_norm} = -${obj_norm};
+	]=]
+
+	return add_obj(this)
+end
+
+function obj_box(settings)
+	local this = {}
+
+	this.name = settings.name
+
+	this.vars = {
+		pos1 = var_vec3(settings.pos1),
+		pos2 = var_vec3(settings.pos2),
+	}
+
+	this.mat = settings.mat
+
+	this.src = [=[
+		vec3 ${_vt1} = (${.pos1} - ${src_wpos}) / ${src_wdir};
+		vec3 ${_vt2} = (${.pos2} - ${src_wpos}) / ${src_wdir};
+
+		vec3 ${_vtmin} = mix(${_vt2}, ${_vt1}, lessThan(${_vt1}, ${_vt2}));
+		vec3 ${_vtmax} = mix(${_vt2}, ${_vt1}, greaterThanEqual(${_vt1}, ${_vt2}));
+
+		float ${_tf} = max(${_vtmin}.x, max(${_vtmin}.y, ${_vtmin}.z));
+		float ${_tb} = min(${_vtmax}.x, min(${_vtmax}.y, ${_vtmax}.z));
+
+		if(${_tb} <= ${_tf})
+			${RETURN}
+
+		if(${_tb} <= ${znear})
+			${RETURN}
+
+		bool ${_is_inside} = (${_tf} <= ${znear});
+
+		${obj_time} = (${_is_inside} ? ${_tb} : ${_tf});
+
+		${CALC_HIT}
+
+		${front_time} = ${_tf};
+		${back_time} = ${_tb};
+
+		// TODO: correct normals rather than sphere normals
+		${obj_norm} = vec3(equal(vec3(${obj_time}), ${_vt2}))
+			- vec3(equal(vec3(${obj_time}), ${_vt1}));
 		if(${_is_inside}) ${obj_norm} = -${obj_norm};
 	]=]
 
