@@ -134,10 +134,10 @@ function mat_chequer(settings)
 	local this = {}
 
 	this.vars = {
-		bias = var_float(settings.bias or 0.01),
-		sq_size = var_float(settings.sq_size or 1.0),
-		c0 = var_vec3(settings.c0),
-		c1 = var_vec3(settings.c1),
+		bias = settings.bias or var_float(0.01),
+		sq_size = settings.sq_size or var_float(1.0),
+		c0 = settings.c0,
+		c1 = settings.c1,
 	}
 
 	this.src = [=[
@@ -153,7 +153,7 @@ function mat_solid(settings)
 	local this = {}
 
 	this.vars = {
-		c0 = var_vec3(settings.c0),
+		c0 = settings.c0,
 	}
 
 	this.src = [=[
@@ -170,7 +170,7 @@ function obj_plane(settings)
 
 	this.vars = {
 		dir = var_dir_vec3(settings.dir),
-		pos = var_vec3(settings.pos),
+		pos = settings.pos,
 	}
 
 	this.mat = settings.mat
@@ -201,8 +201,8 @@ function obj_sphere(settings)
 	this.name = settings.name
 
 	this.vars = {
-		rad = var_float(settings.rad),
-		pos = var_vec3(settings.pos),
+		rad = settings.rad,
+		pos = settings.pos,
 	}
 
 	this.mat = settings.mat
@@ -245,8 +245,8 @@ function obj_box(settings)
 	this.name = settings.name
 
 	this.vars = {
-		pos1 = var_vec3(settings.pos1),
-		pos2 = var_vec3(settings.pos2),
+		pos1 = settings.pos1,
+		pos2 = settings.pos2,
 	}
 
 	this.mat = settings.mat

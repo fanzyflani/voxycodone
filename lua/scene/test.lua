@@ -3,9 +3,9 @@ require("lua/tracer")
 
 -- DEFINITIONS
 m_chequer_bw = mat_chequer {
-	c0 = {0.9, 0.9, 0.9},
-	c1 = {0.1, 0.1, 0.1},
-	sq_size = 5.0,
+	c0 = var_vec3({0.9, 0.9, 0.9}),
+	c1 = var_vec3({0.1, 0.1, 0.1}),
+	sq_size = var_float(5.0),
 }
 
 --[[
@@ -31,7 +31,7 @@ obj_csg_subtract {
 obj_plane {
 	name = "floor",
 	dir = "+y",
-	pos = {0, -2, 0},
+	pos = var_vec3({0, -2, 0}),
 	mat = m_chequer_bw,
 }
 
@@ -59,34 +59,34 @@ obj_sphere {
 
 obj_box {
 	name = "box1",
-	pos1 = {-1, -1, -3},
-	pos2 = { 1,  1, -1},
-	mat = mat_solid { c0 = {0.3, 1.0, 0.3}, },
+	pos1 = var_vec3({-1, -1, -3}),
+	pos2 = var_vec3({ 1,  1, -1}),
+	mat = mat_solid { c0 = var_vec3({0.3, 1.0, 0.3}), },
 }
 
 local csg_test = {
 	o1 = obj_sphere {
 		name = "s1",
-		pos = {-3, 3.0, -10},
-		rad = 5.0,
+		pos = var_vec3({-3, 3.0, -10}),
+		rad = var_float(5.0),
 		--mat = mat_solid { c0 = {1.0, 0.5, 0.0}, },
 		mat = mat_chequer {
-			c0 = {1.0, 0.5, 0.0},
-			c1 = {0.0, 0.5, 1.0},
-			sq_size = 0.5,
+			c0 = var_vec3({1.0, 0.5, 0.0}),
+			c1 = var_vec3({0.0, 0.5, 1.0}),
+			sq_size = var_float(0.5),
 		},
 	},
 
 	o2 = obj_sphere {
 		name = "s2",
-		pos = {3, 3.0, -10},
-		rad = 5.0,
+		pos = var_vec3({3, 3.0, -10}),
+		rad = var_float(5.0),
 		--mat = mat_solid { c0 = {0.0, 0.5, 1.0}, },
-		mat = mat_solid { c0 = {0.5, 0.3, 0.0}, },
+		mat = mat_solid { c0 = var_vec3({0.5, 0.3, 0.0}), },
 	},
 }
 
-mode = "skip"
+mode = ""
 if mode == "isect" then
 	src_main_frag = tracer_generate {
 		trace_scene = [=[

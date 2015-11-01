@@ -1,9 +1,7 @@
--- pardon the low scale, my GPU wedged while working on this
 screen_scale = 1
 
 require("lua/util")
-require("lua/objects")
-require("lua/scene/test")
+require("lua/scene/voxygen")
 
 -- from SDL_keycode.h
 SDLK_ESCAPE = 27
@@ -73,20 +71,9 @@ function init_gfx()
 	print("Screen size:", screen_w, screen_h)
 
 	-- Initial texstorage
-	SPH_MAX = 1024
-	SPILIST_MAX = 2048
-	KD_MAX = 2048
 	LIGHT_MAX = 32
 
 	misc.gl_error()
-	tex_ray0 = texture.new("2", 1, "4nb", 1, SPH_MAX, "nn", "4nb")
-	print(misc.gl_error())
-	tex_ray1 = texture.new("2", 1, "1f", 1, KD_MAX, "nn", "1f")
-	print(misc.gl_error())
-	tex_ray2 = texture.new("2", 1, "1ui", 2, KD_MAX, "nn", "1ui")
-	print(misc.gl_error())
-	tex_ray3 = texture.new("2", 1, "4f", KD_MAX, 4, "nn", "4f")
-	print(misc.gl_error())
 	tex_ray_vox = texture.new("3", 1, "1ub", 512, 512, 256, "nn", "1ub")
 	print(misc.gl_error())
 
@@ -164,20 +151,16 @@ function hook_render(sec_current)
 
 	misc.gl_error()
 	fbo.target_set(fbo0)
-	texture.unit_set(4, "2", tex_ray_rand)
-	texture.unit_set(5, "3", tex_ray_vox)
+	texture.unit_set(0, "2", tex_ray_rand)
+	texture.unit_set(1, "3", tex_ray_vox)
 	S.USE(shader_ray)
 
 	matrix.invert(mat_cam2, mat_cam1);
 	shader.uniform_matrix_4f(S.in_cam_inverse, mat_cam2)
 	shader.uniform_f(S.in_aspect, 720.0/1280.0, 1.0);
 
-	shader.uniform_i(S.tex0, 0);
-	shader.uniform_i(S.tex1, 1);
-	shader.uniform_i(S.tex2, 2);
-	shader.uniform_i(S.tex3, 3);
-	shader.uniform_i(S.tex_rand, 4);
-	shader.uniform_i(S.tex_vox, 5);
+	shader.uniform_i(S.tex_rand, 0);
+	shader.uniform_i(S.tex_vox, 1);
 	shader.uniform_i(S.sph_count, sph_count);
 	shader.uniform_f(S.sec_current, sec_current);
 
@@ -268,7 +251,9 @@ function hook_tick(sec_current, sec_delta)
 	local hx, hy, hz = yc, 0, -ys
 	local vx, vy, vz = -xs*ys, xc, -xs*yc
 
-	local mvspeedef = mvspeed*(1.0 - math.exp(-sec_delta*0.1));
+	--local mvspeedef = mvspeed*(1.0 - math.exp(-sec_delta*0.1));
+	--local mvspeedef = mvspeed*(1.0 - math.exp(-sec_delta*0.9));
+	local mvspeedef = 1.0
 	cam_vel_x = cam_vel_x + (hx*ldh + fx*ldw + vx*ldv - cam_vel_x)*mvspeedef
 	cam_vel_y = cam_vel_y + (hy*ldh + fy*ldw + vy*ldv - cam_vel_y)*mvspeedef
 	cam_vel_z = cam_vel_z + (hz*ldh + fz*ldw + vz*ldv - cam_vel_z)*mvspeedef

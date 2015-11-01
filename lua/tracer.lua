@@ -1,3 +1,11 @@
+require("lua/objects")
+
+GLIBLIST = {}
+
+function glib_add(s)
+	table.insert(GLIBLIST, s)
+end
+
 function tracer_generate(settings)
 	local k, v
 
@@ -12,9 +20,9 @@ function tracer_generate(settings)
 
 	const float EPSILON = 0.0001;
 	const float ZFAR = 10000.0;
-	const uint BOUNCES = 1U;
+	const uint BOUNCES = 0U;
 
-	const bool do_shadow = true;
+	const bool do_shadow = false;
 
 	uniform uint light_count;
 	uniform vec3 light_col[LIGHT_MAX];
@@ -46,6 +54,10 @@ function tracer_generate(settings)
 
 
 	]=]
+
+	for k, v in pairs(GLIBLIST) do
+		src_main_frag = src_main_frag .. v .."\n"
+	end
 
 	for k, v in pairs(OBJLIST) do
 		print("processing", k)
@@ -119,13 +131,16 @@ function tracer_generate(settings)
 
 			// Trace shadow
 			Trace T1 = T0;
-			T1.zfar = T1.hit_time = llen;
-			T1.src_wpos = T0.hit_pos;
-			T1.src_wdir = ldir;
-			trace_scene(T1, true);
+			if(do_shadow)
+			{
+				T1.zfar = T1.hit_time = llen;
+				T1.src_wpos = T0.hit_pos;
+				T1.src_wdir = ldir;
+				trace_scene(T1, true);
+			}
 
 			// Check for occlusion
-			if(T1.hit_time == T1.zfar) // DIDN'T HIT ANYTHING
+			if((!do_shadow) || T1.hit_time == T1.zfar) // DIDN'T HIT ANYTHING
 			{
 				float ldiff = max(0.0, dot(ldir, T0.obj_norm));
 				float lspec = max(0.0, dot(ldir, spec_dir));
