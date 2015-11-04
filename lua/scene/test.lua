@@ -1,6 +1,8 @@
 require("lua/objects")
 require("lua/tracer")
 
+tracer_clear()
+
 -- DEFINITIONS
 m_chequer_bw = mat_chequer {
 	c0 = var_vec3({0.9, 0.9, 0.9}),
@@ -86,113 +88,115 @@ local csg_test = {
 	},
 }
 
-mode = ""
-if mode == "isect" then
-	src_main_frag = tracer_generate {
-		trace_scene = [=[
+tracer_generate {
+	name = "test_isect",
+	trace_scene = [=[
 
-		Trace T1 = T;
-		Trace T2 = T;
-		obj_s1_trace(T1, true);
-		obj_s2_trace(T2, true);
+	Trace T1 = T;
+	Trace T2 = T;
+	obj_s1_trace(T1, true);
+	obj_s2_trace(T2, true);
 
-		// Ensure we hit both
-		if(T1.hit_time < T1.zfar && T2.hit_time < T2.zfar)
+	// Ensure we hit both
+	if(T1.hit_time < T1.zfar && T2.hit_time < T2.zfar)
+	{
+		if(T1.hit_time == T1.back_time && T2.hit_time == T2.back_time)
 		{
-			if(T1.hit_time == T1.back_time && T2.hit_time == T2.back_time)
-			{
-				// Inside both
-				obj_s1_trace(T, shadow_mode);
-				obj_s2_trace(T, shadow_mode);
+			// Inside both
+			obj_s1_trace(T, shadow_mode);
+			obj_s2_trace(T, shadow_mode);
 
-			} else if(T2.front_time < T1.front_time && T1.front_time < T2.back_time) {
-				// Hit s1
-				T.znear = T2.front_time;
-				obj_s1_trace(T, shadow_mode);
-				T.znear = T2.znear;
+		} else if(T2.front_time < T1.front_time && T1.front_time < T2.back_time) {
+			// Hit s1
+			T.znear = T2.front_time;
+			obj_s1_trace(T, shadow_mode);
+			T.znear = T2.znear;
 
-			} else if(T1.front_time < T2.front_time && T2.front_time < T1.back_time) {
-				// Hit s2
-				T.znear = T1.front_time;
-				obj_s2_trace(T, shadow_mode);
-				T.znear = T1.znear;
-			}
+		} else if(T1.front_time < T2.front_time && T2.front_time < T1.back_time) {
+			// Hit s2
+			T.znear = T1.front_time;
+			obj_s2_trace(T, shadow_mode);
+			T.znear = T1.znear;
+		}
+
+	}
+
+	obj_floor_trace(T, shadow_mode);
+	obj_box1_trace(T, shadow_mode);
+
+	]=],
+}
+
+tracer_generate {
+	name = "test_sub",
+	trace_scene = [=[
+
+	Trace T1 = T;
+	Trace T2 = T;
+	obj_s1_trace(T1, true);
+	obj_s2_trace(T2, true);
+
+	if(T1.hit_time < T1.zfar && T1.hit_time == T1.back_time)
+	{
+		// Inside T1
+		if(T2.hit_time >= T2.zfar)
+		{
+			obj_s1_trace(T, shadow_mode);
+		} else if(T2.hit_time < T1.back_time) {
+			obj_s2_trace(T, shadow_mode);
 
 		}
 
-		obj_floor_trace(T, shadow_mode);
-		obj_box1_trace(T, shadow_mode);
-
-		]=],
-	}
-elseif mode == "sub" then
-	src_main_frag = tracer_generate {
-		trace_scene = [=[
-
-		Trace T1 = T;
-		Trace T2 = T;
-		obj_s1_trace(T1, true);
-		obj_s2_trace(T2, true);
-
-		if(T1.hit_time < T1.zfar && T1.hit_time == T1.back_time)
+	} else if(T1.hit_time < T1.zfar) {
+		// Hit T1
+		if(T2.hit_time >= T2.zfar || T1.front_time < T2.front_time || T1.front_time > T2.back_time)
 		{
-			// Inside T1
-			if(T2.hit_time >= T2.zfar)
-			{
-				obj_s1_trace(T, shadow_mode);
-			} else if(T2.hit_time < T1.back_time) {
-				obj_s2_trace(T, shadow_mode);
+			obj_s1_trace(T, shadow_mode);
 
-			}
+		} else if(T2.back_time > T1.back_time) {
+			// PASS THROUGH
 
-		} else if(T1.hit_time < T1.zfar) {
-			// Hit T1
-			if(T2.hit_time >= T2.zfar || T1.front_time < T2.front_time || T1.front_time > T2.back_time)
-			{
-				obj_s1_trace(T, shadow_mode);
-
-			} else if(T2.back_time > T1.back_time) {
-				// PASS THROUGH
-
-			} else {
-				T.znear = T1.hit_time;
-				obj_s2_trace(T, shadow_mode);
-				T.znear = T1.znear;
-			}
-
+		} else {
+			T.znear = T1.hit_time;
+			obj_s2_trace(T, shadow_mode);
+			T.znear = T1.znear;
 		}
 
-		obj_floor_trace(T, shadow_mode);
-		obj_box1_trace(T, shadow_mode);
-
-		]=],
 	}
-elseif mode == "skip" then
-	src_main_frag = tracer_generate {
-		trace_scene = [=[
 
-		Trace T1 = T;
-		obj_s1_trace(T1, true);
-		obj_floor_trace(T1, true);
-		obj_box1_trace(T1, true);
+	obj_floor_trace(T, shadow_mode);
+	obj_box1_trace(T, shadow_mode);
 
-		Trace T2 = T;
-		obj_s2_trace(T2, true);
+	]=],
+}
 
-		if(T2.hit_time < T2.zfar && T2.front_time < T1.hit_time)
-		{
-			T.znear = T2.back_time;
-		}
+tracer_generate {
+	name = "test_skip",
+	trace_scene = [=[
 
-		obj_s1_trace(T, shadow_mode);
-		obj_floor_trace(T, shadow_mode);
-		obj_box1_trace(T, shadow_mode);
+	Trace T1 = T;
+	obj_s1_trace(T1, true);
+	obj_floor_trace(T1, true);
+	obj_box1_trace(T1, true);
 
-		T.znear = T1.znear;
+	Trace T2 = T;
+	obj_s2_trace(T2, true);
 
-		]=],
+	if(T2.hit_time < T2.zfar && T2.front_time < T1.hit_time)
+	{
+		T.znear = T2.back_time;
 	}
-else
-	src_main_frag = tracer_generate {}
-end
+
+	obj_s1_trace(T, shadow_mode);
+	obj_floor_trace(T, shadow_mode);
+	obj_box1_trace(T, shadow_mode);
+
+	T.znear = T1.znear;
+
+	]=],
+}
+
+tracer_generate {
+	name = "test_union",
+}
 

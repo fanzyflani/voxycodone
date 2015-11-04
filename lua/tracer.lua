@@ -1,13 +1,28 @@
 require("lua/objects")
 
 GLIBLIST = {}
+SCENE_LIST = {}
+SCENE = {}
 
 function glib_add(s)
 	table.insert(GLIBLIST, s)
 end
 
+function tracer_clear()
+	GLIBLIST = {}
+	OBJLIST = {}
+end
+
 function tracer_generate(settings)
 	local k, v
+
+	local name = settings.name
+	assert(name, "give this tracer a name dammit")
+	local do_shadow = settings.do_shadow
+	if do_shadow == nil then do_shadow = true end
+	do_shadow = (do_shadow and "true") or "false"
+
+	local bounces = settings.bounces or 2
 
 	local src_main_frag = "#version 150\n"
 	src_main_frag = src_main_frag .. [=[
@@ -20,9 +35,9 @@ function tracer_generate(settings)
 
 	const float EPSILON = 0.0001;
 	const float ZFAR = 10000.0;
-	const uint BOUNCES = 0U;
+	const uint BOUNCES = ]=]..bounces..[=[U;
 
-	const bool do_shadow = false;
+	const bool do_shadow = ]=]..do_shadow..[=[;
 
 	uniform uint light_count;
 	uniform vec3 light_col[LIGHT_MAX];
@@ -131,19 +146,20 @@ function tracer_generate(settings)
 
 			// Trace shadow
 			Trace T1 = T0;
-			if(do_shadow)
+			float ldiff = max(0.0, dot(ldir, T0.obj_norm));
+			float lspec = max(0.0, dot(ldir, spec_dir));
+			bool can_do_shadow = (ldiff > 0.0 || lspec > 0.0);
+			T1.zfar = T1.hit_time = llen;
+			if(do_shadow && can_do_shadow)
 			{
-				T1.zfar = T1.hit_time = llen;
 				T1.src_wpos = T0.hit_pos;
 				T1.src_wdir = ldir;
 				trace_scene(T1, true);
 			}
 
 			// Check for occlusion
-			if((!do_shadow) || T1.hit_time == T1.zfar) // DIDN'T HIT ANYTHING
+			if((can_do_shadow && T1.hit_time == T1.zfar)) // DIDN'T HIT ANYTHING
 			{
-				float ldiff = max(0.0, dot(ldir, T0.obj_norm));
-				float lspec = max(0.0, dot(ldir, spec_dir));
 				lspec = pow(lspec, 128.0);
 				diff += ldiff;
 				spec += lspec;
@@ -166,7 +182,11 @@ function tracer_generate(settings)
 	}
 	]=]
 
-	return src_main_frag
+	SCENE[name] = {
+		frag = src_main_frag,
+	}
+
+	table.insert(SCENE_LIST, name)
 end
 
 

@@ -2,6 +2,10 @@ screen_scale = 1
 
 require("lua/util")
 require("lua/scene/voxygen")
+require("lua/scene/test")
+
+cur_scene_idx = 1
+cur_scene = SCENE_LIST[cur_scene_idx]
 
 -- from SDL_keycode.h
 SDLK_ESCAPE = 27
@@ -10,6 +14,8 @@ SDLK_w = ("w"):byte()
 SDLK_s = ("s"):byte()
 SDLK_a = ("a"):byte()
 SDLK_d = ("d"):byte()
+SDLK_1 = ("1"):byte()
+SDLK_2 = ("2"):byte()
 SDLK_LCTRL = (1<<30)+224
 
 key_pos_dzp = false
@@ -37,6 +43,14 @@ function hook_key(key, state)
 	elseif key == SDLK_d then key_pos_dxp = state
 	elseif key == SDLK_LCTRL then key_pos_dyn = state
 	elseif key == SDLK_SPACE then key_pos_dyp = state
+	elseif key == SDLK_1 and state then
+		cur_scene_idx = cur_scene_idx - 1
+		if cur_scene_idx < 1 then cur_scene_idx = #SCENE_LIST end
+		cur_scene = SCENE_LIST[cur_scene_idx]
+	elseif key == SDLK_2 and state then
+		cur_scene_idx = cur_scene_idx + 1
+		if cur_scene_idx > #SCENE_LIST then cur_scene_idx = 1 end
+		cur_scene = SCENE_LIST[cur_scene_idx]
 	end
 end
 
@@ -129,11 +143,15 @@ function init_gfx()
 	shader_blur = shader.new(vert, frag, {"in_vertex"}, {"out_frag_color", "out_frag_color_gi"})
 	print("shader_blur", misc.gl_error())
 
-	local vert = glslpp_parse(bin_load("glsl/shader_ray.vert"))
-	--local frag = glslpp_parse(bin_load("glsl/shader_ray.frag"))
-	local frag = glslpp_parse(src_main_frag)
-	shader_ray = shader.new(vert, frag, {"in_vertex"}, {"out_frag_color", "out_frag_color_gi"})
-	print("shader_ray", misc.gl_error())
+	shader_ray = {}
+
+	local k, v
+	for k, v in pairs(SCENE) do
+		local vert = glslpp_parse(bin_load("glsl/shader_ray.vert"))
+		local frag = glslpp_parse(v.frag)
+		shader_ray[k] = shader.new(vert, frag, {"in_vertex"}, {"out_frag_color", "out_frag_color_gi"})
+		print("shader_ray", k, misc.gl_error())
+	end
 end
 
 function hook_render(sec_current)
@@ -153,7 +171,7 @@ function hook_render(sec_current)
 	fbo.target_set(fbo0)
 	texture.unit_set(0, "2", tex_ray_rand)
 	texture.unit_set(1, "3", tex_ray_vox)
-	S.USE(shader_ray)
+	S.USE(shader_ray[cur_scene])
 
 	matrix.invert(mat_cam2, mat_cam1);
 	shader.uniform_matrix_4f(S.in_cam_inverse, mat_cam2)

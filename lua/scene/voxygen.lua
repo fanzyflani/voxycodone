@@ -1,5 +1,7 @@
 require("lua/tracer")
 
+tracer_clear()
+
 glib_add([=[
 uniform sampler2D tex_rand;
 uniform usampler3D tex_vox;
@@ -225,7 +227,10 @@ void scene_trace_voxygen(inout Trace T, bool shadow_mode)
 }
 ]=])
 
-src_main_frag = tracer_generate {
+tracer_generate {
+	name = "voxygen",
+	bounces = 0,
+	do_shadow = false,
 	trace_scene = [=[
 		T.mat_shine = 0.0;
 
