@@ -40,6 +40,7 @@ GLAPI void APIENTRY glTexSubImage2D( GLenum target, GLint level, GLint xoffset, 
 #endif
 
 #include <SDL.h>
+#include <SDL_mixer.h>
 
 #include "linmath.h"
 

@@ -14,6 +14,7 @@ SDLK_w = ("w"):byte()
 SDLK_s = ("s"):byte()
 SDLK_a = ("a"):byte()
 SDLK_d = ("d"):byte()
+SDLK_0 = ("0"):byte()
 SDLK_1 = ("1"):byte()
 SDLK_2 = ("2"):byte()
 SDLK_LCTRL = (1<<30)+224
@@ -43,6 +44,7 @@ function hook_key(key, state)
 	elseif key == SDLK_d then key_pos_dxp = state
 	elseif key == SDLK_LCTRL then key_pos_dyn = state
 	elseif key == SDLK_SPACE then key_pos_dyp = state
+	elseif key == SDLK_0 and state then render_sec_first_current = render_sec_last_current
 	elseif key == SDLK_1 and state then
 		cur_scene_idx = cur_scene_idx - 1
 		if cur_scene_idx < 1 then cur_scene_idx = #SCENE_LIST end
@@ -58,13 +60,20 @@ function hook_mouse_button(button, state)
 	if button == 1 and not state then
 		mouse_locked = not mouse_locked
 		misc.mouse_grab_set(mouse_locked)
+	elseif button == 2 and state then
+		light_pos_x = nil
+		light_pos_y = nil
+		light_pos_z = nil
+		light_dir_x = nil
+		light_dir_y = nil
+		light_dir_z = nil
 	elseif button == 3 and state then
-		light_pos_x = cam_pos_x;
-		light_pos_y = cam_pos_y;
-		light_pos_z = cam_pos_z;
-		light_dir_x = -math.cos(cam_rot_x)*math.sin(cam_rot_y);
-		light_dir_y = -math.sin(cam_rot_x);
-		light_dir_z = -math.cos(cam_rot_x)*math.cos(cam_rot_y);
+		light_pos_x = cam_pos_x
+		light_pos_y = cam_pos_y
+		light_pos_z = cam_pos_z
+		light_dir_x = -math.cos(cam_rot_x)*math.sin(cam_rot_y)
+		light_dir_y = -math.sin(cam_rot_x)
+		light_dir_z = -math.cos(cam_rot_x)*math.cos(cam_rot_y)
 	end
 end
 
@@ -154,8 +163,19 @@ function init_gfx()
 	end
 end
 
+render_sec_first_current = 0
+render_sec_last_current = nil
+render_sec_delta = nil
 function hook_render(sec_current)
 	local x, y, z, i, j
+
+	if render_sec_delta then
+		render_sec_delta = sec_current - render_sec_last_current
+	else
+		render_sec_delta = 0.00001 -- just in case
+	end
+
+	render_sec_last_current = sec_current
 
 	mat_cam1 = mat_cam1 or matrix.new()
 	mat_cam2 = mat_cam2 or matrix.new()
@@ -169,9 +189,14 @@ function hook_render(sec_current)
 
 	misc.gl_error()
 	fbo.target_set(fbo0)
+	S.USE(shader_ray[cur_scene])
+
+	if SCENE[cur_scene].update then
+		SCENE[cur_scene].update(sec_current - render_sec_first_current, render_sec_delta)
+	end
+
 	texture.unit_set(0, "2", tex_ray_rand)
 	texture.unit_set(1, "3", tex_ray_vox)
-	S.USE(shader_ray[cur_scene])
 
 	matrix.invert(mat_cam2, mat_cam1);
 	shader.uniform_matrix_4f(S.in_cam_inverse, mat_cam2)
@@ -188,19 +213,19 @@ function hook_render(sec_current)
 	local lcos = {}
 	local lpow = {}
 
-	local light_count = 1;
+	local light_count = 1
 
-	lcol[1 + 0*3 + 0] = 1.0;
-	lcol[1 + 0*3 + 1] = 1.0;
-	lcol[1 + 0*3 + 2] = 1.0;
-	lpos[1 + 0*3 + 0] = light_pos_x or cam_pos_x;
-	lpos[1 + 0*3 + 1] = light_pos_y or cam_pos_y;
-	lpos[1 + 0*3 + 2] = light_pos_z or cam_pos_z;
-	ldir[1 + 0*3 + 0] = light_dir_x or -math.cos(cam_rot_x)*math.sin(cam_rot_y);
-	ldir[1 + 0*3 + 1] = light_dir_y or -math.sin(cam_rot_x);
-	ldir[1 + 0*3 + 2] = light_dir_z or -math.cos(cam_rot_x)*math.cos(cam_rot_y);
-	lcos[1] = 1.0 - 0.7;
-	lpow[1] = 1.0/4.0;
+	lcol[1 + 0*3 + 0] = 1.0
+	lcol[1 + 0*3 + 1] = 1.0
+	lcol[1 + 0*3 + 2] = 1.0
+	lpos[1 + 0*3 + 0] = light_pos_x or cam_pos_x
+	lpos[1 + 0*3 + 1] = light_pos_y or cam_pos_y
+	lpos[1 + 0*3 + 2] = light_pos_z or cam_pos_z
+	ldir[1 + 0*3 + 0] = light_dir_x or -math.cos(cam_rot_x)*math.sin(cam_rot_y)
+	ldir[1 + 0*3 + 1] = light_dir_y or -math.sin(cam_rot_x)
+	ldir[1 + 0*3 + 2] = light_dir_z or -math.cos(cam_rot_x)*math.cos(cam_rot_y)
+	lcos[1] = 1.0 - 0.7
+	lpow[1] = 1.0/4.0
 
 	local light_amb = 0.1;
 

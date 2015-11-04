@@ -184,6 +184,7 @@ function tracer_generate(settings)
 
 	SCENE[name] = {
 		frag = src_main_frag,
+		update = settings.update,
 	}
 
 	table.insert(SCENE_LIST, name)

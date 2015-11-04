@@ -5,6 +5,7 @@ tracer_clear()
 glib_add([=[
 uniform sampler2D tex_rand;
 uniform usampler3D tex_vox;
+uniform float scene_sb_offs;
 
 const vec3[] lcol = vec3[](
 	vec3(0.5, 0.5, 0.5),
@@ -231,9 +232,37 @@ tracer_generate {
 	name = "voxygen",
 	bounces = 0,
 	do_shadow = false,
+	update = function (sec_current, sec_delta)
+		shader.uniform_f(S.scene_sb_offs, sec_current/5.0);
+		
+	end,
 	trace_scene = [=[
 		T.mat_shine = 0.0;
 
 		scene_trace_voxygen(T, shadow_mode);
+
+		if(T.hit_time == T.zfar)
+		{
+			// Get noise
+			vec2 sb_tc = T.src_wdir.xz/T.src_wdir.y;
+			vec2 sb_tc_offs = vec2(1.0, 0.5)*scene_sb_offs;
+
+			float sb_noise = 0.0;
+			float sb_lod = length(sb_tc)*2.0;
+			sb_noise += textureLod(tex_rand, sb_tc/64.0 + sb_tc_offs/63.0, sb_lod).r/2.0;
+			sb_noise += textureLod(tex_rand, sb_tc/32.0 + sb_tc_offs/31.0, sb_lod).g/4.0;
+			sb_noise += textureLod(tex_rand, sb_tc/16.0 + sb_tc_offs/15.0, sb_lod).b/8.0;
+			sb_noise += textureLod(tex_rand, sb_tc/8.0 + sb_tc_offs/7.0, sb_lod).r/16.0;
+			sb_noise += textureLod(tex_rand, sb_tc/4.0 + sb_tc_offs/3.0, sb_lod).g/32.0;
+			sb_noise = (sb_noise - 0.1);
+
+			sb_noise = clamp(sb_noise*1.0, 0.0, 1.0);
+			sb_noise = clamp(sb_noise/max(1.0, length(sb_tc)/50.0), 0.0, 1.0);
+
+			vec3 sb_col = mix(vec3(0.0, 0.5, 1.0), vec3(1.0, 1.0, 1.0)*(sb_noise+0.5), sb_noise);
+
+			T.mat_shine = 0.0;
+			ccol += sb_col;
+		}
 	]=],
 }

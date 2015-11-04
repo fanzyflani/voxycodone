@@ -72,6 +72,10 @@ function process_src(o, settings)
 				varout = string.format("%f", v[2])
 			elseif v[1] == "vec3" then
 				varout = string.format("vec3(%f, %f, %f)", v[2][1], v[2][2], v[2][3])
+			elseif v[1] == "int" then
+				varout = string.format("%i", v[2])
+			elseif v[1] == "ref" then
+				varout = v[2]
 			end
 		elseif name:sub(1,1) == "_" then
 			name = "L"..proc_idx_main.."_"..name:sub(2)
@@ -101,6 +105,7 @@ function process_src(o, settings)
 	return proc_src
 end
 
+function var_ref(v) return {"ref", v} end
 function var_float(v) return {"float", v} end
 function var_vec2(v) return {"vec2", v} end
 function var_vec3(v) return {"vec3", v} end

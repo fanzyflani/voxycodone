@@ -3,6 +3,12 @@ require("lua/tracer")
 
 tracer_clear()
 
+-- LIBS
+glib_add([=[
+uniform vec3 scene_s1_pos;
+uniform vec3 scene_s2_pos;
+]=])
+
 -- DEFINITIONS
 m_chequer_bw = mat_chequer {
 	c0 = var_vec3({0.9, 0.9, 0.9}),
@@ -69,7 +75,8 @@ obj_box {
 local csg_test = {
 	o1 = obj_sphere {
 		name = "s1",
-		pos = var_vec3({-3, 3.0, -10}),
+		--pos = var_vec3({-3, 3.0, -10}),
+		pos = var_ref("scene_s1_pos"),
 		rad = var_float(5.0),
 		--mat = mat_solid { c0 = {1.0, 0.5, 0.0}, },
 		mat = mat_chequer {
@@ -81,15 +88,31 @@ local csg_test = {
 
 	o2 = obj_sphere {
 		name = "s2",
-		pos = var_vec3({3, 3.0, -10}),
+		--pos = var_vec3({3, 3.0, -10}),
+		pos = var_ref("scene_s2_pos"),
 		rad = var_float(5.0),
 		--mat = mat_solid { c0 = {0.0, 0.5, 1.0}, },
 		mat = mat_solid { c0 = var_vec3({0.5, 0.3, 0.0}), },
 	},
 }
 
+local function scene_test_update(sec_current, sec_delta)
+	local a1 = sec_current*2.0
+	local a2 = sec_current*2.0
+	local s1x = 0 - 3.0*math.cos(a1)
+	local s1y = 3.0
+	local s1z = -10 - 3.0*math.sin(a1*1.7)
+	local s2x = 0 + 3.0*math.cos(a1*1.4)
+	local s2y = 3.0
+	local s2z = -10 + 3.0*math.sin(a2)
+
+	shader.uniform_f(S.scene_s1_pos, s1x, s1y, s1z);
+	shader.uniform_f(S.scene_s2_pos, s2x, s2y, s2z);
+end
+
 tracer_generate {
 	name = "test_isect",
+	update = scene_test_update,
 	trace_scene = [=[
 
 	Trace T1 = T;
@@ -129,6 +152,7 @@ tracer_generate {
 
 tracer_generate {
 	name = "test_sub",
+	update = scene_test_update,
 	trace_scene = [=[
 
 	Trace T1 = T;
@@ -172,6 +196,7 @@ tracer_generate {
 
 tracer_generate {
 	name = "test_skip",
+	update = scene_test_update,
 	trace_scene = [=[
 
 	Trace T1 = T;
@@ -198,5 +223,6 @@ tracer_generate {
 
 tracer_generate {
 	name = "test_union",
+	update = scene_test_update,
 }
 

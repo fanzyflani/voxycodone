@@ -9,7 +9,8 @@ double render_sec_current = 0.0;
 
 int main(int argc, char *argv[])
 {
-	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE);
+	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_NOPARACHUTE);
+	Mix_Init(MIX_INIT_OGG);
 
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -48,6 +49,10 @@ int main(int argc, char *argv[])
 	int32_t ticks_get_fps = ticks_prev;
 	int fps = 0;
 	char hands = '/';
+
+	Mix_OpenAudio(44100, AUDIO_S16SYS, 2, 4096);
+	Mix_Chunk *music = Mix_LoadWAV("dat/ds15rel-gm.ogg");
+	int music_chn = Mix_PlayChannel(-1, music, 0);
 
 	for(;;)
 	{
