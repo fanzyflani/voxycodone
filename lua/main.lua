@@ -186,11 +186,19 @@ function init_gfx()
 	end
 end
 
-render_sec_first_current = 0
+if EDIT_MODE then
+	render_sec_first_current = 0
+else
+	misc.mouse_visible_set(false)
+end
 render_sec_last_current = nil
 render_sec_delta = nil
 function hook_render(sec_current)
 	local x, y, z, i, j
+
+	if (not EDIT_MODE) and not render_sec_first_current then
+		render_sec_first_current = sec_current - recorded_steps[1][1]
+	end
 
 	if render_sec_delta then
 		render_sec_delta = sec_current - render_sec_last_current

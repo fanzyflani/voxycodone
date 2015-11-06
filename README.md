@@ -13,5 +13,5 @@ my compile + run flags:
 
 run from this directory or else it will choke, this is NOT the time to do stupid getcwd hacks this early in development
 
-licence TBD, probably will be GPL
+licence MIT, see LICENCE file
 

@@ -1,4 +1,8 @@
 #include "common.h"
+#ifdef WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
 
 SDL_Window *window;
 SDL_GLContext window_gl;
@@ -9,6 +13,31 @@ double render_sec_current = 0.0;
 
 int main(int argc, char *argv[])
 {
+#ifdef WIN32
+	// IIRC I wrote all this code thus can relicense
+	{
+		char cwd[2048] = "";
+		GetModuleFileName(NULL, cwd, 2047);
+		char *v = cwd + strlen(cwd) - 1;
+		while(v >= cwd)
+		{
+			if(*v == '\\')
+			{
+				*(v+1) = '\x00';
+				break;
+			}
+			v--;
+		}
+		printf("path: [%s]\n", cwd);
+
+		if(_chdir(cwd) != 0)
+		{
+			MessageBox(NULL, "Failed to change directory.", "Error", MB_ICONSTOP);
+			return 1;
+		}
+	}
+#endif
+
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_NOPARACHUTE);
 	Mix_Init(MIX_INIT_OGG);
 
@@ -31,10 +60,12 @@ int main(int argc, char *argv[])
 		//800, 500,
 		//640, 360,
 		//320, 180,
+		//SDL_WINDOW_FULLSCREEN | 
 		SDL_WINDOW_OPENGL);
 
 	window_gl = SDL_GL_CreateContext(window);
-	SDL_GL_SetSwapInterval(0); // disable vsync, because fuck vsync
+	//SDL_GL_SetSwapInterval(0); // disable vsync, because fuck vsync
+	SDL_GL_SetSwapInterval(-1); // actually we might as well have late swap tearing
 	printf("GL version %i\n", epoxy_gl_version());
 
 #ifndef WIN32

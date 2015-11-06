@@ -249,6 +249,16 @@ static int lbind_misc_mouse_grab_set(lua_State *L)
 	return 0;
 }
 
+static int lbind_misc_mouse_visible_set(lua_State *L)
+{
+	if(lua_gettop(L) < 1)
+		return luaL_error(L, "expected 1 argument to misc.mouse_visible_set");
+
+	SDL_ShowCursor(lua_toboolean(L, 1));
+
+	return 0;
+}
+
 static int lbind_misc_exit(lua_State *L)
 {
 	do_exit = true;
@@ -978,6 +988,7 @@ void init_lua(void)
 	lua_pushcfunction(L, lbind_misc_exit); lua_setfield(L, -2, "exit");
 	lua_pushcfunction(L, lbind_misc_gl_error); lua_setfield(L, -2, "gl_error");
 	lua_pushcfunction(L, lbind_misc_mouse_grab_set); lua_setfield(L, -2, "mouse_grab_set");
+	lua_pushcfunction(L, lbind_misc_mouse_visible_set); lua_setfield(L, -2, "mouse_visible_set");
 	lua_setglobal(L, "misc");
 
 	// Run main.lua
