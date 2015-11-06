@@ -18,6 +18,18 @@ SONG_PAT_SEL = {
 	"voxygen", -- just in case
 }
 
+frames_per_scene = {
+	spham = 0,
+	voxygen = 0,
+	csg = 0,
+}
+
+delta_per_scene = {
+	spham = 0.0,
+	voxygen = 0.0,
+	csg = 0.0,
+}
+
 screen_scale = 1
 
 require("lua/util")
@@ -239,6 +251,14 @@ function hook_render(sec_current)
 	fbo.target_set(fbo0)
 	S.USE(shader_ray[cur_scene])
 
+	if cur_scene == "voxygen" or cur_scene == "spham" then
+		frames_per_scene[cur_scene] = frames_per_scene[cur_scene] + 1
+		delta_per_scene[cur_scene] = delta_per_scene[cur_scene] + render_sec_delta
+	else
+		frames_per_scene["csg"] = frames_per_scene["csg"] + 1
+		delta_per_scene["csg"] = delta_per_scene["csg"] + render_sec_delta
+	end
+
 	if SCENE[cur_scene].update then
 		SCENE[cur_scene].update(sec_current - render_sec_first_current, render_sec_delta)
 	end
@@ -338,13 +358,40 @@ function hook_tick(sec_current, sec_delta)
 		end
 
 		if rec_offs > #recorded_steps then
+			print("")
+			print("============================================================")
+			print("")
+			print("  THE FUTURE IS YESTERDAY")
+			print("")
+			print("a rushed production by GreaseMonkey, 2015")
+			print("")
+			print("average FPS per scene:")
+			local k, v
+			for k, v in pairs(frames_per_scene) do
+				print(string.format(" - %s: %.2f"
+					, k
+					, 1.0/(delta_per_scene[k]/v)
+				))
+			end
+			print("")
+			print("Intel HD 3000 i5-2450M 2.5GHz FreeBSD/amd64 Mesa-11.1-git:")
+			print(" - voxygen: 39.91")
+			print(" - spham: 46.27")
+			print(" - csg: 117.45")
+			print("")
+			print("win32 ver in wine yields very similar results")
+			print("")
+			print("you do the math ;)")
+			print("")
+			print("============================================================")
 			misc.exit()
 			return
 		end
 
 		local l = recorded_steps[rec_offs]
 		if render_sec_first_current then
-			local pstep = sec_current - render_sec_first_current - recorded_steps[1][1]
+			local pstep = sec_current - render_sec_first_current - recorded_steps[1][1] - 4096.0/44100.0
+			if pstep < 0.0 then pstep = 0.0 end
 			local subpat = math.tointeger(math.fmod(math.floor((pstep)/SONG_ROW_LEN), 32))
 			local pat = math.tointeger(math.floor((pstep)/SONG_PAT_LEN))
 			cur_scene = SONG_PAT_SEL[pat+1]

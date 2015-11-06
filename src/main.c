@@ -64,8 +64,8 @@ int main(int argc, char *argv[])
 		SDL_WINDOW_OPENGL);
 
 	window_gl = SDL_GL_CreateContext(window);
-	//SDL_GL_SetSwapInterval(0); // disable vsync, because fuck vsync
-	SDL_GL_SetSwapInterval(-1); // actually we might as well have late swap tearing
+	SDL_GL_SetSwapInterval(0); // disable vsync, this is a benchmark
+	//SDL_GL_SetSwapInterval(-1); // late swap tearing if you want it
 	printf("GL version %i\n", epoxy_gl_version());
 
 #ifndef WIN32
