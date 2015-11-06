@@ -348,6 +348,9 @@ function hook_tick(sec_current, sec_delta)
 			local subpat = math.tointeger(math.fmod(math.floor((pstep)/SONG_ROW_LEN), 32))
 			local pat = math.tointeger(math.floor((pstep)/SONG_PAT_LEN))
 			cur_scene = SONG_PAT_SEL[pat+1]
+			if pat == 4*1 + 3 and subpat >= 28 and (subpat&1) == 0 then
+				cur_scene = SONG_PAT_SEL[pat+2]
+			end
 			--print(pat, subpat)
 		end
 		if cur_scene == "voxygen" or cur_scene == "spham" then
@@ -365,10 +368,10 @@ function hook_tick(sec_current, sec_delta)
 			light_pos_y = math.abs(l[3]+2.0)-2.0
 			light_pos_z = l[4]
 			cam_rot_x = 0.5
-			cam_rot_y = sec_current/2.0
+			cam_rot_y = sec_current/2.0 - math.pi
 			cam_pos_x = 0.0 +dist*math.sin(cam_rot_y)*math.cos(cam_rot_x)
 			cam_pos_y = 0.0 +dist*math.sin(cam_rot_x)
-			cam_pos_z = 0.0 +dist*math.cos(cam_rot_y)*math.cos(cam_rot_x)
+			cam_pos_z = -8.0 +dist*math.cos(cam_rot_y)*math.cos(cam_rot_x)
 		end
 
 	else
