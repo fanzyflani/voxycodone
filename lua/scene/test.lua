@@ -222,7 +222,8 @@ tracer_generate {
 }
 
 tracer_generate {
-	name = "test_union",
+	--name = "test_union",
+	name = "test",
 	update = scene_test_update,
 }
 

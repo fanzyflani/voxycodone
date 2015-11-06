@@ -1,12 +1,29 @@
 EDIT_MODE = false
 RECORD_MODE = false
 
+SONG_TOTAL_LEN = 105.93
+SONG_SECT_LEN = SONG_TOTAL_LEN/8.0
+SONG_PAT_LEN = SONG_SECT_LEN/4.0
+SONG_ROW_LEN = SONG_PAT_LEN/32.0
+
+SONG_PAT_SEL = {
+	"spham", "spham", "spham", "spham",
+	"spham", "spham", "spham", "spham",
+	"test", "spham", "test_skip", "spham",
+	"test_isect", "spham", "test_sub", "spham",
+	"voxygen", "voxygen", "voxygen", "voxygen",
+	"voxygen", "voxygen", "voxygen", "voxygen",
+	"test_isect", "voxygen", "spham", "voxygen",
+	"test_sub", "voxygen", "voxygen", "voxygen",
+	"voxygen", -- just in case
+}
+
 screen_scale = 1
 
 require("lua/util")
 require("lua/scene/test")
-require("lua/scene/spham")
 require("lua/scene/voxygen")
+require("lua/scene/spham")
 
 if EDIT_MODE then
 	if RECORD_MODE then
@@ -326,14 +343,33 @@ function hook_tick(sec_current, sec_delta)
 		end
 
 		local l = recorded_steps[rec_offs]
-		cam_pos_x = l[2]
-		cam_pos_y = l[3]
-		cam_pos_z = l[4]
-		cam_rot_x = l[5]
-		cam_rot_y = l[6]
-		light_pos_x = l[7]
-		light_pos_y = l[8]
-		light_pos_z = l[9]
+		if render_sec_first_current then
+			local pstep = sec_current - render_sec_first_current - recorded_steps[1][1]
+			local subpat = math.tointeger(math.fmod(math.floor((pstep)/SONG_ROW_LEN), 32))
+			local pat = math.tointeger(math.floor((pstep)/SONG_PAT_LEN))
+			cur_scene = SONG_PAT_SEL[pat+1]
+			--print(pat, subpat)
+		end
+		if cur_scene == "voxygen" or cur_scene == "spham" then
+			cam_pos_x = l[2]
+			cam_pos_y = l[3]
+			cam_pos_z = l[4]
+			cam_rot_x = l[5]
+			cam_rot_y = l[6]
+			light_pos_x = l[7]
+			light_pos_y = l[8]
+			light_pos_z = l[9]
+		else
+			local dist = 10.0
+			light_pos_x = l[2]
+			light_pos_y = math.abs(l[3]+2.0)-2.0
+			light_pos_z = l[4]
+			cam_rot_x = 0.5
+			cam_rot_y = sec_current/2.0
+			cam_pos_x = 0.0 +dist*math.sin(cam_rot_y)*math.cos(cam_rot_x)
+			cam_pos_y = 0.0 +dist*math.sin(cam_rot_x)
+			cam_pos_z = 0.0 +dist*math.cos(cam_rot_y)*math.cos(cam_rot_x)
+		end
 
 	else
 		local mvspeed = 20.0
