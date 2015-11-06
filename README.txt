@@ -8,7 +8,7 @@ PARTY RELEASE
 
 ----
 
-dependencies: SDL2, SDL2\_mixer, libepoxy, Lua 5.3
+dependencies: SDL2, SDL2_mixer, libepoxy, Lua 5.3
 
 uses datenwolf's linmath.h "licensed" under WTFPLv2 (Public Domain)
 
