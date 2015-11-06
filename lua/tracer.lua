@@ -48,6 +48,7 @@ function tracer_generate(settings)
 	uniform float light_amb;
 
 	vec3 ccol;
+	float ccol_fac;
 
 	struct Trace
 	{
@@ -127,7 +128,7 @@ function tracer_generate(settings)
 
 		ccol = vec3(0.0);
 		vec3 ccol_gi = vec3(0.0);
-		float ccol_fac = 1.0;
+		ccol_fac = 1.0;
 
 		for(uint i = 0U; i < BOUNCES+1U; i++)
 		{

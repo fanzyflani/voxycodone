@@ -1,10 +1,24 @@
+EDIT_MODE = false
+RECORD_MODE = false
+
 screen_scale = 1
 
 require("lua/util")
-require("lua/scene/voxygen")
 require("lua/scene/test")
+require("lua/scene/spham")
+require("lua/scene/voxygen")
 
-cur_scene_idx = 1
+if EDIT_MODE then
+	if RECORD_MODE then
+		record_fp = io.open("lua/testrec.lua", "wb")
+		record_fp:write("recorded_steps = {\n")
+	end
+else
+	dofile("lua/rec_voxbub.lua")
+	rec_offs = 1
+end
+
+cur_scene_idx = #SCENE_LIST
 cur_scene = SCENE_LIST[cur_scene_idx]
 
 -- from SDL_keycode.h
@@ -37,7 +51,14 @@ cam_vel_z = 0.0
 
 function hook_key(key, state)
 	if key == SDLK_ESCAPE and not state then
+		if record_fp then
+			record_fp:write("}\n")
+			record_fp:close()
+		end
+
 		misc.exit()
+	elseif not EDIT_MODE then
+		return
 	elseif key == SDLK_w then key_pos_dzp = state
 	elseif key == SDLK_s then key_pos_dzn = state
 	elseif key == SDLK_a then key_pos_dxn = state
@@ -57,6 +78,7 @@ function hook_key(key, state)
 end
 
 function hook_mouse_button(button, state)
+	if not EDIT_MODE then return end
 	if button == 1 and not state then
 		mouse_locked = not mouse_locked
 		misc.mouse_grab_set(mouse_locked)
@@ -78,6 +100,7 @@ function hook_mouse_button(button, state)
 end
 
 function hook_mouse_motion(x, y, dx, dy)
+	if not EDIT_MODE then return end
 	if not mouse_locked then return end
 
 	cam_rot_y = cam_rot_y - dx*math.pi/1000.0
@@ -195,6 +218,21 @@ function hook_render(sec_current)
 		SCENE[cur_scene].update(sec_current - render_sec_first_current, render_sec_delta)
 	end
 
+	if record_fp then
+		record_fp:write(
+		string.format("{%.5f, %.5f,%.5f,%.5f,%.5f,%.5f, %.5f,%.5f,%.5f},\n"
+			, sec_current - render_sec_first_current
+			, cam_pos_x
+			, cam_pos_y
+			, cam_pos_z
+			, cam_rot_x
+			, cam_rot_y
+			, light_pos_x or cam_pos_x
+			, light_pos_y or cam_pos_y
+			, light_pos_z or cam_pos_z
+		))
+	end
+
 	texture.unit_set(0, "2", tex_ray_rand)
 	texture.unit_set(1, "3", tex_ray_vox)
 
@@ -265,45 +303,71 @@ function hook_tick(sec_current, sec_delta)
 	-- of a C function
 	-- which was originally written in Lua.
 
-	local mvspeed = 20.0
-	--local mvspeed = 2.0
-	local mvspeedf = mvspeed * sec_delta
+	if not EDIT_MODE then
+		while rec_offs <= #recorded_steps and render_sec_first_current do
+			if recorded_steps[rec_offs][1] >= sec_current - render_sec_first_current then
+				break
+			end
 
-	local ldx = 0.0
-	local ldy = 0.0
-	local ldz = 0.0
-	if key_pos_dxn then ldx = ldx - 1 end
-	if key_pos_dxp then ldx = ldx + 1 end
-	if key_pos_dyn then ldy = ldy - 1 end
-	if key_pos_dyp then ldy = ldy + 1 end
-	if key_pos_dzn then ldz = ldz - 1 end
-	if key_pos_dzp then ldz = ldz + 1 end
+			rec_offs = rec_offs + 1
+		end
 
-	ldx = ldx * mvspeedf
-	ldy = ldy * mvspeedf
-	ldz = ldz * mvspeedf
+		if rec_offs > #recorded_steps then
+			misc.exit()
+			return
+		end
 
-	local ldw = ldz
-	local ldh = ldx
-	local ldv = ldy
+		local l = recorded_steps[rec_offs]
+		cam_pos_x = l[2]
+		cam_pos_y = l[3]
+		cam_pos_z = l[4]
+		cam_rot_x = l[5]
+		cam_rot_y = l[6]
+		light_pos_x = l[7]
+		light_pos_y = l[8]
+		light_pos_z = l[9]
 
-	local xs, xc = math.sin(cam_rot_x), math.cos(cam_rot_x)
-	local ys, yc = math.sin(cam_rot_y), math.cos(cam_rot_y)
-	local fx, fy, fz = -xc*ys, -xs, -xc*yc
-	local wx, wy, wz = -ys, 0, -yc
-	local hx, hy, hz = yc, 0, -ys
-	local vx, vy, vz = -xs*ys, xc, -xs*yc
+	else
+		local mvspeed = 20.0
+		--local mvspeed = 2.0
+		local mvspeedf = mvspeed * sec_delta
 
-	--local mvspeedef = mvspeed*(1.0 - math.exp(-sec_delta*0.1));
-	--local mvspeedef = mvspeed*(1.0 - math.exp(-sec_delta*0.9));
-	local mvspeedef = 1.0
-	cam_vel_x = cam_vel_x + (hx*ldh + fx*ldw + vx*ldv - cam_vel_x)*mvspeedef
-	cam_vel_y = cam_vel_y + (hy*ldh + fy*ldw + vy*ldv - cam_vel_y)*mvspeedef
-	cam_vel_z = cam_vel_z + (hz*ldh + fz*ldw + vz*ldv - cam_vel_z)*mvspeedef
+		local ldx = 0.0
+		local ldy = 0.0
+		local ldz = 0.0
+		if key_pos_dxn then ldx = ldx - 1 end
+		if key_pos_dxp then ldx = ldx + 1 end
+		if key_pos_dyn then ldy = ldy - 1 end
+		if key_pos_dyp then ldy = ldy + 1 end
+		if key_pos_dzn then ldz = ldz - 1 end
+		if key_pos_dzp then ldz = ldz + 1 end
 
-	cam_pos_x = cam_pos_x + cam_vel_x
-	cam_pos_y = cam_pos_y + cam_vel_y
-	cam_pos_z = cam_pos_z + cam_vel_z
+		ldx = ldx * mvspeedf
+		ldy = ldy * mvspeedf
+		ldz = ldz * mvspeedf
+
+		local ldw = ldz
+		local ldh = ldx
+		local ldv = ldy
+
+		local xs, xc = math.sin(cam_rot_x), math.cos(cam_rot_x)
+		local ys, yc = math.sin(cam_rot_y), math.cos(cam_rot_y)
+		local fx, fy, fz = -xc*ys, -xs, -xc*yc
+		local wx, wy, wz = -ys, 0, -yc
+		local hx, hy, hz = yc, 0, -ys
+		local vx, vy, vz = -xs*ys, xc, -xs*yc
+
+		--local mvspeedef = mvspeed*(1.0 - math.exp(-sec_delta*0.1));
+		--local mvspeedef = mvspeed*(1.0 - math.exp(-sec_delta*0.9));
+		local mvspeedef = 1.0
+		cam_vel_x = cam_vel_x + (hx*ldh + fx*ldw + vx*ldv - cam_vel_x)*mvspeedef
+		cam_vel_y = cam_vel_y + (hy*ldh + fy*ldw + vy*ldv - cam_vel_y)*mvspeedef
+		cam_vel_z = cam_vel_z + (hz*ldh + fz*ldw + vz*ldv - cam_vel_z)*mvspeedef
+
+		cam_pos_x = cam_pos_x + cam_vel_x
+		cam_pos_y = cam_pos_y + cam_vel_y
+		cam_pos_z = cam_pos_z + cam_vel_z
+	end
 
 	draw.cam_set_pa(cam_pos_x, cam_pos_y, cam_pos_z, cam_rot_x, cam_rot_y);
 end

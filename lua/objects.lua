@@ -281,7 +281,6 @@ function obj_box(settings)
 		${front_time} = ${_tf};
 		${back_time} = ${_tb};
 
-		// TODO: correct normals rather than sphere normals
 		${obj_norm} = vec3(equal(vec3(${obj_time}), ${_vt2}))
 			- vec3(equal(vec3(${obj_time}), ${_vt1}));
 		if(${_is_inside}) ${obj_norm} = -${obj_norm};
