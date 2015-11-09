@@ -130,18 +130,18 @@ static void texture_get_data_fmt(lua_State *L, const char *fmt,
 	} else if(is_unsigned) {
 		switch(*ebytes)
 		{
-			case 1: *typ = GL_BYTE; break;
-			case 2: *typ = GL_SHORT; break;
-			case 4: *typ = GL_INT; break;
+			case 1: *typ = GL_UNSIGNED_BYTE; break;
+			case 2: *typ = GL_UNSIGNED_SHORT; break;
+			case 4: *typ = GL_UNSIGNED_INT; break;
 			default: luaL_error(L, "EDOOFUS invalid elem byte count"); break;
 		}
 
 	} else {
 		switch(*ebytes)
 		{
-			case 1: *typ = GL_UNSIGNED_BYTE; break;
-			case 2: *typ = GL_UNSIGNED_SHORT; break;
-			case 4: *typ = GL_UNSIGNED_INT; break;
+			case 1: *typ = GL_BYTE; break;
+			case 2: *typ = GL_SHORT; break;
+			case 4: *typ = GL_INT; break;
 			default: luaL_error(L, "EDOOFUS invalid elem byte count"); break;
 		}
 	}
@@ -463,6 +463,7 @@ static int lbind_texture_load_sub(lua_State *L)
 	int xlen = (dims < 1 ? 1 : lua_tointeger(L, 4+dims));
 	int ylen = (dims < 2 ? 1 : lua_tointeger(L, 5+dims));
 	int zlen = (dims < 3 ? 1 : lua_tointeger(L, 6+dims));
+	int aidx = dims*2 + 5;
 
 	if(xlen < 1 || ylen < 1 || zlen < 1)
 		return luaL_error(L, "invalid texture size");
@@ -478,52 +479,70 @@ static int lbind_texture_load_sub(lua_State *L)
 	if(belems < zlen || belems < old_belems)
 		return luaL_error(L, "texture size overflow");
 
+	size_t becount = belems * data_fmt_cmps;
+	if(becount < belems || becount < data_fmt_cmps)
+		return luaL_error(L, "texture size overflow");
+
+	size_t btotal = becount * data_fmt_ebytes;
+	if(btotal < becount || btotal < data_fmt_ebytes)
+		return luaL_error(L, "texture size overflow");
+
+	// XXX: Do we use rawlen/rawgeti instead of len/geti?
+	lua_len(L, aidx);
+	size_t len = lua_tointeger(L, -1);
+	lua_pop(L, 1);
+	if(len < becount)
+		return luaL_error(L, "not enough elements in texture array to fill buffer");
+
+	// TODO: use directly-mapped PBOs so we don't have to malloc
+	void *data = malloc(btotal);
+	if(data == NULL)
+		return luaL_error(L, "could not allocate temp buffer for texture");
+
+	switch(data_fmt_typ)
+	{
+		case GL_FLOAT:
+			for(i = 0; i < becount; i++)
+			{
+				lua_geti(L, aidx, i+1);
+				float f = lua_tonumber(L, -1);
+				lua_pop(L, 1);
+				((float *)data)[i] = f;
+			}
+			break;
+
+		case GL_UNSIGNED_BYTE:
+			for(i = 0; i < becount; i++)
+			{
+				lua_geti(L, aidx, i+1);
+				float f = lua_tointeger(L, -1);
+				lua_pop(L, 1);
+				((uint8_t *)data)[i] = f;
+			}
+			break;
+
+		default:
+			free(data);
+			return luaL_error(L, "TODO support data format \"%s\"", data_fmt_str);
+	}
+
 	if(dims == 2)
 	{
-		size_t becount = belems * data_fmt_cmps;
-		if(becount < belems || becount < data_fmt_cmps)
-			return luaL_error(L, "texture size overflow");
-
-		size_t btotal = becount * data_fmt_ebytes;
-		if(btotal < becount || btotal < data_fmt_ebytes)
-			return luaL_error(L, "texture size overflow");
-
-		// XXX: Do we use rawlen/rawgeti instead of len/geti?
-		lua_len(L, 9);
-		size_t len = lua_tointeger(L, -1);
-		lua_pop(L, 1);
-		if(len < becount)
-			return luaL_error(L, "not enough elements in texture array to fill buffer");
-
-		// TODO: use directly-mapped PBOs so we don't have to malloc
-		void *data = malloc(btotal);
-		if(data == NULL)
-			return luaL_error(L, "could not allocate temp buffer for texture");
-
-		switch(data_fmt_typ)
-		{
-			case GL_FLOAT:
-				for(i = 0; i < becount; i++)
-				{
-					lua_geti(L, 9, i+1);
-					float f = lua_tonumber(L, -1);
-					lua_pop(L, 1);
-					((float *)data)[i] = f;
-				}
-				break;
-
-			default:
-				return luaL_error(L, "TODO support data format \"%s\"", data_fmt_str);
-		}
-
-
 		//printf("%08X %08X %08X\n", tex_target, data_fmt_format, data_fmt_typ);
 		glTexSubImage2D(tex_target, level, xoffs, yoffs, xlen, ylen,
 			data_fmt_format, data_fmt_typ, data);
 
 		free(data);
 
+	} else if(dims == 3) {
+		glTexSubImage3D(tex_target, level, xoffs, yoffs, zoffs, xlen, ylen, zlen,
+			data_fmt_format, data_fmt_typ, data);
+
+		free(data);
+
 	} else {
+		free(data);
+
 		return luaL_error(L, "TODO: fill in other dimensions");
 
 	}

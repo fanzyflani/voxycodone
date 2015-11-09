@@ -1,6 +1,7 @@
 screen_scale = 2
 
 require("lua/util")
+require("lua/voxel")
 require("lua/scene/voxygen")
 
 cur_scene_idx = #SCENE_LIST
@@ -165,6 +166,10 @@ function init_gfx()
 		shader_ray[k] = shader.new(vert, frag, {"in_vertex"}, {"out_frag_color", "out_frag_color_gi"})
 		print("shader_ray", k, misc.gl_error())
 	end
+
+	-- Voxel landscape
+	-- THIS IS SLOW
+	voxygen_load_repeated_chunk("dat/voxel1.voxygen")
 end
 
 render_sec_first_current = 0

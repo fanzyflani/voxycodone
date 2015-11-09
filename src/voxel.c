@@ -1,7 +1,6 @@
 #include "common.h"
 
-// TODO: port this to Lua
-// (we can port it back later)
+// TODO: hook this up to Lua more nicely
 
 void fill_voxygen_subchunk(uint8_t **voxygen_buf, int layer, int sx, int sy, int sz, uint8_t c)
 {

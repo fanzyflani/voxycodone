@@ -83,12 +83,12 @@ int main(int argc, char *argv[])
 
 	// TODO: move this to Lua somehow {
 	// Get textures from Lua state
-	lua_getglobal(Lbase, "tex_ray_vox"); tex_ray_vox = lua_tointeger(Lbase, -1); lua_pop(Lbase, 1);
+	//lua_getglobal(Lbase, "tex_ray_vox"); tex_ray_vox = lua_tointeger(Lbase, -1); lua_pop(Lbase, 1);
 
 	// Send voxel landscape
-	glBindTexture(GL_TEXTURE_3D, tex_ray_vox);
-	voxygen_load_repeated_chunk("dat/voxel1.voxygen");
-	glBindTexture(GL_TEXTURE_3D, 0);
+	//glBindTexture(GL_TEXTURE_3D, tex_ray_vox);
+	//voxygen_load_repeated_chunk("dat/voxel1.voxygen");
+	//glBindTexture(GL_TEXTURE_3D, 0);
 	// }
 
 	Mix_OpenAudio(44100, AUDIO_S16SYS, 2, 4096);

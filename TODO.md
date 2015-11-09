@@ -1,9 +1,10 @@
+
 Cleanup
 -------
 
 This really should happen before the other things.
 
-* [ ] Port src/voxel.c to Lua
+* [x] Port src/voxel.c to Lua (RESOLUTION: leave src/voxel.c intact)
 * [ ] Split src/lbind.c into different files
 * [ ] Port the main loop to Lua
 * [ ] Make API docs
@@ -15,8 +16,16 @@ API
   * [ ] 1D textures
   * [ ] Cubemaps
   * [ ] Fill in all dims for these (TODOs in brackets):
-    * [ ] `texture.load_sub` (1D, 3D)
+    * [ ] `texture.load_sub` (1D)
     * [ ] `texture.new` (1D)
+  * [ ] Support more texture formats:
+    * [x] `GL_FLOAT`
+    * [ ] `GL_BYTE`
+    * [ ] `GL_SHORT`
+    * [ ] `GL_INT`
+    * [x] `GL_UNSIGNED_BYTE`
+    * [ ] `GL_UNSIGNED_SHORT`
+    * [ ] `GL_UNSIGNED_INT`
   * [ ] `matrix.*`
   * [ ] `shader.uniform_*`
 
@@ -28,6 +37,7 @@ Game engine
 Graphics
 --------
 
+* [ ] OpenGL 2.1 (base + FBO) support
 * [ ] Expose more than just the 2D double-triangle VAO for drawing
 * [ ] `GL_ARB_direct_state_access`
 * [ ] Geometry shaders
@@ -60,6 +70,14 @@ Audio
 * [ ] Stop stuff
 * [ ] Pause stuff
 
+Security
+--------
+
+* [ ] Wrap file access builtins to suit models:
+  * [ ] Local crap
+  * [ ] Network client
+  * [ ] Network server
+
 Lua code acceleration
 ---------------------
 
@@ -69,4 +87,8 @@ A lot of things could be accelerated, but for now we need to have a Lua implemen
 * [ ] Voxel scene userdata
   * [ ] Voxel texture uploads
   * [ ] Voxel chunk generation
+
+vim: syntax=markdown
+
+BECAUSE NOBODY USES MODULA.
 

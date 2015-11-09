@@ -3,7 +3,7 @@
 # Because EVERY DISTRO JUST HAS TO INSIST ON DOING IT DIFFERENTLY
 # IT'S LIKE THESE MORONS DON'T KNOW WHAT STANDARDS ARE
 
-# oh yeah, i release this into the public domain. i wrote this crap of course.
+# oh yeah, i release this into the public domain.
 
 if pkg-config lua-5.3 ; then
 	# FreeBSD
