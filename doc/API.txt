@@ -1,0 +1,81 @@
+
+width:i, height:i = draw.screen_size_get():
+	Obtain the virtual screen resolution.
+
+	Two things to factor in:
+	* This could technically be an FBO.
+	* The size can change, but has to be explicitly changed from within the same VM (TODO)
+
+draw.blit():
+	DEPRECATED API, WILL BE REMOVED SOON
+
+	Draw a fullscreen rectangle.
+
+	Really only useful for raytracing.
+
+draw.buffers_set(buf_list:i[]):
+	glDrawBuffers(#buf_list, GL_COLOR_ATTACHMENT0 + buf_list);
+
+	Useful for setting up FBOs with multiple outputs.
+	
+	A good list to pass when you're done is {0}.
+
+draw.viewport_set(x:i, y:i, xlen:i, ylen:i):
+	glViewport(x, y, xlen, ylen);
+
+	Bottom-left origin. Measured in pixels.
+
+	You'll want to set this after switching to a different-sized render target.
+
+--- TODO! ---
+
+fbo.new():
+
+fbo.bind_tex():
+
+fbo.target_set():
+
+fbo.validate():
+
+matrix.new():
+
+matrix.identity():
+
+matrix.rotate_X():
+
+matrix.rotate_Y():
+
+matrix.translate_in_place():
+
+matrix.invert():
+
+texture.new():
+
+texture.unit_set():
+
+texture.load_sub():
+
+shader.new():
+
+shader.use():
+
+shader.uniform_location_get():
+
+shader.uniform_matrix_4f():
+
+shader.uniform_f():
+
+shader.uniform_i():
+
+shader.uniform_ui():
+
+shader.uniform_fv():
+
+misc.exit():
+
+misc.gl_error():
+
+misc.mouse_grab_set():
+
+misc.mouse_visible_set():
+
