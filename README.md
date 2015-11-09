@@ -1,10 +1,4 @@
-"The Future Is Yesterday"
-
-a raytraced demo for Demosplash 2015
-
-by GreaseMonkey
-
-PARTY RELEASE
+code based on my solo entry to Demosplash 2015, "The Future Is Yesterday"
 
 ----
 
@@ -19,4 +13,7 @@ my compile + run flags:
 APPLIES TO NON-WIN32 BUILDS: run from this directory or else it will choke
 
 licence MIT, see LICENCE file
+
+if you wish to use this engine in your commercial projects and you cannot make
+head or tail of it, don't be a cheapskate, hire me
 

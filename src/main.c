@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
-	window = SDL_CreateWindow("OBEY AUTHORITY CEASE REPRODUCTION EAT MCDONALDS",
+	window = SDL_CreateWindow("Voxycodone prealpha",
 		SDL_WINDOWPOS_UNDEFINED,
 		SDL_WINDOWPOS_UNDEFINED,
 		1280, 720,
@@ -81,9 +81,21 @@ int main(int argc, char *argv[])
 	int fps = 0;
 	char hands = '/';
 
+	// TODO: move this to Lua somehow {
+	// Get textures from Lua state
+	lua_getglobal(Lbase, "tex_ray_vox"); tex_ray_vox = lua_tointeger(Lbase, -1); lua_pop(Lbase, 1);
+
+	// Send voxel landscape
+	glBindTexture(GL_TEXTURE_3D, tex_ray_vox);
+	voxygen_load_repeated_chunk("dat/voxel1.voxygen");
+	glBindTexture(GL_TEXTURE_3D, 0);
+	// }
+
 	Mix_OpenAudio(44100, AUDIO_S16SYS, 2, 4096);
-	Mix_Chunk *music = Mix_LoadWAV("dat/ds15rel-gm.ogg");
-	int music_chn = Mix_PlayChannel(-1, music, 0);
+	// TODO: clean this up {
+	//Mix_Chunk *music = Mix_LoadWAV("dat/ds15rel-gm.ogg");
+	//int music_chn = Mix_PlayChannel(-1, music, 0);
+	// }
 
 	for(;;)
 	{
@@ -144,7 +156,11 @@ int main(int argc, char *argv[])
 		lua_pushnumber(Lbase, render_sec_current);
 		lua_pushnumber(Lbase, sec_delta);
 		lua_call(Lbase, 2, 0);
-		h_render_main();
+
+		lua_getglobal(Lbase, "hook_render");
+		lua_pushnumber(Lbase, render_sec_current);
+		lua_call(Lbase, 1, 0);
+
 		//glFinish();
 		SDL_GL_SwapWindow(window);
 		ticks_prev = ticks_now;

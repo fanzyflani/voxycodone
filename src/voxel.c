@@ -1,5 +1,8 @@
 #include "common.h"
 
+// TODO: port this to Lua
+// (we can port it back later)
+
 void fill_voxygen_subchunk(uint8_t **voxygen_buf, int layer, int sx, int sy, int sz, uint8_t c)
 {
 	int lsize = 128>>layer;

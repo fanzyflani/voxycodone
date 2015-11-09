@@ -147,21 +147,6 @@ static void texture_get_data_fmt(lua_State *L, const char *fmt,
 	}
 }
 
-
-static int lbind_draw_cam_set_pa(lua_State *L)
-{
-	if(lua_gettop(L) < 5)
-		return luaL_error(L, "expected 5 arguments to draw.cam_set_pa");
-
-	cam_pos_x = lua_tonumber(L, 1);
-	cam_pos_y = lua_tonumber(L, 2);
-	cam_pos_z = lua_tonumber(L, 3);
-	cam_rot_x = lua_tonumber(L, 4);
-	cam_rot_y = lua_tonumber(L, 5);
-
-	return 0;
-}
-
 static int lbind_draw_screen_size_get(lua_State *L)
 {
 	int wnd_w, wnd_h;
@@ -935,7 +920,6 @@ void init_lua(void)
 
 	// --- draw
 	lua_newtable(L);
-	lua_pushcfunction(L, lbind_draw_cam_set_pa); lua_setfield(L, -2, "cam_set_pa");
 	lua_pushcfunction(L, lbind_draw_screen_size_get); lua_setfield(L, -2, "screen_size_get");
 	lua_pushcfunction(L, lbind_draw_blit); lua_setfield(L, -2, "blit");
 	lua_pushcfunction(L, lbind_draw_viewport_set); lua_setfield(L, -2, "viewport_set");

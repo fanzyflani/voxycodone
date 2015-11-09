@@ -74,55 +74,11 @@ struct kd {
 
 // glslpp.c
 GLuint init_shader_str(const char *ray_v_src, const char *ray_f_src);
-GLuint init_shader_fname(const char *fname_vert, const char *fname_frag);
-char *load_str(const char *fname);
-char *glslpp_load_str(const char *fname, size_t *len);
 
 // init.c
-extern GLuint shader_blur;
-extern GLint shader_blur_tex0;
-extern GLint shader_blur_tex1;
-
-extern GLuint shader_ray;
-extern GLint shader_ray_tex0;
-extern GLint shader_ray_tex1;
-extern GLint shader_ray_tex2;
-extern GLint shader_ray_tex3;
-extern GLint shader_ray_tex_rand;
-extern GLint shader_ray_tex_vox;
-extern GLint shader_ray_sec_current;
-extern GLint shader_ray_sph_count;
-extern GLint shader_ray_sph_amb;
-extern GLint shader_ray_sph_data;
-extern GLint shader_ray_light_count;
-extern GLint shader_ray_light_amb;
-extern GLint shader_ray_light0_col;
-extern GLint shader_ray_light0_pos;
-extern GLint shader_ray_light0_dir;
-extern GLint shader_ray_light0_cos;
-extern GLint shader_ray_light0_pow;
-extern GLint shader_ray_bmin;
-extern GLint shader_ray_bmax;
-extern GLint shader_ray_in_cam_inverse;
-extern GLint shader_ray_in_aspect;
-extern GLint shader_ray_kd_data_split_axis;
-extern GLint shader_ray_kd_data_split_point;
-//extern GLint shader_ray_kd_data_child1;
-//extern GLint shader_ray_kd_data_spibeg;
-//extern GLint shader_ray_kd_data_spilen;
-extern GLint shader_ray_kd_data_spilist;
-
-extern GLuint tex_ray0;
-extern GLuint tex_ray1;
-extern GLuint tex_ray2;
-extern GLuint tex_ray3;
-extern GLuint tex_ray_rand;
 extern GLuint tex_ray_vox;
 extern GLuint va_ray_vbo;
 extern GLuint va_ray_vao;
-extern GLuint tex_fbo0_0;
-extern GLuint tex_fbo0_1;
-extern GLuint fbo0;
 
 void init_gfx(void);
 
@@ -150,19 +106,7 @@ extern lua_State *Lbase;
 void init_lua(void);
 
 // scene.c
-extern double cam_rot_x;
-extern double cam_rot_y;
-extern double cam_pos_x;
-extern double cam_pos_y;
-extern double cam_pos_z;
-
 void h_render_main(void);
-
-// sph.c
-extern int sph_count;
-extern struct sph sph_list[SPH_MAX];
-
-void sph_set(int i, double x, double y, double z, double rad, int r, int g, int b, int a);
 
 // voxel.c
 void decode_voxygen_chunk(uint8_t **voxygen_buf, FILE *fp);
