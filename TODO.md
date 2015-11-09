@@ -15,8 +15,8 @@ API
   * [ ] 1D textures
   * [ ] Cubemaps
   * [ ] Fill in all dims for these (TODOs in brackets):
-    * [ ] texture.load_sub (1D, 3D)
-    * [ ] texture.new (1D)
+    * [ ] `texture.load_sub` (1D, 3D)
+    * [ ] `texture.new` (1D)
   * [ ] `matrix.*`
   * [ ] `shader.uniform_*`
 
@@ -51,6 +51,14 @@ VM system
   * [ ] Network-server sandbox
   * [ ] Personal config sandbox
 * [ ] Sandbox message passing
+
+Audio
+-----
+
+* [ ] Load stuff (ogg/wav only)
+* [ ] Play stuff
+* [ ] Stop stuff
+* [ ] Pause stuff
 
 Lua code acceleration
 ---------------------
