@@ -6,34 +6,6 @@ LDFLAGS = -g
 LIBS = -lmingw32 -lSDL2main -lSDL2 -lSDL2_mixer -llua53 -lepoxy -lopengl32 -lm
 BINNAME = voxycodone.exe
 OBJDIR = wobj
-SRCDIR = src
-INCDIR = src
-INCLUDES = $(INCDIR)/common.h
-OBJS = \
-	$(OBJDIR)/glslpp.o \
-	$(OBJDIR)/init.o \
-	$(OBJDIR)/kd.o \
-	$(OBJDIR)/lbind.o \
-	$(OBJDIR)/scene.o \
-	$(OBJDIR)/sph.o \
-	$(OBJDIR)/voxel.o \
-	\
-	$(OBJDIR)/main.o
 
-all: $(BINNAME) $(TOOLS)
-
-clean:
-	rm -f $(OBJS)
-
-$(OBJDIR):
-	mkdir -p $(OBJDIR)
-
-$(BINNAME): $(OBJDIR) $(OBJS)
-	$(CC) -o $(BINNAME) $(LDFLAGS) $(OBJS) $(LIBS)
-
-$(OBJDIR)/%.o: $(SRCDIR)/%.c $(INCLUDES)
-	$(CC) -c -o $@ $(CFLAGS) $<
-
-.PHONY: all clean
-
+include Makefile.common
 

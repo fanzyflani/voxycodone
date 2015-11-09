@@ -5,7 +5,7 @@ Cleanup
 This really should happen before the other things.
 
 * [x] Port src/voxel.c to Lua (RESOLUTION: leave src/voxel.c intact)
-* [ ] Split src/lbind.c into different files
+* [x] Split src/lbind.c into different files
 * [ ] Port the main loop to Lua
 * [ ] Make API docs
 

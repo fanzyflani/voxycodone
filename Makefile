@@ -5,31 +5,6 @@ LDFLAGS = -g
 LIBS = `sdl2-config --libs` -lSDL2_mixer `./findlua.sh --libs` `pkg-config epoxy --libs` -lGL -lm
 BINNAME = voxycodone
 OBJDIR = obj
-SRCDIR = src
-INCDIR = src
-INCLUDES = $(INCDIR)/common.h
-OBJS = \
-	$(OBJDIR)/glslpp.o \
-	$(OBJDIR)/init.o \
-	$(OBJDIR)/lbind.o \
-	$(OBJDIR)/voxel.o \
-	\
-	$(OBJDIR)/main.o
 
-all: $(BINNAME) $(TOOLS)
-
-clean:
-	rm -f $(OBJS)
-
-$(OBJDIR):
-	mkdir -p $(OBJDIR)
-
-$(BINNAME): $(OBJDIR) $(OBJS)
-	$(CC) -o $(BINNAME) $(LDFLAGS) $(OBJS) $(LIBS)
-
-$(OBJDIR)/%.o: $(SRCDIR)/%.c $(INCLUDES)
-	$(CC) -c -o $@ $(CFLAGS) $<
-
-.PHONY: all clean
-
+include Makefile.common
 

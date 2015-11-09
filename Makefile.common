@@ -1,0 +1,40 @@
+# I personally don't care if you steal this makefile. --GM
+
+SRCDIR = src
+INCDIR = src
+INCLUDES = $(INCDIR)/common.h
+OBJS = \
+	$(OBJDIR)/glslpp.o \
+	$(OBJDIR)/init.o \
+	$(OBJDIR)/lbind.o \
+	$(OBJDIR)/voxel.o \
+	\
+	$(OBJDIR)/lua/draw.o \
+	$(OBJDIR)/lua/fbo.o \
+	$(OBJDIR)/lua/matrix.o \
+	$(OBJDIR)/lua/misc.o \
+	$(OBJDIR)/lua/shader.o \
+	$(OBJDIR)/lua/texture.o \
+	\
+	$(OBJDIR)/main.o
+
+all: $(BINNAME) $(TOOLS)
+
+clean:
+	rm -f $(OBJS)
+
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
+
+$(OBJDIR)/lua: $(OBJDIR)
+	mkdir -p $(OBJDIR)/lua/
+	touch $(OBJDIR)
+
+$(BINNAME): $(OBJDIR) $(OBJDIR)/lua $(OBJS)
+	$(CC) -o $(BINNAME) $(LDFLAGS) $(OBJS) $(LIBS)
+
+$(OBJDIR)/%.o: $(SRCDIR)/%.c $(INCLUDES)
+	$(CC) -c -o $@ $(CFLAGS) -I$(INCDIR) $<
+
+.PHONY: all clean
+
