@@ -44,9 +44,7 @@ function fill_voxygen_subchunk(voxygen_buf, layer, sx, sy, sz, c)
 end
 
 function decode_voxygen_subchunk(voxygen_buf, fp, layer, sx, sy, sz)
-	local c = fp:read(1)
-	assert(c ~= "" and c ~= nil)
-	c = string.byte(c)
+	local c = fp:getc(1)
 	assert(c >= 0)
 	assert(c <= 0xFF) -- juuuuust in case your libc sucks (this IS being overcautious though)
 	assert((c & 0x40) == 0)
@@ -92,8 +90,6 @@ end
 function voxygen_load_repeated_chunk(fname)
 	misc.gl_error()
 
-	local fp = io.open(fname, "rb")
-
 	-- TODO: load more than a chunk
 	-- Layer 1: 128^3 chunks in a [z][x]
 	-- Layer 2: 32^3 outer layers in a 4^3 arrangement [z][x][y]
@@ -102,48 +98,57 @@ function voxygen_load_repeated_chunk(fname)
 	local cx, cz
 	local cy = 0
 	local sx, sy, sz
-	local voxygen_buf = {}
+	local voxygen_buf
 
-	-- TODO: shift *all* the voxygen stuff into src/voxel.c
-	local function malloc(sz)
-		local i
-		local l = {}
-		for i=1,sz do
-			l[i] = 0
-		end
+	local fdata = bin_load(fname)
 
-		return l
+	if voxel.decode_chunk then
+		voxygen_buf = voxel.decode_chunk(fdata, 5, 7)
+	else
+		print("Allocating voxel arrays")
+		voxygen_buf = {}
+		voxygen_buf[1] = {}
+		voxygen_buf[2] = {}
+		voxygen_buf[3] = {}
+		voxygen_buf[4] = {}
+		voxygen_buf[5] = {}
+
+		print("Decoding voxel data")
+		local fp = {
+			fdata = fdata,
+			fpos = 1,
+			getc = function(this)
+				if this.fpos > #this.fdata then return nil end
+				local ret = this.fdata:sub(this.fpos, this.fpos)
+				this.fpos = this.fpos + 1
+				return string.byte(ret)
+			end,
+			close = function() end,
+		}
+		decode_voxygen_chunk(voxygen_buf, fp)
 	end
-	print("Allocating voxel arrays")
-	voxygen_buf[1] = malloc(128*128*128)
-	voxygen_buf[2] = malloc(64*64*64)
-	voxygen_buf[3] = malloc(32*32*32)
-	voxygen_buf[4] = malloc(16*16*16)
-	voxygen_buf[5] = malloc(8*8*8)
-
-	print("Decoding voxel data")
-
-	decode_voxygen_chunk(voxygen_buf, fp)
 
 	print("Uploading voxel data")
-	local layer
-	for layer=0,4,1 do
-		local lsize = 128>>layer
-		local ly = 128*2-(lsize*2)
-		for sz=0,512-1,lsize do
-		for sx=0,512-1,lsize do
-		for sy=0,lsize-1,lsize do
-			texture.load_sub(tex_ray_vox, "3", 0, sx, sz, sy + ly, lsize, lsize, lsize, "1ub", voxygen_buf[layer+1])
-			--print(string.format("%i - %i %i %i %i", misc.gl_error(), sx, sy, sz, ly))
-		end
-		end
+	if voxel.upload_chunk_repeated then
+		voxel.upload_chunk_repeated(tex_ray_vox, voxygen_buf, 5, 7, 9)
+	else
+		local layer
+		for layer=0,4,1 do
+			local lsize = 128>>layer
+			local ly = 128*2-(lsize*2)
+			for sz=0,512-1,lsize do
+			for sx=0,512-1,lsize do
+			for sy=0,lsize-1,lsize do
+				texture.load_sub(tex_ray_vox, "3", 0, sx, sz, sy + ly, lsize, lsize, lsize, "1ub", voxygen_buf[layer+1])
+				--print(string.format("%i - %i %i %i %i", misc.gl_error(), sx, sy, sz, ly))
+			end
+			end
+			end
 		end
 	end
 	print("Freeing voxel data")
 
 	voxygen_buf = {}
-
-	fp:close()
 
 	local err = misc.gl_error()
 	print(string.format("tex_vox %i", err))

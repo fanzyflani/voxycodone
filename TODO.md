@@ -85,7 +85,7 @@ A lot of things could be accelerated, but for now we need to have a Lua implemen
 
 * [ ] C typed arrays
 * [ ] Voxel scene userdata
-  * [ ] Voxel texture uploads
+  * [x] Voxel texture uploads
   * [ ] Voxel chunk generation
 
 vim: syntax=markdown

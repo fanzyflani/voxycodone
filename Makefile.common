@@ -7,7 +7,6 @@ OBJS = \
 	$(OBJDIR)/glslpp.o \
 	$(OBJDIR)/init.o \
 	$(OBJDIR)/lbind.o \
-	$(OBJDIR)/voxel.o \
 	\
 	$(OBJDIR)/lua/draw.o \
 	$(OBJDIR)/lua/fbo.o \
@@ -15,6 +14,7 @@ OBJS = \
 	$(OBJDIR)/lua/misc.o \
 	$(OBJDIR)/lua/shader.o \
 	$(OBJDIR)/lua/texture.o \
+	$(OBJDIR)/lua/voxel.o \
 	\
 	$(OBJDIR)/main.o
 

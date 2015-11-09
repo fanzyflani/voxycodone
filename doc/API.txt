@@ -49,11 +49,13 @@ matrix.translate_in_place():
 
 matrix.invert():
 
-texture.new():
+misc.exit():
 
-texture.unit_set():
+misc.gl_error():
 
-texture.load_sub():
+misc.mouse_grab_set():
+
+misc.mouse_visible_set():
 
 shader.new():
 
@@ -71,11 +73,13 @@ shader.uniform_ui():
 
 shader.uniform_fv():
 
-misc.exit():
+texture.new():
 
-misc.gl_error():
+texture.unit_set():
 
-misc.mouse_grab_set():
+texture.load_sub():
 
-misc.mouse_visible_set():
+voxel.decode_chunk():
+
+voxel.upload_chunk_repeated():
 

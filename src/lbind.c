@@ -9,6 +9,7 @@ void lbind_setup_matrix(lua_State *L);
 void lbind_setup_misc(lua_State *L);
 void lbind_setup_shader(lua_State *L);
 void lbind_setup_texture(lua_State *L);
+void lbind_setup_voxel(lua_State *L);
 
 void init_lua(void)
 {
@@ -29,10 +30,7 @@ void init_lua(void)
 	lbind_setup_misc(L);
 	lbind_setup_shader(L);
 	lbind_setup_texture(L);
-
-	// --- voxel
-	lua_newtable(L);
-	lua_setglobal(L, "voxel");
+	lbind_setup_voxel(L);
 
 	// Run main.lua
 	printf("Running lua/main.lua\n");

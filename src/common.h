@@ -108,10 +108,6 @@ void init_lua(void);
 // scene.c
 void h_render_main(void);
 
-// voxel.c
-void decode_voxygen_chunk(uint8_t **voxygen_buf, FILE *fp);
-void voxygen_load_repeated_chunk(const char *fname);
-
 // main.c
 extern int do_exit;
 extern int mouse_locked;
