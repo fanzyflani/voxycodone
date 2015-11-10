@@ -1,4 +1,4 @@
-require("lua/util")
+require("util")
 
 OBJLIST = {}
 

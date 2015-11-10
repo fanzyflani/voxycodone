@@ -33,8 +33,8 @@ void init_lua(void)
 	lbind_setup_voxel(L);
 
 	// Run main.lua
-	printf("Running lua/main.lua\n");
-	if(luaL_loadfile(L, "lua/main.lua") != LUA_OK)
+	printf("Running root/main.lua\n");
+	if(luaL_loadfile(L, "root/main.lua") != LUA_OK)
 	{
 		printf("ERROR LOADING: %s\n", lua_tostring(L, 1));
 		fflush(stdout);

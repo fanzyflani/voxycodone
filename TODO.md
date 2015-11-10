@@ -7,6 +7,7 @@ This really should happen before the other things.
 * [x] Port src/voxel.c to Lua (RESOLUTION: leave src/voxel.c intact)
 * [x] Split src/lbind.c into different files
 * [ ] Port the main loop to Lua
+* [ ] Move stuff into place in preparation for sandbox system
 * [ ] Make API docs
 
 API
@@ -47,6 +48,7 @@ Graphics
   * [ ] OpenGL 2.1 raytracer/beamtracer
   * [ ] Filthy disgusting triangle mesh renderer
 * [ ] Some form of raytracing antialiasing (FSAA in beamtracer perhaps?)
+* [ ] PNG loading
 
 Network
 -------
@@ -70,9 +72,19 @@ Audio
 * [ ] Stop stuff
 * [ ] Pause stuff
 
+Filesystem
+----------
+
 Security
 --------
 
+* [ ] Sandbox models (# denotes available for dedicated server):
+  * [ ] System - can spawn Client, Server, Blind; drawable
+  * [ ] Server# - can spawn Blind; can message clients + parent
+  * [ ] Client - file access dictated by Server packages; drawable onto a System-provided FBO; can spawn Blind; can message server + parent
+  * [ ] Plugin #? - can spawn Blind; can message parent
+  * [ ] Blind# - only has math, string, table; no message passing, just direct access from parent
+* [ ] Message passing system
 * [ ] Wrap file access builtins to suit models:
   * [ ] Local crap
   * [ ] Network client

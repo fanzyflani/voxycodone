@@ -1,4 +1,4 @@
-require("lua/tracer")
+require("tracer")
 
 tracer_clear()
 

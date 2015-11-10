@@ -56,13 +56,6 @@ do
 	})
 end
 
-function bin_load(fname)
-	local fp = io.open(fname, "rb")
-	local ret = fp:read("a"):gsub("\r\n", "\n"):gsub("\r", "\n")
-	fp:close()
-	return ret
-end
-
 function glslpp_parse(s)
 	local idx
 

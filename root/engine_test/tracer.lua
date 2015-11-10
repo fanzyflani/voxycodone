@@ -1,4 +1,4 @@
-require("lua/objects")
+require("objects")
 
 GLIBLIST = {}
 SCENE_LIST = {}

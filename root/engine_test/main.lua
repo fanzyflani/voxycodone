@@ -1,8 +1,8 @@
-screen_scale = 2
+screen_scale = 4
 
-require("lua/util")
-require("lua/voxel")
-require("lua/scene/voxygen")
+require("util")
+require("voxel")
+require("scene/voxygen")
 
 cur_scene_idx = #SCENE_LIST
 cur_scene = SCENE_LIST[cur_scene_idx]
@@ -138,7 +138,7 @@ function init_gfx()
 	print("tex_rand", misc.gl_error());
 
 	-- FBO
-	tex_fbo0_0 = texture.new("2", 1, "4nb", screen_w/screen_scale, screen_h/screen_scale, "nn", "4nb")
+	tex_fbo0_0 = texture.new("2", 1, "4nb", screen_w/screen_scale, screen_h/screen_scale, "ll", "4nb")
 	print(misc.gl_error())
 	tex_fbo0_1 = texture.new("2", 1, "4nb", screen_w/screen_scale, screen_h/screen_scale, "nn", "4nb")
 	print(misc.gl_error())

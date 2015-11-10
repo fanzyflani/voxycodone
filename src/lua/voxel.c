@@ -111,7 +111,7 @@ static int lbind_voxel_decode_chunk(lua_State *L)
 	off_t fdoffs = 0;
 	decode_voxygen_chunk(voxygen_buf, fdata, fdlen, &fdoffs);
 
-	printf("Copying temp voxel data\n");
+	//printf("Copying temp voxel data\n");
 	lua_newtable(L);
 	for(layer = 0; layer <= 4; layer++)
 	{
@@ -126,7 +126,7 @@ static int lbind_voxel_decode_chunk(lua_State *L)
 		lua_seti(L, -2, layer+1);
 	}
 
-	printf("Freeing temp voxel data\n");
+	//printf("Freeing temp voxel data\n");
 
 	free(voxygen_buf[0]);
 	free(voxygen_buf[1]);
@@ -159,7 +159,7 @@ static int lbind_voxel_upload_chunk_repeated(lua_State *L)
 	voxygen_buf[3] = malloc(16*16*16);
 	voxygen_buf[4] = malloc(8*8*8);
 
-	printf("Copying temp voxel data\n");
+	//printf("Copying temp voxel data\n");
 
 	lua_newtable(L);
 	for(layer = 0; layer <= 4; layer++)
@@ -176,7 +176,7 @@ static int lbind_voxel_upload_chunk_repeated(lua_State *L)
 		lua_pop(L, 1);
 	}
 
-	printf("Uploading voxel data\n");
+	//printf("Uploading voxel data\n");
 	glBindTexture(GL_TEXTURE_3D, lua_tointeger(L, 1));
 	for(layer = 0; layer <= 4; layer++)
 	{
@@ -192,7 +192,7 @@ static int lbind_voxel_upload_chunk_repeated(lua_State *L)
 	}
 	glBindTexture(GL_TEXTURE_3D, 0);
 
-	printf("Freeing temp voxel data\n");
+	//printf("Freeing temp voxel data\n");
 	free(voxygen_buf[0]);
 	free(voxygen_buf[1]);
 	free(voxygen_buf[2]);
