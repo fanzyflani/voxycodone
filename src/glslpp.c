@@ -70,43 +70,67 @@ void print_program_log(GLuint program)
 	free(info_log);
 }
 
-GLuint init_shader_str(const char *ray_v_src, const char *ray_f_src)
+GLuint init_shader_str(const char *ray_v_src, const char *ray_f_src, const char *ray_g_src, lua_State *L)
 {
+	int i;
+
 	const char *ray_v_src_alias = ray_v_src;
+	const char *ray_g_src_alias = ray_g_src;
 	const char *ray_f_src_alias = ray_f_src;
 
 	GLuint ray_v = glCreateShader(GL_VERTEX_SHADER);
+	GLuint ray_g = (ray_g_src == NULL ? 0 : glCreateShader(GL_GEOMETRY_SHADER));
 	GLuint ray_f = glCreateShader(GL_FRAGMENT_SHADER);
 
 	glShaderSource(ray_v, 1, &ray_v_src_alias, NULL);
+	if(ray_g_src != NULL) glShaderSource(ray_g, 1, &ray_g_src_alias, NULL);
 	glShaderSource(ray_f, 1, &ray_f_src_alias, NULL);
 
 	glCompileShader(ray_v);
 	printf("===   VERTEX SHADER ===\n");
 	print_shader_log(ray_v);
+
+	if(ray_g_src != NULL)
+	{
+		glCompileShader(ray_g);
+		printf("=== GEOMETRY SHADER ===\n");
+		print_shader_log(ray_g);
+	}
+
 	glCompileShader(ray_f);
 	printf("=== FRAGMENT SHADER ===\n");
 	print_shader_log(ray_f);
+
 	GLuint out_shader = glCreateProgram();
 	printf("Attaching shaders\n");
 	glAttachShader(out_shader, ray_v);
+	if(ray_g_src != NULL) glAttachShader(out_shader, ray_g);
 	glAttachShader(out_shader, ray_f);
 
 	// TODO: outsource this to a function
 	glGetError();
 	printf("Binding inputs\n");
-	glBindAttribLocation(out_shader, 0, "in_vertex");
+	lua_len(L, 2); int len_input = lua_tointeger(L, -1); lua_pop(L, 1);
+	for(i = 0; i < len_input; i++)
+	{
+		lua_geti(L, 2, i+1);
+		glBindAttribLocation(out_shader, i, lua_tostring(L, -1));
+		lua_pop(L, 1);
+	}
+
 	printf("Binding outputs\n");
-	glBindFragDataLocation(out_shader, 0, "out_frag_color");
-	glBindFragDataLocation(out_shader, 1, "out_frag_color_gi");
+	lua_len(L, 3); int len_output = lua_tointeger(L, -1); lua_pop(L, 1);
+	for(i = 0; i < len_output; i++)
+	{
+		lua_geti(L, 3, i+1);
+		glBindFragDataLocation(out_shader, i, lua_tostring(L, -1));
+		lua_pop(L, 1);
+	}
+
 	printf("%i\n", glGetError());
 
 	printf("Linking! This is the part where your computer dies\n");
 	glLinkProgram(out_shader);
-	printf("%i %i\n"
-		, glGetFragDataLocation(out_shader, "out_frag_color")
-		, glGetFragDataLocation(out_shader, "out_frag_color_gi")
-		);
 
 	printf("Getting results\n");
 	printf("=== OVERALL PROGRAM ===\n");
@@ -115,8 +139,18 @@ GLuint init_shader_str(const char *ray_v_src, const char *ray_f_src)
 	GLint link_status;
 	glGetProgramiv(out_shader, GL_LINK_STATUS, &link_status);
 	printf("Link status: %i\n", link_status);
-	assert(link_status == GL_TRUE);
 
-	return out_shader;
+	if(link_status == GL_TRUE)
+	{
+		return out_shader;
+
+	} else {
+		glDeleteProgram(out_shader);
+		glDeleteShader(ray_v);
+		if(ray_g_src != NULL) glDeleteShader(ray_g);
+		glDeleteShader(ray_f);
+
+		return 0;
+	}
 }
 

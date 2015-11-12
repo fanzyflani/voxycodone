@@ -6,9 +6,10 @@ This really should happen before the other things.
 
 * [x] Port src/voxel.c to Lua (RESOLUTION: leave src/voxel.c intact)
 * [x] Split src/lbind.c into different files
+* [x] Update shader.new()
 * [ ] Port the main loop to Lua
 * [ ] Move stuff into place in preparation for sandbox system
-* [ ] Make API docs
+* [x] Make API docs
 
 API
 ---
@@ -41,7 +42,7 @@ Graphics
 * [ ] OpenGL 2.1 (base + FBO) support
 * [ ] Expose more than just the 2D double-triangle VAO for drawing
 * [ ] `GL_ARB_direct_state_access`
-* [ ] Geometry shaders
+* [x] Geometry shaders
 * [ ] Different rendering methods:
   * [x] OpenGL 3.2 reference raytracer
   * [ ] Beamtracer (requires FBO texture to use a mipmap pyramid)
@@ -59,9 +60,11 @@ VM system
 ---------
 
 * [ ] Sandbox spawning:
-  * [ ] Network-client sandbox
-  * [ ] Network-server sandbox
-  * [ ] Personal config sandbox
+  * [ ] System sandbox
+  * [ ] Client sandbox
+  * [ ] Server sandbox
+  * [ ] Blind sandbox
+  * [ ] Plugin sandbox
 * [ ] Sandbox message passing
 
 Audio
@@ -71,6 +74,9 @@ Audio
 * [ ] Play stuff
 * [ ] Stop stuff
 * [ ] Pause stuff
+* [ ] Seek stuff
+* [ ] Speed stuff
+* [ ] Volume stuff
 
 Filesystem
 ----------

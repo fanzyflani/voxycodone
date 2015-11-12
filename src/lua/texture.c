@@ -47,8 +47,8 @@ static GLenum texture_get_internal_fmt(lua_State *L, const char *fmt)
 		{"1ns", GL_R16}, {"2ns", GL_RG16}, {"3ns", GL_RGB16}, {"4ns", GL_RGBA16},
 		{"1nb", GL_R8}, {"2nb", GL_RG8}, {"3nb", GL_RGB8}, {"4nb", GL_RGBA8},
 
-		// THERE IS NO RGBA16_SNORM
 		{"1Ns", GL_R16_SNORM}, {"2Ns", GL_RG16_SNORM}, {"3Ns", GL_RGB16_SNORM},
+		{"4Ns", GL_RGBA16_SNORM}, // WARNING: THIS MIGHT NOT ACTUALLY EXIST. It compiles though!
 		{"1Nb", GL_R8_SNORM}, {"2Nb", GL_RG8_SNORM}, {"3Nb", GL_RGB8_SNORM}, {"4Nb", GL_RGBA8_SNORM},
 
 		{NULL, 0}
@@ -323,24 +323,24 @@ static int lbind_texture_new(lua_State *L)
 	//printf("%04X %u\n", tex_target, tex);
 
 	if(filter_fmt_str[0] == 'n')
-		glTexParameteri(tex_target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(tex_target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	else if(filter_fmt_str[0] == 'l')
-		glTexParameteri(tex_target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(tex_target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	else
 		return luaL_error(L, "invalid minification filter");
 
 	if(filter_fmt_str[1] == 'n' && filter_fmt_str[2] == '\x00')
-		glTexParameteri(tex_target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(tex_target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	else if(filter_fmt_str[1] == 'l' && filter_fmt_str[2] == '\x00')
-		glTexParameteri(tex_target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(tex_target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	else if(filter_fmt_str[1] == 'n' && filter_fmt_str[2] == 'n' && filter_fmt_str[3] == '\x00')
-		glTexParameteri(tex_target, GL_TEXTURE_MAG_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+		glTexParameteri(tex_target, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
 	else if(filter_fmt_str[1] == 'n' && filter_fmt_str[2] == 'l' && filter_fmt_str[3] == '\x00')
-		glTexParameteri(tex_target, GL_TEXTURE_MAG_FILTER, GL_NEAREST_MIPMAP_LINEAR);
+		glTexParameteri(tex_target, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
 	else if(filter_fmt_str[1] == 'l' && filter_fmt_str[2] == 'n' && filter_fmt_str[3] == '\x00')
-		glTexParameteri(tex_target, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+		glTexParameteri(tex_target, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
 	else if(filter_fmt_str[1] == 'l' && filter_fmt_str[2] == 'l' && filter_fmt_str[3] == '\x00')
-		glTexParameteri(tex_target, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glTexParameteri(tex_target, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	else
 		return luaL_error(L, "invalid magnification filter");
 

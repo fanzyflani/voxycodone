@@ -4,18 +4,37 @@ static int lbind_shader_new(lua_State *L)
 {
 	int i;
 
-	if(lua_gettop(L) < 4)
-		return luaL_error(L, "expected at least 4 arguments to shader.new");
+	if(lua_gettop(L) < 3)
+		return luaL_error(L, "expected at least 3 arguments to shader.new");
 	
-	const char *vert_src = lua_tostring(L, 1);
-	const char *frag_src = lua_tostring(L, 2);
-	lua_len(L, 3); int len_input = lua_tointeger(L, -1); lua_pop(L, 1);
-	lua_len(L, 4); int len_output = lua_tointeger(L, -1); lua_pop(L, 1);
+	// the 4-arg format is completely unsupported! don't use it! it's out of date!
+
+	lua_getfield(L, 1, "vert");
+	const char *vert_src = lua_tostring(L, -1);
+	lua_pop(L, 1);
+
+	lua_getfield(L, 1, "frag");
+	const char *frag_src = lua_tostring(L, -1);
+	lua_pop(L, 1);
+
+	lua_getfield(L, 1, "geom");
+	const char *geom_src = lua_tostring(L, -1);
+	lua_pop(L, 1);
+
+	if(vert_src == NULL)
+		return luaL_error(L, "expected vertex shader\n");
+
+	if(frag_src == NULL)
+		return luaL_error(L, "expected fragment shader\n");
 
 	// TODO: actually use input/output lists
-	GLuint ret = init_shader_str(vert_src, frag_src);
+	GLuint ret = init_shader_str(vert_src, frag_src, geom_src, L);
 
-	lua_pushinteger(L, ret);
+	if(ret == 0)
+		lua_pushnil(L);
+	else
+		lua_pushinteger(L, ret);
+
 	return 1;
 }
 

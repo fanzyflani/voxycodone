@@ -11,15 +11,23 @@ void lbind_setup_shader(lua_State *L);
 void lbind_setup_texture(lua_State *L);
 void lbind_setup_voxel(lua_State *L);
 
-void init_lua(void)
+lua_State *init_lua_system(void)
 {
 	// Create state
-	Lbase = luaL_newstate();
-	lua_State *L = Lbase;
+	lua_State *L = luaL_newstate();
 
 	// Open builtin libraries
-	// TODO cherry-pick once we make this into a game engine
-	luaL_openlibs(L);
+	luaL_requiref(L, "package", luaopen_package, 1); // TODO: shim this package
+
+	// Open other builtin libraries
+	luaL_requiref(L, "base", luaopen_base, 1);
+	luaL_requiref(L, "string", luaopen_string, 1);
+	luaL_requiref(L, "math", luaopen_math, 1);
+	luaL_requiref(L, "table", luaopen_table, 1);
+	luaL_requiref(L, "io", luaopen_io, 1); // TODO: emulate this package
+
+	// Apply shims
+
 
 	//
 	// Create tables to fill in
@@ -31,6 +39,15 @@ void init_lua(void)
 	lbind_setup_shader(L);
 	lbind_setup_texture(L);
 	lbind_setup_voxel(L);
+
+	// Return
+	return L;
+}
+
+void init_lua(void)
+{
+	// Create system state
+	lua_State *L = Lbase = init_lua_system();
 
 	// Run main.lua
 	printf("Running root/main.lua\n");

@@ -1,4 +1,4 @@
-screen_scale = 4
+screen_scale = 2
 
 require("util")
 require("voxel")
@@ -154,7 +154,10 @@ function init_gfx()
 	-- Shader
 	local vert = glslpp_parse(bin_load("glsl/post_radblur.vert"))
 	local frag = glslpp_parse(bin_load("glsl/post_radblur.frag"))
-	shader_blur = shader.new(vert, frag, {"in_vertex"}, {"out_frag_color", "out_frag_color_gi"})
+	shader_blur = shader.new({
+		vert=vert,
+		frag=frag,
+	}, {"in_vertex"}, {"out_frag_color", "out_frag_color_gi"})
 	print("shader_blur", misc.gl_error())
 
 	shader_ray = {}
@@ -163,7 +166,10 @@ function init_gfx()
 	for k, v in pairs(SCENE) do
 		local vert = glslpp_parse(bin_load("glsl/shader_ray.vert"))
 		local frag = glslpp_parse(v.frag)
-		shader_ray[k] = shader.new(vert, frag, {"in_vertex"}, {"out_frag_color", "out_frag_color_gi"})
+		shader_ray[k] = shader.new({
+			vert=vert,
+			frag=frag,
+		}, {"in_vertex"}, {"out_frag_color", "out_frag_color_gi"})
 		print("shader_ray", k, misc.gl_error())
 	end
 

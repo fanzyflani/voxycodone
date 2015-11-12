@@ -231,7 +231,7 @@ void scene_trace_voxygen(inout Trace T, bool shadow_mode)
 tracer_generate {
 	name = "voxygen",
 	bounces = 0,
-	do_shadow = false,
+	do_shadow = true,
 	update = function (sec_current, sec_delta)
 		shader.uniform_f(S.scene_sb_offs, sec_current/5.0);
 		
@@ -241,7 +241,7 @@ tracer_generate {
 
 		scene_trace_voxygen(T, shadow_mode);
 
-		if(T.hit_time == T.zfar)
+		if((!shadow_mode) && T.hit_time == T.zfar)
 		{
 			// Get noise
 			vec2 sb_tc = T.src_wdir.xz/T.src_wdir.y;
