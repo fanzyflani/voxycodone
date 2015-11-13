@@ -65,7 +65,7 @@ float rm_scene(vec3 pos)
 	//pos += sin(abs(pos)*30.0 + time)*0.04;
 
 	float l1 = 1.0 - length(pos - vec3( 0.0, 0.0, 0.0));
-	l1 += dot(vec3(1.0), sin(-pos*20.0 + time*3.0))*0.02;
+	l1 += dot(vec3(1.0), sin(-pos*30.0 + time*3.0))*0.02;
 	return l1;
 }
 
@@ -76,7 +76,7 @@ void main()
 	const float OFFS2 = 0.99;
 	const float OFFS3 = 0.28;
 	const int STEPS = 20;
-	const int SUBDIVS = 6;
+	const int SUBDIVS = 4;
 	vec3 ray_step = normalize(vert_ray_step);
 	const vec3 OFFS_X = vec3(1.0, 0.0, 0.0)*OFFS;
 	const vec3 OFFS_Y = vec3(0.0, 1.0, 0.0)*OFFS;
@@ -85,8 +85,10 @@ void main()
 	// Rotate camera
 
 	out_color = vec4(0.0, 0.0, 0.3, 1.0);
+	float out_acc = 1.0;
 
 	float lstep = 1.0;
+	float atime = 0.0;
 
 	for(int i = 0; i < STEPS; i++)
 	{
@@ -107,6 +109,7 @@ void main()
 					sub += subsub;
 			}
 			ray_pos -= ray_step*sub;
+			atime -= sub;
 
 			vec3 norm = normalize(vec3(
 				rm_scene(ray_pos - OFFS_X) - rm_scene(ray_pos + OFFS_X),
@@ -114,11 +117,25 @@ void main()
 				rm_scene(ray_pos - OFFS_Z) - rm_scene(ray_pos + OFFS_Z)
 			));
 			float diff = max(0.0, -dot(norm, ray_step));
-			out_color = mix(out_color, (diff*0.9 + 0.1)*vec4(1.0, 0.2, 0.0, 1.0), float(STEPS-i)/float(STEPS));
-			break;
+			//vec3 refl = normalize(ray_step - 2.0*dot(norm, ray_step)*norm);
+			vec3 refl = ray_step - 2.0*dot(norm, ray_step)*norm;
+			float spec = max(0.0, -dot(refl, normalize(ray_pos - vert_cam_pos)));
+			spec = pow(spec, 128.0);
+			out_color = out_color*(1.0-out_acc)
+				+ mix(out_color,
+				(diff*0.9 + 0.1)*vec4(1.0, 0.2, 0.0, 1.0)
+				+ spec*vec4(1.0, 1.0, 1.0, 0.0),
+				pow(2.0, -0.2*atime))*out_acc;
+			ray_step = refl;
+			ray_pos += ray_step*0.02;
+			atime += 0.02;
+			out_acc *= 0.3;
+			//if(out_acc < 0.01)
+				break;
 		}
 
 		lstep = max(OFFS3, -res*OFFS2);
+		atime += lstep;
 		ray_pos += ray_step*lstep;
 	}
 }
