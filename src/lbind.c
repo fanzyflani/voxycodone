@@ -53,19 +53,26 @@ static int lbind_loadfile(lua_State *L)
 	if(top < 1)
 		return luaL_error(L, "expected at least 1 argument to loadfile (we are NOT loading from stdin!)");
 
-	// Load file as string
-	size_t len;
 	const char *fname = luaL_checkstring(L, 1);
 	const char *chunkname = (top < 3 ? fname : lua_tostring(L, 3));
-	char *data = fs_bin_load_direct(fname, &len); // FIXME: replace with a checked fs call once it exists
+
+	// Load file as string
+	size_t len;
+	//char *data = fs_bin_load_direct(fname, &len); // FIXME: replace with a checked fs call once it exists
+	lua_getglobal(L, "bin_load");
+	lua_pushvalue(L, 1);
+	lua_call(L, 1, 1);
+	const char *data = lua_tolstring(L, -1, &len);
+	lua_pop(L, 1);
 
 	if(data == NULL)
 		return luaL_error(L, "failed to load file");
 
 	// Now load it up as a Lua function
 	// (NO WE DO NOT SUPPORT BINARY CHUNKS NOW BUGGER OFF)
-	char *dptrs[2] = {data, data+len};
+	const char *dptrs[2] = {data, data+len};
 	int load_result = lua_load(L, lbind_loadstring_Reader, &dptrs, chunkname, "t");
+	//free(data);
 
 	if(load_result == LUA_OK)
 	{
@@ -90,7 +97,8 @@ static int lbind_dofile(lua_State *L)
 		return luaL_error(L, "expected at least 1 argument to dofile (we are NOT loading from stdin!)");
 
 	// Load file
-	lua_pushcfunction(L, lbind_loadfile);
+	lua_getglobal(L, "loadfile");
+	//lua_pushcfunction(L, lbind_loadfile);
 	lua_pushvalue(L, 1);
 	lua_call(L, 1, 1); // TODO: report errors
 	lua_call(L, 0, 0);
@@ -104,14 +112,12 @@ lua_State *init_lua_system(void)
 	lua_State *L = luaL_newstate();
 
 	// Open builtin libraries
-	//luaL_requiref(L, "package", luaopen_package, 1); // TODO: emulate this package in C
-
-	// Open other builtin libraries
 	luaL_requiref(L, "base", luaopen_base, 1);
 	luaL_requiref(L, "string", luaopen_string, 1);
 	luaL_requiref(L, "math", luaopen_math, 1);
 	luaL_requiref(L, "table", luaopen_table, 1);
-	//luaL_requiref(L, "io", luaopen_io, 1); // TODO: emulate this package
+
+	// package is now emulated in Lua, and io will be
 
 	// Open filesystem stuff
 	lua_pushcfunction(L, lbind_bin_load); lua_setglobal(L, "bin_load");

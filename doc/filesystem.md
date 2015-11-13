@@ -1,19 +1,25 @@
 WARNING: WIP. Also completely unimplemented at this point.
 
-Ultimately, each path can potentially be provided by several different mounted "filesystems".
+IGNORE WHAT WAS WRITTEN ABOUT EACH PATH HAVING DIFFERENT MOUNTED FILESYSTEMS.
 
-The filesystems available are:
+This will be covered on the Lua side.
+
+There are two different types of root filesystems:
 
 * physical directory
 * network fetch
-* .zip file
 
 The root filesystem for a sandbox will be one of those.
 
-* Filesystems can go in front of or behind other filesystems in terms of priority.
-* Filesystems can be mounted at different directories aside from the root directory.
-* The files "behind" a filesystem can either be merged or obscured. This is useful for when you have a different mount point.
-* It's probably a good idea to have the root filesystem in front of (higher priority than) any .zip filesystems.
+`bin_save` will only be provided to the System sandbox.
+Use the appropriate messaging API to shove stuff into storage.
+(TODO: make said messaging API)
+
+`dofile` depends on the global `loadfile` which depends on the global `bin_load`.
+This means that you can make `bin_load` point to something else,
+and `dofile` and `loadfile` will end up using that instead.
+
+----
 
 The general layout:
 
@@ -24,6 +30,9 @@ The general layout:
   * `lib/`: Libraries that can be provided if necessary (?)
   * `${GAMENAME}/`
     * `game_package.lua`: Metadata for a game (Blind)
+    * `common`/
+      * `main.lua`: Bootloader (Client)
+    * `main.lua`: Bootloader (Server)
   * `${PLUGNAME}/`
     * `plug_package.lua`: Metadata for a plugin (Blind)
 * `dlcache/`

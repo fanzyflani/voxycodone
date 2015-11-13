@@ -1,10 +1,12 @@
 -- Temporary emulation layer for to-be-proposed API
 
 do
-	local fn, msg = loadfile("root/engine_test/main.lua")
+	MAIN_MODULE = "engine_test"
+	--MAIN_MODULE = "menu"
+	local fn, msg = loadfile("root/"..MAIN_MODULE.."/main.lua")
 
 	if not fn then
-		print("ERROR loading engine_test/main.lua:", msg)
+		print("ERROR loading main.lua:", msg)
 		error("boot failed!")
 	end
 
@@ -72,7 +74,7 @@ do
 
 	local old_bin_load = bin_load
 	function bin_load(fname, ...)
-		return old_bin_load("root/engine_test/"..fname, ...)
+		return old_bin_load("root/"..MAIN_MODULE.."/"..fname, ...)
 	end
 
 	-- Run!

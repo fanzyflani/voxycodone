@@ -81,6 +81,10 @@ Audio
 Filesystem
 ----------
 
+* [ ] Proper path security
+* [ ] Sandbox root directory
+* [ ] Network root directory
+
 Security
 --------
 
@@ -106,7 +110,5 @@ A lot of things could be accelerated, but for now we need to have a Lua implemen
   * [x] Voxel texture uploads
   * [ ] Voxel chunk generation
 
-vim: syntax=markdown
-
-BECAUSE NOBODY USES MODULA.
+[]: # ( vim: set syntax=markdown : )
 
