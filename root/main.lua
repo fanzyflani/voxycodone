@@ -1,8 +1,8 @@
 -- Temporary emulation layer for to-be-proposed API
 
 do
-	MAIN_MODULE = "engine_test"
-	--MAIN_MODULE = "menu"
+	--MAIN_MODULE = "engine_test"
+	MAIN_MODULE = "menu"
 	local fn, msg = loadfile("root/"..MAIN_MODULE.."/main.lua")
 
 	if not fn then
