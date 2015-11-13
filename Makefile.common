@@ -5,6 +5,7 @@ INCDIR = src
 INCLUDES = $(INCDIR)/common.h
 OBJS = \
 	$(OBJDIR)/glslpp.o \
+	$(OBJDIR)/fs.o \
 	$(OBJDIR)/init.o \
 	$(OBJDIR)/lbind.o \
 	\

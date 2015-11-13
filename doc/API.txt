@@ -43,6 +43,14 @@ Special types:
     * "ns": GL_UNSIGNED_SHORT, normalised internally
   * If it doesn't exist, don't use it.
 
+(global namespace)
+------------------
+
+data:str = bin_load(fname:str):
+	Loads the binary file "fname" and returns the data as a string.
+
+	Returns nil on error.
+
 draw
 ----
 

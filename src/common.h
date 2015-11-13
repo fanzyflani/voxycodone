@@ -72,6 +72,9 @@ struct kd {
 	// TODO: other things
 };
 
+// fs.c
+char *fs_bin_load_direct(const char *fname, size_t *len);
+
 // glslpp.c
 GLuint init_shader_str(const char *ray_v_src, const char *ray_f_src, const char *ray_g_src, lua_State *L);
 
