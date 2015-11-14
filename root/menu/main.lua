@@ -43,7 +43,7 @@ do
 	texture.load_sub(tex_noise, "2", 0, 0, 0, 256, 256, "1f", l)
 end
 
-shader_test = loadfile("scenes/blobs.lua")()
+scene = "twister"
+shader_test = loadfile("scenes/"..scene..".lua")()
 assert(shader_test)
-
 

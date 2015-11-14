@@ -13,7 +13,7 @@ void main()
 {
 	gl_Position = vec4(in_vertex, 0.5, 1.0);
 	vert_ray_step = normalize(vec3(in_vertex.x*1280.0/720.0, in_vertex.y, 1.0));
-	vert_cam_pos = vec3(0.0, 0.0, -2.0);
+	vert_cam_pos = vec3(0.0, 0.0, -3.0);
 
 	// ROTATE
 	float rotx = -0.0;
@@ -68,33 +68,31 @@ float get_noise(vec2 pos)
 
 }
 
+float get_noise_linear(vec2 pos)
+{
+	return texture(tex_noise, pos, 0).r;
+
+}
+
 float rm_scene(vec3 pos)
 {
-	pos.xz = mod(pos.xz+2.5, 5.0)-2.5;
-	//pos += sin(abs(pos)*30.0 + time)*0.04;
+	float rot = sin(pos.y*0.7 + time*0.5)*3.141593/2.0;
+	//float pnoise = (get_noise_linear(vec2(length(pos.xz)/16.0, pos.y/64.0))*2.0-1.0)*0.1;
+	//float pnoise = sin(min(abs(pos.x), abs(pos.z))*10.0)*0.04;
+	float pnoise = -sin(length(pos.xyz)*10.0)*0.2;
+	pos.xz = pos.xz*cos(rot) + vec2(pos.z, -pos.x)*sin(rot);
 
-	float l1 = 1.5 - length(pos - vec3(-sin(time), cos(time), 0.0));
-	float l2 = 1.5 - length(pos - vec3( 1.0, 0.0, 0.0));
+	float dist = max(abs(pos.x), abs(pos.z));
 
-	float lb = 0.0;
-	l1 = max(0.0, l1);
-	l2 = max(0.0, l2);
-	lb += l1*l1;
-	lb += l2*l2;
-	lb -= 1.0;
-	//lb += sin(time*1.0)*0.5;
-
-	//lb += dot(vec3(1.0), sin(-pos*30.0 + time*3.0))*0.02;
-
-	return lb;
+	return 1.0 - dist + pnoise;
 }
 
 void main()
 {
 	vec3 ray_pos = vert_cam_pos;
 	const float OFFS = 0.01;
-	const float OFFS2 = 0.99;
-	const float OFFS3 = 0.12;
+	const float OFFS2 = 0.70;
+	const float OFFS3 = 0.03;
 	const int STEPS = 30;
 	const int SUBDIVS = 4;
 	vec3 ray_step = normalize(vert_ray_step);
@@ -163,4 +161,5 @@ void main()
 
 ]=],
 }, {"in_vertex",}, {"out_color",})
+
 
