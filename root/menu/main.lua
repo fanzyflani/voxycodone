@@ -61,7 +61,7 @@ void main()
 	vert_cam_pos = vec3(0.0, 0.0, -2.0);
 
 	// ROTATE
-	float rotx = -0.7;
+	float rotx = -0.0;
 	//vert_cam_pos.yz = vert_cam_pos.yz*cos(rotx) + vec2(vert_cam_pos.z, -vert_cam_pos.y)*sin(rotx);
 	vert_ray_step.yz = vert_ray_step.yz*cos(rotx) + vec2(vert_ray_step.z, -vert_ray_step.y)*sin(rotx);
 
@@ -115,25 +115,23 @@ float get_noise(vec2 pos)
 
 float rm_scene(vec3 pos)
 {
-	//pos.y += sin(get_noise(pos.xz/256.0*4.0)*4.0 + time*3.0)/1.0*0.2;
-	float sincl0 = length((pos.xz - vec2(-2.0, 0.0)))*10.0;
-	float sincl1 = length((pos.xz - vec2( 2.0, 0.0)))*10.0;
-	float sincl2 = length((pos.xz - vec2( 0.0, 3.0)))*10.0;
-	//pos.y += (sincl < -0.2 ? cos(sincl - time*4.0) : -sin(sincl - time*4.0)/sincl)*0.2;
-	//pos.y += -sin(sincl0 - time*4.0)/max(1.0,sincl0)*0.2;
-	//pos.y += -sin(sincl1 - time*4.0)/max(1.0,sincl1)*0.2;
-	pos.y += -sin(sincl0 - time*4.0)*0.03;
-	pos.y += -sin(sincl1 - time*4.0)*0.03;
-	pos.y += -sin(sincl2 - time*4.0)*0.03;
-
-	//pos.xz = mod(pos.xz+2.5, 5.0)-2.5;
+	pos.xz = mod(pos.xz+2.5, 5.0)-2.5;
 	//pos += sin(abs(pos)*30.0 + time)*0.04;
 
-	float l1 = -1.0;
-	//l1 += 1.0 - length(pos.xz);
-	//l1 += dot(vec3(1.0), sin(-pos*30.0 + time*3.0))*0.02;
-	l1 -= pos.y*1.0;
-	return l1;
+	float l1 = 1.5 - length(pos - vec3(-sin(time), cos(time), 0.0));
+	float l2 = 1.5 - length(pos - vec3( 1.0, 0.0, 0.0));
+
+	float lb = 0.0;
+	l1 = max(0.0, l1);
+	l2 = max(0.0, l2);
+	lb += l1*l1;
+	lb += l2*l2;
+	lb -= 1.0;
+	//lb += sin(time*1.0)*0.5;
+
+	//lb += dot(vec3(1.0), sin(-pos*30.0 + time*3.0))*0.02;
+
+	return lb;
 }
 
 void main()
