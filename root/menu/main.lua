@@ -15,13 +15,32 @@ function hook_mouse_motion(x, y, dx, dy)
 end
 
 function hook_render(sec_current)
-	fbo.target_set(nil)
 	shader.use(shader_test)
 	shader.uniform_f(shader.uniform_location_get(shader_test, "time"), sec_current)
+	shader.uniform_i(shader.uniform_location_get(shader_test, "tex_noise"), 0)
+	texture.unit_set(0, "2", tex_noise)
 	draw.blit()
 end
 
 function hook_tick(sec_current, sec_delta)
+end
+
+tex_noise = texture.new("2", 1, "1f", 256, 256, "ll", "1f")
+do
+	local x, y
+	local l = {}
+	for y=0,256-1 do
+	for x=0,256-1 do
+		l[1+x+y*256] = 0.0
+	end
+	end
+	for y=0,256-1 do
+	for x=0,256-1 do
+		l[1+x+y*256] = math.random()
+	end
+	end
+
+	texture.load_sub(tex_noise, "2", 0, 0, 0, 256, 256, "1f", l)
 end
 
 shader_test = shader.new({
@@ -42,6 +61,11 @@ void main()
 	vert_cam_pos = vec3(0.0, 0.0, -2.0);
 
 	// ROTATE
+	float rotx = -0.7;
+	//vert_cam_pos.yz = vert_cam_pos.yz*cos(rotx) + vec2(vert_cam_pos.z, -vert_cam_pos.y)*sin(rotx);
+	vert_ray_step.yz = vert_ray_step.yz*cos(rotx) + vec2(vert_ray_step.z, -vert_ray_step.y)*sin(rotx);
+
+	// ROTATE AGAIN
 	float rtime = time * 0.15;
 	vert_cam_pos.xz = vert_cam_pos.xz*cos(rtime) + vec2(vert_cam_pos.z, -vert_cam_pos.x)*sin(rtime);
 	vert_ray_step.xz = vert_ray_step.xz*cos(rtime) + vec2(vert_ray_step.z, -vert_ray_step.x)*sin(rtime);
@@ -53,29 +77,72 @@ frag = [=[
 #version 150
 
 uniform float time;
+uniform sampler2D tex_noise;
 
 in vec3 vert_ray_step;
 
 flat in vec3 vert_cam_pos;
 out vec4 out_color;
 
+float get_noise(vec2 pos)
+{
+	pos += 0.5; // hide border wrap artifacts
+	pos *= 256.0;
+	ivec2 texel = ivec2(floor(pos)) % 256;
+	vec2 t = (pos - floor(pos));
+
+	float t00 = texelFetchOffset(tex_noise, texel, 0, ivec2(0,0)).r;
+	float t01 = texelFetchOffset(tex_noise, texel, 0, ivec2(0,1)).r;
+	float t10 = texelFetchOffset(tex_noise, texel, 0, ivec2(1,0)).r;
+	float t11 = texelFetchOffset(tex_noise, texel, 0, ivec2(1,1)).r;
+
+	/*
+	Design a function such that
+	f(0) = 0
+	f(1) = 1
+	f(0.5) = 0.5
+	f(0.5-x) = 0.5-f(0.5+x)
+	*/
+
+	t = smoothstep(0.0, 1.0, t);
+
+	return mix(
+		mix(t00, t01, t.y),
+		mix(t10, t11, t.y),
+		t.x);
+
+}
+
 float rm_scene(vec3 pos)
 {
-	pos = mod(pos+2.5, 5.0)-2.5;
+	//pos.y += sin(get_noise(pos.xz/256.0*4.0)*4.0 + time*3.0)/1.0*0.2;
+	float sincl0 = length((pos.xz - vec2(-2.0, 0.0)))*10.0;
+	float sincl1 = length((pos.xz - vec2( 2.0, 0.0)))*10.0;
+	float sincl2 = length((pos.xz - vec2( 0.0, 3.0)))*10.0;
+	//pos.y += (sincl < -0.2 ? cos(sincl - time*4.0) : -sin(sincl - time*4.0)/sincl)*0.2;
+	//pos.y += -sin(sincl0 - time*4.0)/max(1.0,sincl0)*0.2;
+	//pos.y += -sin(sincl1 - time*4.0)/max(1.0,sincl1)*0.2;
+	pos.y += -sin(sincl0 - time*4.0)*0.03;
+	pos.y += -sin(sincl1 - time*4.0)*0.03;
+	pos.y += -sin(sincl2 - time*4.0)*0.03;
+
+	//pos.xz = mod(pos.xz+2.5, 5.0)-2.5;
 	//pos += sin(abs(pos)*30.0 + time)*0.04;
 
-	float l1 = 1.0 - length(pos - vec3( 0.0, 0.0, 0.0));
-	l1 += dot(vec3(1.0), sin(-pos*30.0 + time*3.0))*0.02;
+	float l1 = -1.0;
+	//l1 += 1.0 - length(pos.xz);
+	//l1 += dot(vec3(1.0), sin(-pos*30.0 + time*3.0))*0.02;
+	l1 -= pos.y*1.0;
 	return l1;
 }
 
 void main()
 {
 	vec3 ray_pos = vert_cam_pos;
-	const float OFFS = 0.001;
+	const float OFFS = 0.01;
 	const float OFFS2 = 0.99;
-	const float OFFS3 = 0.28;
-	const int STEPS = 20;
+	const float OFFS3 = 0.12;
+	const int STEPS = 30;
 	const int SUBDIVS = 4;
 	vec3 ray_step = normalize(vert_ray_step);
 	const vec3 OFFS_X = vec3(1.0, 0.0, 0.0)*OFFS;

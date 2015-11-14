@@ -207,7 +207,7 @@ texture.unit_set(unit:0i, target:TexTypeStr, tex:TexRef):
 	GL_ARB_direct_state_access is only core since GL 4.5,
 	so we cannot assume everyone has it.
 
-texture.load_sub(tex:TexRef, target:TexTypeStr,
+texture.load_sub(tex:TexRef, target:TexTypeStr, level:i,
 		xoffs:i [, yoffs:i [, zoffs: i]],
 		xsize:i [, ysize:i [, zsize: i]],
 		fmt:TexFmtStr, data:*[]
