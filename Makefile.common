@@ -26,12 +26,15 @@ clean:
 
 $(OBJDIR):
 	mkdir -p $(OBJDIR)
-
-$(OBJDIR)/lua: $(OBJDIR)
-	mkdir -p $(OBJDIR)/lua/
 	touch $(OBJDIR)
 
-$(BINNAME): $(OBJDIR) $(OBJDIR)/lua $(OBJS)
+$(OBJDIR)/lua: $(OBJDIR)
+	mkdir -p $(OBJDIR)/lua
+	touch $(OBJDIR)/lua
+
+$(BINNAME): $(OBJDIR)/lua $(OBJDIR) $(OBJS)
+	touch $(OBJDIR)
+	touch $(OBJDIR)/lua
 	$(CC) -o $(BINNAME) $(LDFLAGS) $(OBJS) $(LIBS)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.c $(INCLUDES)

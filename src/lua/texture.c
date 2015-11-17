@@ -173,6 +173,7 @@ static int lbind_texture_load_sub(lua_State *L)
 	const char *tex_fmt_str = lua_tostring(L, 2);
 	GLenum tex_target = texture_get_target(L, tex_fmt_str);
 	int dims = tex_fmt_str[0] - '0';
+	if(tex_fmt_str[1] == 'a') dims++;
 	int level = lua_tointeger(L, 3);
 	assert(dims >= 1 && dims <= 3);
 
@@ -297,6 +298,7 @@ static int lbind_texture_new(lua_State *L)
 	const char *internal_fmt_str = lua_tostring(L, 3);
 	GLenum tex_target = texture_get_target(L, tex_fmt_str);
 	int dims = tex_fmt_str[0] - '0';
+	if(tex_fmt_str[1] == 'a') dims++;
 	assert(dims >= 1 && dims <= 3);
 
 	if(lua_gettop(L) < 5+dims)
