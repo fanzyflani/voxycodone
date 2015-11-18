@@ -142,7 +142,7 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, out float atime)
 			new_suboffs -= 0.5;
 			vec2 tc = vec2(dot(ntx, new_suboffs), dot(nty, new_suboffs));
 			tc += 0.5;
-			cbase *= texture(tex_tiles, vec3(tc, float(lblk.r)), 0);
+			cbase *= texture(tex_tiles, vec3(tc, float(lblk.r)), atime+norm_slope_time);
 			vec3 col = cbase.rgb;
 
 			float diff = max(0.0, -dot(norm, ray_dir));
@@ -295,7 +295,7 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, out float atime)
 			nty = normalize(cross(norm, ntx));
 			vec3 new_suboffs = mix(1.0-aoffs, aoffs, lessThan(ray_dir, vec3(0.0)));
 			vec2 tc = vec2(dot(ntx, new_suboffs), dot(nty, new_suboffs));
-			cbase *= texture(tex_tiles, vec3(tc, float(blk.r)), 0);
+			cbase *= texture(tex_tiles, vec3(tc, float(blk.r)), atime);
 			vec3 col = cbase.rgb;
 			if(blk.a == 1U)
 				col.rg *= 0.3;

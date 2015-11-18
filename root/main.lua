@@ -2,7 +2,8 @@
 
 do
 	--MAIN_MODULE = "engine_test"
-	MAIN_MODULE = "menu"
+	--MAIN_MODULE = "menu"
+	MAIN_MODULE = "bnlmaps"
 	local fn, msg = loadfile("root/"..MAIN_MODULE.."/main.lua")
 
 	if not fn then

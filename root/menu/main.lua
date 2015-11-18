@@ -1,5 +1,5 @@
 screen_w, screen_h = draw.screen_size_get()
-screen_scale = 2
+screen_scale = 1
 
 -- from SDL_keycode.h
 SDLK_ESCAPE = 27

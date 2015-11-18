@@ -386,12 +386,30 @@ static int lbind_texture_new(lua_State *L)
 	return 1;
 }
 
+static int lbind_texture_gen_mipmaps(lua_State *L)
+{
+	int i;
+
+	if(lua_gettop(L) < 2)
+		return luaL_error(L, "expected at least 2 arguments to texture.gen_mipmaps");
+
+	int tex = lua_tointeger(L, 1);
+	const char *tex_fmt_str = lua_tostring(L, 2);
+	GLenum tex_target = texture_get_target(L, tex_fmt_str);
+
+	glBindTexture(tex_target, tex);
+	glGenerateMipmap(tex_target);
+
+	return 0;
+}
+
 void lbind_setup_texture(lua_State *L)
 {
 	lua_newtable(L);
 	lua_pushcfunction(L, lbind_texture_new); lua_setfield(L, -2, "new");
 	lua_pushcfunction(L, lbind_texture_unit_set); lua_setfield(L, -2, "unit_set");
 	lua_pushcfunction(L, lbind_texture_load_sub); lua_setfield(L, -2, "load_sub");
+	lua_pushcfunction(L, lbind_texture_gen_mipmaps); lua_setfield(L, -2, "gen_mipmaps");
 	lua_setglobal(L, "texture");
 }
 

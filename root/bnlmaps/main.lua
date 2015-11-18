@@ -3,7 +3,7 @@ screen_scale = 1
 
 DEPTHONLY = 3
 
-MAP_NAME = "processing_plant"
+MAP_NAME = "mountain_express"
 
 -- from SDL_keycode.h
 SDLK_ESCAPE = 27
@@ -246,7 +246,7 @@ assert(shader_tracer)
 assert(shader_beamer)
 
 print("Loading tiles!")
-tex_tiles = texture.new("2a", 1, "4nb", 64, 64, 256, "nn", "4nb")
+tex_tiles = texture.new("2a", 6, "4nb", 64, 64, 256, "nll", "4nb")
 do
 	local data = bin_load("dat/tiles.tga")
 	local x, y, z, i
@@ -262,6 +262,7 @@ do
 	end
 	end
 	texture.load_sub(tex_tiles, "2a", 0, 0, 0, 0, 64, 64, 256, "4nb", l)
+	texture.gen_mipmaps(tex_tiles, "2a")
 end
 print("Tiles loaded")
 

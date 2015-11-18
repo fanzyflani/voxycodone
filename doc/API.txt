@@ -203,6 +203,7 @@ texture.unit_set(unit:0i, target:TexTypeStr, tex:TexRef):
 	WARNING: This tends to get overwritten by these calls:
 	* texture.new
 	* texture.load_sub
+	* texture.gen_mipmaps
 
 	GL_ARB_direct_state_access is only core since GL 4.5,
 	so we cannot assume everyone has it.
@@ -220,6 +221,9 @@ texture.load_sub(tex:TexRef, target:TexTypeStr, level:i,
 
 	Elements should be Lua floats for floating-point data,
 	and Lua ints for integer data (regardless of sign).
+
+texture.gen_mipmaps(tex:TexRef, target:TexTypeStr):
+	Generates mipmaps for a texture using glGenerateMipmap.
 
 voxels:i[levels][] = voxel.decode_chunk(data:str, levels:i, chunkshift:i):
 	ACCEL FUNCTION
