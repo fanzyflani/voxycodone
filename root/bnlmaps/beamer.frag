@@ -163,8 +163,8 @@ void trace_scene(vec3 ray_pos, vec3 ray_dir, out float atime)
 				layer--;
 				cell <<= 1;
 				aoffs *= 2.0;
-				cell ^= ivec3(mix(ivec3(1), ivec3(0), lessThan(ray_dir, vec3(0.0))));
-				cell ^= ivec3(mix(ivec3(0), ivec3(1), greaterThan(aoffs, vec3(1.0))));
+				cell ^= ivec3(floor(0.5+mix(vec3(1.0), vec3(0.0), lessThan(ray_dir, vec3(0.0)))));
+				cell ^= ivec3(floor(0.5+mix(vec3(0.0), vec3(1.0), greaterThan(aoffs, vec3(1.0)))));
 				aoffs -= vec3(greaterThan(aoffs, vec3(1.0)));
 				blk = texelFetch(tex_map, cell, layer);
 			}

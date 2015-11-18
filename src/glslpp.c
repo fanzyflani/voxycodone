@@ -32,6 +32,7 @@ void print_shader_log(GLuint shader)
 		int n_chr = 0;
 		sscanf(v, "%d:%d(%d)", &n_file, &n_line, &n_chr); // Intel
 		sscanf(v, "%d(%d)", &n_file, &n_line); // nVidia
+		sscanf(v, "ERROR: %d:%d:", &n_file, &n_line); // ATI (XXX: confirm it works)
 
 		char *s = src;
 		int i;
