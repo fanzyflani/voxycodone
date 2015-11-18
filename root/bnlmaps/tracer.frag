@@ -151,7 +151,7 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, out float atime)
 
 			if(lblk.a == 1U)
 				col.rg *= 0.3;
-			else if(lblk.a == 1U)
+			else if(lblk.a == 2U)
 				col.gb *= 0.3;
 
 			if(cbase.a != 1.0)
@@ -299,7 +299,7 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, out float atime)
 			vec3 col = cbase.rgb;
 			if(blk.a == 1U)
 				col.rg *= 0.3;
-			else if(blk.a == 1U)
+			else if(blk.a == 2U)
 				col.gb *= 0.3;
 
 			if(cbase.a != 1.0)

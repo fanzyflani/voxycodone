@@ -246,7 +246,9 @@ assert(shader_tracer)
 assert(shader_beamer)
 
 print("Loading tiles!")
-tex_tiles = texture.new("2a", 6, "4nb", 64, 64, 256, "nll", "4nb")
+-- TODO: make this shit behave at the seams
+--tex_tiles = texture.new("2a", 6, "4nb", 64, 64, 256, "nll", "4nb")
+tex_tiles = texture.new("2a", 6, "4nb", 64, 64, 256, "nn", "4nb")
 do
 	local data = bin_load("dat/tiles.tga")
 	local x, y, z, i
