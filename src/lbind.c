@@ -41,6 +41,7 @@ static const char *lbind_loadstring_Reader(lua_State *L, void *data, size_t *siz
 	const char *ret = *(const char **)data;
 	const char *nextp = *(((const char **)data)+1);
 	*size = nextp - ret;
+	printf("[[%s]] %li\n", ret, *size);
 	*(const char **)data = NULL;
 
 	return ret;
@@ -63,10 +64,13 @@ static int lbind_loadfile(lua_State *L)
 	lua_pushvalue(L, 1);
 	lua_call(L, 1, 1);
 	const char *data = lua_tolstring(L, -1, &len);
-	lua_pop(L, 1);
+	// KEEP DATA ON STACK UNLESS YOU WANT A USE AFTER FREE
 
 	if(data == NULL)
+	{
+		lua_pop(L, 1);
 		return luaL_error(L, "failed to load file");
+	}
 
 	// Now load it up as a Lua function
 	// (NO WE DO NOT SUPPORT BINARY CHUNKS NOW BUGGER OFF)
@@ -74,6 +78,7 @@ static int lbind_loadfile(lua_State *L)
 	int load_result = lua_load(L, lbind_loadstring_Reader, &dptrs, chunkname, "t");
 	//free(data);
 
+	lua_remove(L, -2); // NOW POP DATA
 	if(load_result == LUA_OK)
 	{
 		// All good

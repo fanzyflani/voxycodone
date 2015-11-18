@@ -10,17 +10,23 @@ char *fs_bin_load_direct(const char *fname, size_t *len)
 		return NULL;
 	
 	size_t totlen = 0;
-	char *buf = malloc(totlen+1);
+	char *buf = malloc(1024);
 	buf[0] = '\x00';
 
+	//printf("{%s}\n", fname);
 	for(;;)
 	{
-		char subbuf[1024];
+		char subbuf[1025];
 		size_t res = fread(subbuf, 1, 1024, fp);
+		//printf("%li\n", res);
+		if(res == -1)
+			break;
 		if(res == 0)
 			break;
 
-		buf = realloc(buf, totlen+res+1);
+		//printf("{%s}\n", subbuf);
+		subbuf[res] = '\x00';
+		buf = realloc(buf, totlen+res+1024);
 		assert(buf != NULL);
 
 		memcpy(buf+totlen, subbuf, res);

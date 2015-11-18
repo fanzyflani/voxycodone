@@ -441,4 +441,3 @@ void main()
 }, {"in_vertex"}, {"out_color"})
 assert(shader_blit1)
 
-
