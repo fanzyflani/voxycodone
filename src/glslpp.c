@@ -119,13 +119,16 @@ GLuint init_shader_str(const char *ray_v_src, const char *ray_f_src, const char 
 		lua_pop(L, 1);
 	}
 
-	printf("Binding outputs\n");
-	lua_len(L, 3); int len_output = lua_tointeger(L, -1); lua_pop(L, 1);
-	for(i = 0; i < len_output; i++)
+	if(!context_is_compat)
 	{
-		lua_geti(L, 3, i+1);
-		glBindFragDataLocation(out_shader, i, lua_tostring(L, -1));
-		lua_pop(L, 1);
+		printf("Binding outputs\n");
+		lua_len(L, 3); int len_output = lua_tointeger(L, -1); lua_pop(L, 1);
+		for(i = 0; i < len_output; i++)
+		{
+			lua_geti(L, 3, i+1);
+			glBindFragDataLocation(out_shader, i, lua_tostring(L, -1));
+			lua_pop(L, 1);
+		}
 	}
 
 	printf("%i\n", glGetError());
