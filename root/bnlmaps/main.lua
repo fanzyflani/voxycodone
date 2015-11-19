@@ -132,10 +132,8 @@ function hook_render(sec_current)
 	end
 
 	shader.use(shader_tracer)
-	misc.gl_error()
 	shader.uniform_f(shader.uniform_location_get(shader_tracer, "imuldepth"),
 		(screen_w//screen_scale)/4.0, (screen_h//screen_scale)/4.0)
-	print(misc.gl_error())
 
 	shader.uniform_f(shader.uniform_location_get(shader_tracer, "time"), sec_current)
 	shader.uniform_matrix_4f(shader.uniform_location_get(shader_tracer, "in_cam_inverse"), mat_cam2)
