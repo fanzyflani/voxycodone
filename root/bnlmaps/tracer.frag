@@ -63,8 +63,6 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, out float atime)
 	vec3 adir = abs(ray_dir);
 	bvec3 last_crossed = bvec3(false, false, true);
 	uvec4 lblk = texelFetch(tex_map, cell, layer);
-	//bool inside_mode = (lblk.r != 0x00U);
-	bool inside_mode = false;
 	vec3 norm = vec3(0.0, 0.0, 1.0);
 	float norm_slope_time = 40.0;
 
@@ -83,7 +81,7 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, out float atime)
 		if((lblk.b & 0x40U) != 0U) { norm += vec3( 1.0,-1.0, 1.0); popcnt++; }
 		if((lblk.b & 0x80U) != 0U) { norm += vec3( 1.0, 1.0, 1.0); popcnt++; }
 
-		if(popcnt == 0)
+		if(popcnt == 0 || dot(norm, norm) < 0.01)
 		{
 			norm = old_norm;
 		} else {
@@ -219,22 +217,11 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, out float atime)
 			}
 		}
 
-		if((blk.r != 0x00U) != inside_mode)
+		if(blk.r != 0x00U)
 		{
-			if(inside_mode) blk = lblk;
-
-			/*
-			if(blk.r == 0x36U)
-				col = vec3(0.0, 0.0, 1.0);
-			if(blk.r < 0x36U)
-				col = vec3(0.1, 0.1, 0.1);
-			*/
-
 			vec4 cbase = vec4(1.0);
 			norm = mix(vec3(0.0), -sign(ray_dir), last_crossed);
-			vec3 norig = vec3(0.5);
 
-			// 0x0FU: -Y, -X, -Z
 			if(blk.b != 0x00U)
 			{
 				vec3 old_norm = norm;
@@ -250,7 +237,7 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, out float atime)
 				if((blk.b & 0x40U) != 0U) { norm += vec3( 1.0,-1.0, 1.0); popcnt++; }
 				if((blk.b & 0x80U) != 0U) { norm += vec3( 1.0, 1.0, 1.0); popcnt++; }
 
-				if(popcnt == 0)
+				if(popcnt == 0 || dot(norm, norm) < 0.5)
 				{
 					norm = old_norm;
 				} else {
@@ -296,13 +283,15 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, out float atime)
 			vec3 new_suboffs = mix(1.0-aoffs, aoffs, lessThan(ray_dir, vec3(0.0)));
 			vec2 tc = vec2(dot(ntx, new_suboffs), dot(nty, new_suboffs));
 			cbase *= texture(tex_tiles, vec3(tc, float(blk.r)), atime);
+			//cbase *= texture(tex_tiles, vec3(tc, float(blk.b)), atime);
+			//cbase.a = 1.0;
 			vec3 col = cbase.rgb;
 			if(blk.a == 1U)
 				col.rg *= 0.3;
 			else if(blk.a == 2U)
 				col.gb *= 0.3;
 
-			if(cbase.a != 1.0)
+			if(cbase.a < 1.0)
 			{
 				float tm = cbase.a;
 				//col = vec3(0.0, 0.0, 1.0);
@@ -330,18 +319,27 @@ void main()
 	vec3 ray_pos = vert_cam_pos + vec3((bound_max+bound_min)/2) + 0.5;
 	vec3 ray_dir = normalize(vert_ray_step);
 
+	float new_time = 0.0;
+	float pretrace_time = 0.0;
+	float pretrace_shadow = 0.0;
+	float pretrace_shadow_variance = 0.0;
+
 	if(have_depth_in)
 	{
-		float dbb = textureOffset(tex_depth_in, vert_tc, ivec2( 0, 0)).r;
-		float d00 = textureOffset(tex_depth_in, vert_tc, ivec2(-1, 0)).r;
-		float d01 = textureOffset(tex_depth_in, vert_tc, ivec2( 0,-1)).r;
-		float d10 = textureOffset(tex_depth_in, vert_tc, ivec2( 1, 0)).r;
-		float d11 = textureOffset(tex_depth_in, vert_tc, ivec2( 0, 1)).r;
-		float dtime = min(dbb, min(min(d00, d01), min(d10, d11)));
-		float rtime = max(dbb, max(max(d00, d01), max(d10, d11)));
-		dtime -= min(1.0, rtime-dtime);
-		dtime = max(0.0, dtime);
-		ray_pos += ray_dir * dtime;
+		vec2 dbb = textureOffset(tex_depth_in, vert_tc, ivec2( 0, 0)).rg;
+		vec2 d00 = textureOffset(tex_depth_in, vert_tc, ivec2(-1, 0)).rg;
+		vec2 d01 = textureOffset(tex_depth_in, vert_tc, ivec2( 0,-1)).rg;
+		vec2 d10 = textureOffset(tex_depth_in, vert_tc, ivec2( 1, 0)).rg;
+		vec2 d11 = textureOffset(tex_depth_in, vert_tc, ivec2( 0, 1)).rg;
+		vec2 dtime = min(dbb, min(min(d00, d01), min(d10, d11)));
+		vec2 rtime = max(dbb, max(max(d00, d01), max(d10, d11)));
+		pretrace_time = dtime.r;
+		pretrace_shadow = dtime.g;
+		pretrace_shadow_variance = rtime.g - dtime.g;
+		dtime -= min(vec2(1.0), rtime-dtime);
+		dtime = max(vec2(0.0), dtime);
+		new_time = dtime.r;
+		ray_pos += ray_dir * new_time;
 
 		//out_color = vec4(1.0); out_color *= 10.0/dtime; return;
 	}
@@ -350,13 +348,21 @@ void main()
 	float atime_shad;
 	out_color = trace_scene(ray_pos, ray_dir, atime_main);
 
-	if(false)
+	if(true) // Shadows
 	{
 		//if(out_color.a >= 1.0/255.0)
 		if(out_color.a >= 1.0)
 		{
-			vec4 shadow_color = trace_scene(ray_pos + ray_dir*(atime_main - 0.01),
-				normalize(vec3(0.3, 1.0, 0.3)), atime_shad);
+			vec3 shadow_ray_pos = ray_pos + ray_dir*(atime_main - 0.01);
+			vec4 shadow_color = vec4(0.0);
+			if(pretrace_shadow_variance < 0.1 && abs(atime_main) < 0.3)
+			{
+				shadow_color.a = pretrace_shadow;
+			} else {
+				shadow_color = trace_scene(shadow_ray_pos,
+					normalize(vec3(0.3, 1.0, 0.3)),
+				atime_shad);
+			}
 			out_color.rgb *= ((1.0-shadow_color.a)*0.6+0.4);
 		} else {
 			out_color.rgb *= 0.4;

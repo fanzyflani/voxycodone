@@ -1,9 +1,11 @@
 screen_w, screen_h = draw.screen_size_get()
 screen_scale = 1
 
-DEPTHONLY = 3
+DEPTHONLY = 4
+DEPTHONLY_MIN = 2
+DEPTHONLY_STEP = 2
 
-MAP_NAME = "mountain_express"
+MAP_NAME = "block_docks"
 
 -- from SDL_keycode.h
 SDLK_ESCAPE = 27
@@ -69,7 +71,17 @@ function hook_mouse_motion(x, y, dx, dy)
 	if cam_rot_x >  clamp then cam_rot_x =  clamp end
 end
 
+fps_tick = nil
+fps_count = 0
 function hook_render(sec_current)
+	fps_tick = fps_tick or (sec_current + 1.0)
+	if sec_current >= fps_tick then
+		fps_tick = fps_tick + 1.0
+		print("FPS:", fps_count)
+		fps_count = 0
+	end
+	fps_count = fps_count + 1
+
 	mat_cam1 = mat_cam1 or matrix.new()
 	mat_cam2 = mat_cam2 or matrix.new()
 
@@ -82,7 +94,7 @@ function hook_render(sec_current)
 
 	-- DEPTH
 	local i
-	for i=DEPTHONLY,1,-1 do
+	for i=DEPTHONLY,DEPTHONLY_MIN,-DEPTHONLY_STEP do
 		fbo.target_set(fbo_depth[i])
 		shader.use(shader_beamer)
 		shader.uniform_f(shader.uniform_location_get(shader_beamer, "time"), sec_current)
@@ -101,7 +113,7 @@ function hook_render(sec_current)
 			)
 		shader.uniform_i(shader.uniform_location_get(shader_beamer, "have_depth_in"), (i < DEPTHONLY and 1) or 0)
 		texture.unit_set(0, "3", tex_map)
-		texture.unit_set(1, "2", tex_depth[i+1]) -- out of range == nil
+		texture.unit_set(1, "2", tex_depth[i+DEPTHONLY_STEP]) -- out of range == nil
 		draw.viewport_set(0, 0, (screen_w//screen_scale)>>i, (screen_h//screen_scale)>>i)
 		draw.blit()
 	end
@@ -131,7 +143,7 @@ function hook_render(sec_current)
 		)
 	shader.uniform_i(shader.uniform_location_get(shader_tracer, "have_depth_in"), (DEPTHONLY >= 1 and 1) or 0)
 	texture.unit_set(0, "3", tex_map)
-	texture.unit_set(1, "2", tex_depth[1])
+	texture.unit_set(1, "2", tex_depth[DEPTHONLY_MIN])
 	texture.unit_set(2, "2a", tex_tiles)
 	draw.viewport_set(0, 0, screen_w//screen_scale, screen_h//screen_scale)
 	draw.blit()
@@ -407,8 +419,8 @@ assert(fbo.validate(fbo_scene))
 
 tex_depth = {}
 fbo_depth = {}
-for i=1,DEPTHONLY do
-	tex_depth[i] = texture.new("2", 1, "1f", (screen_w//screen_scale)>>i, (screen_h//screen_scale)>>i, "nn", "1f")
+for i=DEPTHONLY_MIN,DEPTHONLY_STEP do
+	tex_depth[i] = texture.new("2", 1, "2f", (screen_w//screen_scale)>>i, (screen_h//screen_scale)>>i, "nn", "1f")
 	fbo_depth[i] = fbo.new()
 	fbo.bind_tex(fbo_depth[i], 0, "2", tex_depth[i], 0)
 	assert(fbo.validate(fbo_depth[i]))

@@ -2,6 +2,10 @@
 
 // vim: syntax=c
 
+// true: faster, but some slopes get "pinched" out of the scene
+// false: slower but safer
+const bool do_slopes = true;
+
 uniform float time;
 uniform usampler3D tex_map;
 uniform sampler2D tex_depth_in;
@@ -14,13 +18,14 @@ in vec3 vert_ray_step;
 flat in vec3 vert_cam_pos;
 in vec2 vert_tc;
 
-out float out_depth;
+out vec2 out_depth;
 
-void trace_scene(vec3 ray_pos, vec3 ray_dir, out float atime)
+void trace_scene(vec3 ray_pos, vec3 ray_dir, bool shadow_mode, out float trace_output)
 {
 	const int STEPS = 200;
 
-	atime = 0.0;
+	trace_output = 0.0;
+	float atime = 0.0;
 
 	if(any(lessThan(ray_pos, vec3(bound_min))) || any(greaterThanEqual(ray_pos, vec3(bound_max))))
 	{
@@ -61,12 +66,10 @@ void trace_scene(vec3 ray_pos, vec3 ray_dir, out float atime)
 	vec3 adir = abs(ray_dir);
 	bvec3 last_crossed = bvec3(false, false, true);
 	uvec4 lblk = texelFetch(tex_map, cell, layer);
-	//bool inside_mode = (lblk.r != 0x00U);
-	bool inside_mode = false;
 	vec3 norm = vec3(0.0, 0.0, 1.0);
 	float norm_slope_time = 40.0;
 
-	if(lblk.b != 0x00U)
+	if(do_slopes && lblk.b != 0x00U)
 	{
 		vec3 old_norm = norm;
 		norm = vec3(0.0);
@@ -120,11 +123,12 @@ void trace_scene(vec3 ray_pos, vec3 ray_dir, out float atime)
 		last_crossed = equal(vtime, vec3(mintime));
 
 		// Check if we made it in time
-		if(mintime >= norm_slope_time)
+		if(do_slopes && mintime >= norm_slope_time)
 		{
 			// We didn't
 			atime += norm_slope_time;
-			return;
+			if(shadow_mode) trace_output = 1.0; // TODO: translucency
+			break;
 		}
 
 		// We made it in time
@@ -170,15 +174,13 @@ void trace_scene(vec3 ray_pos, vec3 ray_dir, out float atime)
 			}
 		}
 
-		if((blk.r != 0x00U) != inside_mode)
+		if(blk.r != 0x00U)
 		{
-			if(inside_mode) blk = lblk;
-
 			norm = mix(vec3(0.0), -sign(ray_dir), last_crossed);
 			vec3 norig = vec3(0.5);
 
 			// 0x0FU: -Y, -X, -Z
-			if(blk.b != 0x00U)
+			if(do_slopes && blk.b != 0x00U)
 			{
 				vec3 old_norm = norm;
 				norm = vec3(0.0);
@@ -226,12 +228,14 @@ void trace_scene(vec3 ray_pos, vec3 ray_dir, out float atime)
 				}
 			}
 
-			return;
+			if(shadow_mode) trace_output = 1.0; // TODO: translucency
+			break;
 		}
 		lblk = blk;
 	}
 
-	return;
+	if(!shadow_mode)
+		trace_output = atime;
 }
 
 void main()
@@ -245,21 +249,24 @@ void main()
 
 	if(have_depth_in)
 	{
-		float dbb = textureOffset(tex_depth_in, vert_tc, ivec2( 0, 0)).r;
-		float d00 = textureOffset(tex_depth_in, vert_tc, ivec2(-1, 0)).r;
-		float d01 = textureOffset(tex_depth_in, vert_tc, ivec2( 0,-1)).r;
-		float d10 = textureOffset(tex_depth_in, vert_tc, ivec2( 1, 0)).r;
-		float d11 = textureOffset(tex_depth_in, vert_tc, ivec2( 0, 1)).r;
-		float dtime = min(dbb, min(min(d00, d01), min(d10, d11)));
-		float rtime = max(dbb, max(max(d00, d01), max(d10, d11)));
-		dtime -= min(1.0, rtime-dtime);
-		dtime = max(0.0, dtime);
-		new_time = dtime;
-		ray_pos += ray_dir * dtime;
+		vec2 dbb = textureOffset(tex_depth_in, vert_tc, ivec2( 0, 0)).rg;
+		vec2 d00 = textureOffset(tex_depth_in, vert_tc, ivec2(-1, 0)).rg;
+		vec2 d01 = textureOffset(tex_depth_in, vert_tc, ivec2( 0,-1)).rg;
+		vec2 d10 = textureOffset(tex_depth_in, vert_tc, ivec2( 1, 0)).rg;
+		vec2 d11 = textureOffset(tex_depth_in, vert_tc, ivec2( 0, 1)).rg;
+		vec2 dtime = min(dbb, min(min(d00, d01), min(d10, d11)));
+		vec2 rtime = max(dbb, max(max(d00, d01), max(d10, d11)));
+		dtime.r -= min(1.0, rtime.r-dtime.r);
+		dtime = max(vec2(0.0), dtime);
+		new_time = dtime.r;
+		ray_pos += ray_dir * new_time;
 	}
 
-	trace_scene(ray_pos, ray_dir, out_depth);
-	out_depth += new_time;
+	trace_scene(ray_pos, ray_dir, false, out_depth.r);
+	out_depth.r += new_time;
+	trace_scene(ray_pos + ray_dir*((out_depth.r - new_time)-0.01),
+		normalize(vec3(0.3, 1.0, 0.3)),
+		true, out_depth.g);
 }
 
 

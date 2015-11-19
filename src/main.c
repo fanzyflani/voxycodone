@@ -56,6 +56,7 @@ int main(int argc, char *argv[])
 	window = SDL_CreateWindow("Voxycodone prealpha",
 		SDL_WINDOWPOS_UNDEFINED,
 		SDL_WINDOWPOS_UNDEFINED,
+		//1920, 1080,
 		1280, 720,
 		//800, 500,
 		//640, 360,
