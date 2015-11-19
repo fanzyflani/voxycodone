@@ -355,7 +355,7 @@ void main()
 		{
 			vec3 shadow_ray_pos = ray_pos + ray_dir*(atime_main - 0.01);
 			vec4 shadow_color = vec4(0.0);
-			if(pretrace_shadow_variance < 0.1 && abs(atime_main) < 0.3)
+			if(pretrace_shadow_variance < 0.01 && abs(atime_main) < 0.3)
 			{
 				shadow_color.a = pretrace_shadow;
 			} else {

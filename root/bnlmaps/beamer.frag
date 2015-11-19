@@ -7,6 +7,7 @@
 const bool do_slopes = true;
 
 uniform float time;
+uniform sampler2DArray tex_tiles;
 uniform usampler3D tex_map;
 uniform sampler2D tex_depth_in;
 uniform bool have_depth_in;
@@ -126,9 +127,35 @@ void trace_scene(vec3 ray_pos, vec3 ray_dir, bool shadow_mode, out float trace_o
 		if(do_slopes && mintime >= norm_slope_time)
 		{
 			// We didn't
-			atime += norm_slope_time;
-			if(shadow_mode) trace_output = 1.0; // TODO: translucency
-			break;
+
+			if(shadow_mode)
+			{
+				vec3 ntx, nty;
+				if(norm.x == 0.0 && norm.z == 0.0)
+					ntx = -normalize(cross(norm, vec3(0.0, 0.0, 1.0)));
+				else
+					ntx = -normalize(cross(norm, vec3(0.0, 1.0, 0.0)));
+				nty = normalize(cross(norm, ntx));
+				vec3 new_suboffs = mix(1.0-aoffs, aoffs, lessThan(ray_dir, vec3(0.0)));
+				vec2 tc = vec2(dot(ntx, new_suboffs), dot(nty, new_suboffs));
+				float cbase = texture(tex_tiles, vec3(tc, float(lblk.r)), atime).a;
+
+				if(cbase < 1.0)
+				{
+					float tm = cbase;
+					trace_output = 1.0 - trace_output;
+					trace_output *= 1.0 - tm;
+					trace_output = 1.0 - trace_output;
+					if(trace_output > 254.0/255.0) break;
+				} else {
+					trace_output = 1.0;
+					atime += norm_slope_time;
+					break;
+				}
+			} else {
+				atime += norm_slope_time;
+				break;
+			}
 		}
 
 		// We made it in time
@@ -228,8 +255,32 @@ void trace_scene(vec3 ray_pos, vec3 ray_dir, bool shadow_mode, out float trace_o
 				}
 			}
 
-			if(shadow_mode) trace_output = 1.0; // TODO: translucency
-			break;
+			if(shadow_mode)
+			{
+				vec3 ntx, nty;
+				if(norm.x == 0.0 && norm.z == 0.0)
+					ntx = -normalize(cross(norm, vec3(0.0, 0.0, 1.0)));
+				else
+					ntx = -normalize(cross(norm, vec3(0.0, 1.0, 0.0)));
+				nty = normalize(cross(norm, ntx));
+				vec3 new_suboffs = mix(1.0-aoffs, aoffs, lessThan(ray_dir, vec3(0.0)));
+				vec2 tc = vec2(dot(ntx, new_suboffs), dot(nty, new_suboffs));
+				float cbase = texture(tex_tiles, vec3(tc, float(blk.r)), atime).a;
+
+				if(cbase < 1.0)
+				{
+					float tm = cbase;
+					trace_output = 1.0 - trace_output;
+					trace_output *= 1.0 - tm;
+					trace_output = 1.0 - trace_output;
+					if(trace_output > 254.0/255.0) break;
+				} else {
+					trace_output = 1.0;
+					break;
+				}
+			} else {
+				break;
+			}
 		}
 		lblk = blk;
 	}

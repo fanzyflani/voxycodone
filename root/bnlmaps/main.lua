@@ -101,6 +101,7 @@ function hook_render(sec_current)
 		shader.uniform_matrix_4f(shader.uniform_location_get(shader_beamer, "in_cam_inverse"), mat_cam2)
 		shader.uniform_i(shader.uniform_location_get(shader_beamer, "tex_map"), 0)
 		shader.uniform_i(shader.uniform_location_get(shader_beamer, "tex_depth_in"), 1)
+		shader.uniform_i(shader.uniform_location_get(shader_tracer, "tex_tiles"), 2)
 		shader.uniform_i(shader.uniform_location_get(shader_beamer, "bound_min")
 			, (MAX_LX-map_lx)//2-1
 			, 0-1
@@ -114,6 +115,7 @@ function hook_render(sec_current)
 		shader.uniform_i(shader.uniform_location_get(shader_beamer, "have_depth_in"), (i < DEPTHONLY and 1) or 0)
 		texture.unit_set(0, "3", tex_map)
 		texture.unit_set(1, "2", tex_depth[i+DEPTHONLY_STEP]) -- out of range == nil
+		texture.unit_set(2, "2a", tex_tiles)
 		draw.viewport_set(0, 0, (screen_w//screen_scale)>>i, (screen_h//screen_scale)>>i)
 		draw.blit()
 	end
