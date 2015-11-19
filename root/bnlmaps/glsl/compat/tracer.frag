@@ -1,29 +1,33 @@
-#version 150
+#version 120
 
 // vim: syntax=c
 const bool precise_shadows = true;
 
+const vec3 MULDIM = 1.0/vec3(256.0+32.0, 64.0+32.0, 128.0);
+const vec2 MULDEPTH = 4.0/vec2(1280.0, 720.0); // TODO MAKE THIS UNIFORM
+
 uniform float time;
-uniform sampler2DArray tex_tiles;
-uniform usampler3D tex_map;
+uniform sampler3D tex_tiles;
+uniform sampler3D tex_map;
 uniform sampler2D tex_depth_in;
 uniform bool have_depth_in;
 
 uniform ivec3 bound_min;
 uniform ivec3 bound_max;
 
-in vec3 vert_ray_step;
-flat in vec3 vert_cam_pos;
-in vec2 vert_tc;
+varying vec3 vert_ray_step;
+invariant varying vec3 vert_cam_pos;
+varying vec2 vert_tc;
 
-out vec4 out_color;
+//out vec4 out_color;
 
-vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, out float atime)
+vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, inout float atime)
 {
 	const int STEPS = 200;
 	vec4 out_color = vec4(0.0);
 
-	atime = 0.0;
+	float logsub = log(720.0/8.0);
+	//logsub += log(length(vec3(vert_tc.x * 1280.0/720.0, vert_tc.y, 1.0)));
 
 	if(any(lessThan(ray_pos, vec3(bound_min))) || any(greaterThanEqual(ray_pos, vec3(bound_max))))
 	{
@@ -53,34 +57,35 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, out float atime)
 		ray_pos += ray_dir * (time_enter + 0.1);
 	}
 
-	const int layer_max = 6;
+	const int layer_max = 0; // FIXME: LOD seems broken
 	int layer = 0;
-	ray_pos /= float(1<<layer);
+	ray_pos /= 1.0*pow(2.0, float(layer));
 	ivec3 cell = ivec3(floor(ray_pos));
 
 	vec3 src_suboffs = (ray_pos - floor(ray_pos));
 	ivec3 cell_dir = ivec3(sign(ray_dir));
-	vec3 aoffs = mix(1.0-src_suboffs, src_suboffs, lessThan(ray_dir, vec3(0.0)));
+	vec3 aoffs = mix(1.0-src_suboffs, src_suboffs, vec3(lessThan(ray_dir, vec3(0.0))));
 	vec3 adir = abs(ray_dir);
 	bvec3 last_crossed = bvec3(false, false, true);
-	uvec4 lblk = texelFetch(tex_map, cell, layer);
+	vec4 lblk = floor(0.5+255.0*texture3D(tex_map, (cell+0.5)*MULDIM, float(layer)));
 	vec3 norm = vec3(0.0, 0.0, 1.0);
 	float norm_slope_time = 40.0;
 
-	if(lblk.b != 0x00U)
+	if(lblk.b != 0.0)
 	{
 		vec3 old_norm = norm;
 		norm = vec3(0.0);
 		int popcnt = 0;
 
-		if((lblk.b & 0x01U) != 0U) { norm += vec3(-1.0,-1.0,-1.0); popcnt++; }
-		if((lblk.b & 0x02U) != 0U) { norm += vec3( 1.0,-1.0,-1.0); popcnt++; }
-		if((lblk.b & 0x04U) != 0U) { norm += vec3(-1.0, 1.0,-1.0); popcnt++; }
-		if((lblk.b & 0x08U) != 0U) { norm += vec3(-1.0,-1.0, 1.0); popcnt++; }
-		if((lblk.b & 0x10U) != 0U) { norm += vec3( 1.0, 1.0,-1.0); popcnt++; }
-		if((lblk.b & 0x20U) != 0U) { norm += vec3(-1.0, 1.0, 1.0); popcnt++; }
-		if((lblk.b & 0x40U) != 0U) { norm += vec3( 1.0,-1.0, 1.0); popcnt++; }
-		if((lblk.b & 0x80U) != 0U) { norm += vec3( 1.0, 1.0, 1.0); popcnt++; }
+		float tsrc = lblk.b;
+		if(tsrc >= 127.5) { norm += vec3( 1.0, 1.0, 1.0); popcnt++; tsrc -= 128.0; } tsrc *= 2.0;
+		if(tsrc >= 127.5) { norm += vec3( 1.0,-1.0, 1.0); popcnt++; tsrc -= 128.0; } tsrc *= 2.0;
+		if(tsrc >= 127.5) { norm += vec3(-1.0, 1.0, 1.0); popcnt++; tsrc -= 128.0; } tsrc *= 2.0;
+		if(tsrc >= 127.5) { norm += vec3( 1.0, 1.0,-1.0); popcnt++; tsrc -= 128.0; } tsrc *= 2.0;
+		if(tsrc >= 127.5) { norm += vec3(-1.0,-1.0, 1.0); popcnt++; tsrc -= 128.0; } tsrc *= 2.0;
+		if(tsrc >= 127.5) { norm += vec3(-1.0, 1.0,-1.0); popcnt++; tsrc -= 128.0; } tsrc *= 2.0;
+		if(tsrc >= 127.5) { norm += vec3( 1.0,-1.0,-1.0); popcnt++; tsrc -= 128.0; } tsrc *= 2.0;
+		if(tsrc >= 127.5) { norm += vec3(-1.0,-1.0,-1.0); popcnt++; tsrc -= 128.0; } tsrc *= 2.0;
 
 		if(popcnt == 0 || dot(norm, norm) < 0.01)
 		{
@@ -89,7 +94,7 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, out float atime)
 			norm = normalize(norm);
 
 			// Get cell suboffset
-			vec3 new_suboffs = mix(1.0-aoffs, aoffs, lessThan(ray_dir, vec3(0.0)));
+			vec3 new_suboffs = mix(1.0-aoffs, aoffs, vec3(lessThan(ray_dir, vec3(0.0))));
 
 			// Calculate plane stuff
 			float nf_plane = dot(vec3(0.5), norm);
@@ -137,11 +142,11 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, out float atime)
 			ntx *= (max(antx.x, max(antx.y, antx.z)));
 			nty *= (max(anty.x, max(anty.y, anty.z)));
 			aoffs -= norm_slope_time*adir;
-			vec3 new_suboffs = mix(1.0-aoffs, aoffs, lessThan(ray_dir, vec3(0.0)));
+			vec3 new_suboffs = mix(1.0-aoffs, aoffs, vec3(lessThan(ray_dir, vec3(0.0))));
 			new_suboffs -= 0.5;
 			vec2 tc = vec2(dot(ntx, new_suboffs), dot(nty, new_suboffs));
 			tc += 0.5;
-			cbase *= texture(tex_tiles, vec3(tc, float(lblk.r)), atime+norm_slope_time);
+			cbase *= texture3D(tex_tiles, vec3(tc, float(lblk.r+0.5)/256.0));
 			vec3 col = cbase.rgb;
 
 			float diff = max(0.0, -dot(norm, ray_dir));
@@ -174,13 +179,14 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, out float atime)
 		norm_slope_time = 40.0;
 
 		// Trace
-		atime += mintime*float(1<<layer);
+		atime += mintime*pow(2.0, float(layer));
 		cell += cell_dir*ivec3(last_crossed);
 		aoffs -= mintime*adir;
 		aoffs += vec3(last_crossed);
 
 		// Get next voxel
-		if(any(lessThan(cell, bound_min>>layer)) || any(greaterThanEqual(cell<<layer, bound_max)))
+		if(any(lessThan(cell, ivec3(floor(bound_min/pow(2.0, float(layer))))))
+			|| any(greaterThanEqual(ivec3(cell*pow(2.0, float(layer))), bound_max)))
 		{
 			/*
 			out_color.rgb = vec3(last_crossed);
@@ -189,58 +195,62 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, out float atime)
 			*/
 			break;
 		}
-		uvec4 blk = texelFetch(tex_map, cell, layer);
+		vec4 blk = floor(0.5+255.0*texture3D(tex_map, (cell+0.5)*MULDIM, float(layer)));
 
 		// Ascension
-		if(blk.r == 0x00U && (blk.a & 0xF0U) != 0x00U)
+		if(blk.r == 0.0 && floor(blk.a/16.0+0.1) != 0.0)
 		{
-			int target_layer = min(layer_max, int((blk.a)>>4U));
+			int target_layer = min(layer_max, int(floor(0.1+(blk.a/16.0))));
 			int layers_to_ascend = target_layer - layer;
 
 			if(layers_to_ascend >= 1)
 			{
 				layer += layers_to_ascend;
-				int lmask = (1<<layers_to_ascend)-1;
-				ivec3 cell_lower = cell & lmask;
-				cell >>= layers_to_ascend;
-				aoffs += mix(vec3(lmask-cell_lower), vec3(cell_lower), lessThan(ray_dir, vec3(0.0)));
-				aoffs /= float(1<<layers_to_ascend);
+				float lmask = pow(2.0, float(layers_to_ascend));
+				ivec3 cell_lower = ivec3(floor(0.5+mod(vec3(cell), lmask)));
+				cell = ivec3(floor(0.0001 + vec3(cell)/pow(2.0, float(layers_to_ascend))));
+				aoffs += mix(vec3(lmask-cell_lower), vec3(cell_lower), vec3(lessThan(ray_dir, vec3(0.0))));
+				aoffs /= lmask;
 			}
 
-			blk = texelFetch(tex_map, cell, layer);
+			blk = floor(0.5+255.0*texture3D(tex_map, (cell+0.5)*MULDIM, float(layer)));
 		} else {
 			// Descension
-			while(layer > 0 && blk.r != 0x00U)
+			while(layer > 0 && blk.r != 0.0)
 			{
 				layer--;
-				cell <<= 1;
+				cell *= 2;
 				aoffs *= 2.0;
-				cell ^= ivec3(floor(0.5+mix(vec3(1.0), vec3(0.0), lessThan(ray_dir, vec3(0.0)))));
-				cell ^= ivec3(floor(0.5+mix(vec3(0.0), vec3(1.0), greaterThan(aoffs, vec3(1.0)))));
+				cell += ivec3(notEqual(
+					ivec3(floor(0.5+mix(vec3(1.0), vec3(0.0), vec3(lessThan(ray_dir, vec3(0.0))))))
+					,
+					ivec3(floor(0.5+mix(vec3(0.0), vec3(1.0), vec3(greaterThan(aoffs, vec3(1.0))))))
+				));
 				aoffs -= vec3(greaterThan(aoffs, vec3(1.0)));
-				blk = texelFetch(tex_map, cell, layer);
+				blk = floor(0.5+255.0*texture3D(tex_map, (cell+0.5)*MULDIM, float(layer)));
 			}
 		}
 
-		if(blk.r != 0x00U)
+		if(blk.r != 0.0)
 		{
 			vec4 cbase = vec4(1.0);
-			norm = mix(vec3(0.0), -sign(ray_dir), last_crossed);
+			norm = mix(vec3(0.0), -sign(ray_dir), vec3(last_crossed));
 
-			if(blk.b != 0x00U)
+			if(blk.b != 0.0)
 			{
 				vec3 old_norm = norm;
 				norm = vec3(0.0);
 				int popcnt = 0;
 
-				if((blk.b & 0x01U) != 0U) { norm += vec3(-1.0,-1.0,-1.0); popcnt++; }
-				if((blk.b & 0x02U) != 0U) { norm += vec3( 1.0,-1.0,-1.0); popcnt++; }
-				if((blk.b & 0x04U) != 0U) { norm += vec3(-1.0, 1.0,-1.0); popcnt++; }
-				if((blk.b & 0x08U) != 0U) { norm += vec3(-1.0,-1.0, 1.0); popcnt++; }
-				if((blk.b & 0x10U) != 0U) { norm += vec3( 1.0, 1.0,-1.0); popcnt++; }
-				if((blk.b & 0x20U) != 0U) { norm += vec3(-1.0, 1.0, 1.0); popcnt++; }
-				if((blk.b & 0x40U) != 0U) { norm += vec3( 1.0,-1.0, 1.0); popcnt++; }
-				if((blk.b & 0x80U) != 0U) { norm += vec3( 1.0, 1.0, 1.0); popcnt++; }
+				float tsrc = blk.b;
+				if(tsrc >= 127.5) { norm += vec3( 1.0, 1.0, 1.0); popcnt++; tsrc -= 128.0; } tsrc *= 2.0;
+				if(tsrc >= 127.5) { norm += vec3( 1.0,-1.0, 1.0); popcnt++; tsrc -= 128.0; } tsrc *= 2.0;
+				if(tsrc >= 127.5) { norm += vec3(-1.0, 1.0, 1.0); popcnt++; tsrc -= 128.0; } tsrc *= 2.0;
+				if(tsrc >= 127.5) { norm += vec3( 1.0, 1.0,-1.0); popcnt++; tsrc -= 128.0; } tsrc *= 2.0;
+				if(tsrc >= 127.5) { norm += vec3(-1.0,-1.0, 1.0); popcnt++; tsrc -= 128.0; } tsrc *= 2.0;
+				if(tsrc >= 127.5) { norm += vec3(-1.0, 1.0,-1.0); popcnt++; tsrc -= 128.0; } tsrc *= 2.0;
+				if(tsrc >= 127.5) { norm += vec3( 1.0,-1.0,-1.0); popcnt++; tsrc -= 128.0; } tsrc *= 2.0;
+				if(tsrc >= 127.5) { norm += vec3(-1.0,-1.0,-1.0); popcnt++; tsrc -= 128.0; } tsrc *= 2.0;
 
 				if(popcnt == 0 || dot(norm, norm) < 0.5)
 				{
@@ -249,7 +259,7 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, out float atime)
 					norm = normalize(norm);
 
 					// Get cell suboffset
-					vec3 new_suboffs = mix(1.0-aoffs, aoffs, lessThan(ray_dir, vec3(0.0)));
+					vec3 new_suboffs = mix(1.0-aoffs, aoffs, vec3(lessThan(ray_dir, vec3(0.0))));
 
 					// Calculate plane stuff
 					float nf_plane = dot(vec3(0.5), norm);
@@ -285,9 +295,9 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, out float atime)
 			else
 				ntx = -normalize(cross(norm, vec3(0.0, 1.0, 0.0)));
 			nty = normalize(cross(norm, ntx));
-			vec3 new_suboffs = mix(1.0-aoffs, aoffs, lessThan(ray_dir, vec3(0.0)));
+			vec3 new_suboffs = mix(1.0-aoffs, aoffs, vec3(lessThan(ray_dir, vec3(0.0))));
 			vec2 tc = vec2(dot(ntx, new_suboffs), dot(nty, new_suboffs));
-			cbase *= texture(tex_tiles, vec3(tc, float(blk.r)), atime);
+			cbase *= texture3D(tex_tiles, vec3(tc, float(blk.r+0.5)/256.0));
 			//cbase *= texture(tex_tiles, vec3(tc, float(blk.b)), atime);
 			//cbase.a = 1.0;
 			vec3 col = cbase.rgb;
@@ -331,11 +341,11 @@ void main()
 
 	if(have_depth_in)
 	{
-		vec2 dbb = textureOffset(tex_depth_in, vert_tc, ivec2( 0, 0)).rg;
-		vec2 d00 = textureOffset(tex_depth_in, vert_tc, ivec2(-1, 0)).rg;
-		vec2 d01 = textureOffset(tex_depth_in, vert_tc, ivec2( 0,-1)).rg;
-		vec2 d10 = textureOffset(tex_depth_in, vert_tc, ivec2( 1, 0)).rg;
-		vec2 d11 = textureOffset(tex_depth_in, vert_tc, ivec2( 0, 1)).rg;
+		vec2 dbb = texture2D(tex_depth_in, vert_tc + MULDEPTH*vec2( 0.0, 0.0)).rg;
+		vec2 d00 = texture2D(tex_depth_in, vert_tc + MULDEPTH*vec2(-1.0, 0.0)).rg;
+		vec2 d01 = texture2D(tex_depth_in, vert_tc + MULDEPTH*vec2( 0.0,-1.0)).rg;
+		vec2 d10 = texture2D(tex_depth_in, vert_tc + MULDEPTH*vec2( 1.0, 0.0)).rg;
+		vec2 d11 = texture2D(tex_depth_in, vert_tc + MULDEPTH*vec2( 0.0, 1.0)).rg;
 		vec2 dtime = min(dbb, min(min(d00, d01), min(d10, d11)));
 		vec2 rtime = max(dbb, max(max(d00, d01), max(d10, d11)));
 		pretrace_time = dtime.r;
@@ -346,21 +356,21 @@ void main()
 		new_time = dtime.r;
 		ray_pos += ray_dir * new_time;
 
-		//out_color = vec4(1.0); out_color *= 10.0/dtime; return;
+		//gl_FragColor = vec4(1.0); gl_FragColor.rgb *= 10.0/dtime.r; return;
 	}
 
-	float atime_main;
-	float atime_shad;
-	out_color = trace_scene(ray_pos, ray_dir, atime_main);
+	float atime_main = new_time;
+	float atime_shad = 0.0;
+	gl_FragColor = trace_scene(ray_pos, ray_dir, atime_main);
 
 	if(true) // Shadows
 	{
 		//if(out_color.a >= 1.0/255.0)
-		if(out_color.a >= 1.0)
+		if(gl_FragColor.a >= 1.0)
 		{
-			vec3 shadow_ray_pos = ray_pos + ray_dir*(atime_main - 0.01);
+			vec3 shadow_ray_pos = ray_pos + ray_dir*(atime_main - new_time - 0.01);
 			vec4 shadow_color = vec4(0.0);
-			if((!precise_shadows) || (pretrace_shadow_variance < 0.01 && abs(atime_main) < 0.3))
+			if((!precise_shadows) || (pretrace_shadow_variance < 0.01 && abs(atime_main - new_time) < 0.3))
 			{
 				shadow_color.a = pretrace_shadow;
 			} else {
@@ -368,14 +378,14 @@ void main()
 					normalize(vec3(0.3, 1.0, 0.3)),
 				atime_shad);
 			}
-			out_color.rgb *= ((1.0-shadow_color.a)*0.6+0.4);
+			gl_FragColor.rgb *= ((1.0-shadow_color.a)*0.6+0.4);
 		} else {
-			out_color.rgb *= 0.4;
+			gl_FragColor.rgb *= 0.4;
 		}
 	}
 
-	out_color.rgb += BG.rgb * (1.0-out_color.a);
-	out_color.a = 1.0;
+	gl_FragColor.rgb += BG.rgb * (1.0-gl_FragColor.a);
+	gl_FragColor.a = 1.0;
 }
 
 

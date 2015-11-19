@@ -115,7 +115,11 @@ function hook_render(sec_current)
 		shader.uniform_i(shader.uniform_location_get(shader_beamer, "have_depth_in"), (i < DEPTHONLY and 1) or 0)
 		texture.unit_set(0, "3", tex_map)
 		texture.unit_set(1, "2", tex_depth[i+DEPTHONLY_STEP]) -- out of range == nil
-		texture.unit_set(2, "2a", tex_tiles)
+		if VOXYCODONE_GL_COMPAT_PROFILE then
+			texture.unit_set(2, "3", tex_tiles)
+		else
+			texture.unit_set(2, "2a", tex_tiles)
+		end
 		draw.viewport_set(0, 0, (screen_w//screen_scale)>>i, (screen_h//screen_scale)>>i)
 		draw.blit()
 	end
@@ -146,7 +150,11 @@ function hook_render(sec_current)
 	shader.uniform_i(shader.uniform_location_get(shader_tracer, "have_depth_in"), (DEPTHONLY >= 1 and 1) or 0)
 	texture.unit_set(0, "3", tex_map)
 	texture.unit_set(1, "2", tex_depth[DEPTHONLY_MIN])
-	texture.unit_set(2, "2a", tex_tiles)
+	if VOXYCODONE_GL_COMPAT_PROFILE then
+		texture.unit_set(2, "3", tex_tiles)
+	else
+		texture.unit_set(2, "2a", tex_tiles)
+	end
 	draw.viewport_set(0, 0, screen_w//screen_scale, screen_h//screen_scale)
 	draw.blit()
 
@@ -261,8 +269,11 @@ assert(shader_beamer)
 
 print("Loading tiles!")
 -- TODO: make this shit behave at the seams
---tex_tiles = texture.new("2a", 6, "4nb", 64, 64, 256, "nll", "4nb")
-tex_tiles = texture.new("2a", 6, "4nb", 64, 64, 256, "nn", "4nb")
+if VOXYCODONE_GL_COMPAT_PROFILE then
+	tex_tiles = texture.new("3", 1, "4nb", 64, 64, 256, "nn", "4nb")
+else
+	tex_tiles = texture.new("2a", 6, "4nb", 64, 64, 256, "nll", "4nb")
+end
 do
 	local data = bin_load("dat/tiles.tga")
 	local x, y, z, i
@@ -277,8 +288,12 @@ do
 		l[4 + x + zoffs] = data:byte(i+4)
 	end
 	end
-	texture.load_sub(tex_tiles, "2a", 0, 0, 0, 0, 64, 64, 256, "4nb", l)
-	texture.gen_mipmaps(tex_tiles, "2a")
+	if VOXYCODONE_GL_COMPAT_PROFILE then
+		texture.load_sub(tex_tiles, "3", 0, 0, 0, 0, 64, 64, 256, "4nb", l)
+	else
+		texture.load_sub(tex_tiles, "2a", 0, 0, 0, 0, 64, 64, 256, "4nb", l)
+		texture.gen_mipmaps(tex_tiles, "2a")
+	end
 end
 print("Tiles loaded")
 
@@ -287,7 +302,12 @@ MAX_LY = 64+32
 MAX_LZ = 128
 MAX_LAYER = 5
 
-tex_map = texture.new("3", MAX_LAYER+1, "4ub", MAX_LX, MAX_LY, MAX_LZ, "nnn", "4ub")
+if VOXYCODONE_GL_COMPAT_PROFILE then
+	--tex_map = texture.new("3", MAX_LAYER+1, "4nb", MAX_LX, MAX_LY, MAX_LZ, "nnn", "4nb")
+	tex_map = texture.new("3", 1, "4nb", MAX_LX, MAX_LY, MAX_LZ, "nn", "4nb")
+else
+	tex_map = texture.new("3", MAX_LAYER+1, "4ub", MAX_LX, MAX_LY, MAX_LZ, "nnn", "4ub")
+end
 mdata = bin_load("map/"..MAP_NAME.."/map.dat")
 map_lx, map_ly, map_lz = string.unpack("< i2 i2 i2", mdata:sub(1,6))
 print (map_lx, map_ly, map_lz)
@@ -404,14 +424,26 @@ for layer=MAX_LAYER-1,0,-1 do
 end
 
 print("Actually loading textures")
-for layer=0,MAX_LAYER do
-	texture.load_sub(tex_map, "3", layer,
-		0, 0, 0,
-		MAX_LX>>(layer),
-		MAX_LY>>(layer),
-		MAX_LZ>>(layer),
-		"4ub", map_octree[layer+1]
-	)
+if VOXYCODONE_GL_COMPAT_PROFILE then
+	for layer=0,MAX_LAYER do
+		texture.load_sub(tex_map, "3", layer,
+			0, 0, 0,
+			MAX_LX>>(layer),
+			MAX_LY>>(layer),
+			MAX_LZ>>(layer),
+			"4nb", map_octree[layer+1]
+		)
+	end
+else
+	for layer=0,MAX_LAYER do
+		texture.load_sub(tex_map, "3", layer,
+			0, 0, 0,
+			MAX_LX>>(layer),
+			MAX_LY>>(layer),
+			MAX_LZ>>(layer),
+			"4ub", map_octree[layer+1]
+		)
+	end
 end
 
 tex_screen = texture.new("2", 1, "4nb", screen_w//screen_scale, screen_h//screen_scale, "ll", "4nb")
@@ -428,30 +460,58 @@ for i=DEPTHONLY_MIN,DEPTHONLY_STEP do
 	assert(fbo.validate(fbo_depth[i]))
 end
 
-shader_blit1 = shader.new({
-vert = [=[
-#version 150
-in vec2 in_vertex;
-out vec2 tc;
+if VOXYCODONE_GL_COMPAT_PROFILE then
+	shader_blit1 = shader.new({
+	vert = [=[
+	#version 120
+	attribute vec2 in_vertex;
+	varying vec2 tc;
 
-void main()
-{
-	gl_Position = vec4(in_vertex, 0.1, 1.0);
-	tc = in_vertex*0.5+0.5;
-}
-]=],
-frag = [=[
-#version 150
+	void main()
+	{
+		gl_Position = vec4(in_vertex, 0.1, 1.0);
+		tc = in_vertex*0.5+0.5;
+	}
+	]=],
+	frag = [=[
+	#version 120
 
-in vec2 tc;
-out vec4 out_color;
-uniform sampler2D tex0;
+	varying vec2 tc;
+	uniform sampler2D tex0;
 
-void main()
-{
-	out_color = texture(tex0, tc, 0);
-}
-]=],
-}, {"in_vertex"}, {"out_color"})
+	void main()
+	{
+		gl_FragColor = texture2D(tex0, tc);
+	}
+	]=],
+	}, {"in_vertex"}, {"out_color"})
+else
+	shader_blit1 = shader.new({
+	vert = [=[
+	#version 130
+	in vec2 in_vertex;
+	out vec2 tc;
+
+	void main()
+	{
+		gl_Position = vec4(in_vertex, 0.1, 1.0);
+		tc = in_vertex*0.5+0.5;
+	}
+	]=],
+	frag = [=[
+	#version 130
+
+	in vec2 tc;
+	out vec4 out_color;
+	uniform sampler2D tex0;
+
+	void main()
+	{
+		out_color = texture(tex0, tc, 0);
+	}
+	]=],
+	}, {"in_vertex"}, {"out_color"})
+end
+
 assert(shader_blit1)
 

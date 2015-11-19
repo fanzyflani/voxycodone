@@ -22,15 +22,18 @@ void init_gfx(void)
 	glBufferData(GL_ARRAY_BUFFER, 6*2*sizeof(int16_t), va_ray_data, GL_STATIC_DRAW);
 	printf("Got buffer\n");
 
-	glGenVertexArrays(1, &va_ray_vao);
-	glBindVertexArray(va_ray_vao);
-	glBindBuffer(GL_ARRAY_BUFFER, va_ray_vbo);
-	//glVertexPointer(2, GL_SHORT, 2*sizeof(int16_t), &(((int16_t *)0)[0]));
-	glVertexAttribPointer(0, 2, GL_SHORT, GL_FALSE, 2*sizeof(int16_t), &(((int16_t *)0)[0]));
-	glEnableVertexAttribArray(0);
-	glBindVertexArray(0);
-	glDisableVertexAttribArray(0);
-	printf("Got VAO\n");
+	if(!context_is_compat)
+	{
+		glGenVertexArrays(1, &va_ray_vao);
+		glBindVertexArray(va_ray_vao);
+		glBindBuffer(GL_ARRAY_BUFFER, va_ray_vbo);
+		//glVertexPointer(2, GL_SHORT, 2*sizeof(int16_t), &(((int16_t *)0)[0]));
+		glVertexAttribPointer(0, 2, GL_SHORT, GL_FALSE, 2*sizeof(int16_t), &(((int16_t *)0)[0]));
+		glEnableVertexAttribArray(0);
+		glBindVertexArray(0);
+		glDisableVertexAttribArray(0);
+		printf("Got VAO\n");
+	}
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 

@@ -322,6 +322,9 @@ static int lbind_texture_new(lua_State *L)
 	glGenTextures(1, &tex);
 	glBindTexture(tex_target, tex);
 	glTexParameteri(tex_target, GL_TEXTURE_MAX_LEVEL, levels-1);
+	glTexParameteri(tex_target, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(tex_target, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(tex_target, GL_TEXTURE_WRAP_R, GL_REPEAT);
 	//printf("%04X %u\n", tex_target, tex);
 
 	if(filter_fmt_str[0] == 'n')

@@ -65,9 +65,19 @@ static int lbind_draw_buffers_set(lua_State *L)
 
 static int lbind_draw_blit(lua_State *L)
 {
-	glBindVertexArray(va_ray_vao);
-	glDrawArrays(GL_TRIANGLES, 0, 6);
-	glBindVertexArray(0);
+	if(context_is_compat)
+	{
+		glBindBuffer(GL_ARRAY_BUFFER, va_ray_vbo);
+		glVertexAttribPointer(0, 2, GL_SHORT, GL_FALSE, 2*sizeof(int16_t), &(((int16_t *)0)[0]));
+		glEnableVertexAttribArray(0);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glDisableVertexAttribArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+	} else {
+		glBindVertexArray(va_ray_vao);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glBindVertexArray(0);
+	}
 
 	return 0;
 }

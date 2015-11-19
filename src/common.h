@@ -114,6 +114,7 @@ void h_render_main(void);
 // main.c
 extern int do_exit;
 extern int mouse_locked;
+extern int context_is_compat;
 extern SDL_Window *window;
 extern double render_sec_current;
 extern int key_pos_dxn;

@@ -41,7 +41,7 @@ static const char *lbind_loadstring_Reader(lua_State *L, void *data, size_t *siz
 	const char *ret = *(const char **)data;
 	const char *nextp = *(((const char **)data)+1);
 	*size = nextp - ret;
-	printf("[[%s]] %li\n", ret, *size);
+	//printf("[[%s]] %li\n", ret, *size);
 	*(const char **)data = NULL;
 
 	return ret;
@@ -141,6 +141,9 @@ lua_State *init_lua_system(void)
 	lbind_setup_shader(L);
 	lbind_setup_texture(L);
 	lbind_setup_voxel(L);
+
+	// Set some globals
+	lua_pushboolean(L, context_is_compat); lua_setglobal(L, "VOXYCODONE_GL_COMPAT_PROFILE");
 
 	// Return
 	return L;

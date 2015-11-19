@@ -4,6 +4,8 @@
 #include <windows.h>
 #endif
 
+int context_is_compat = false;
+
 SDL_Window *window;
 SDL_GLContext window_gl;
 int do_exit = false;
@@ -41,9 +43,16 @@ int main(int argc, char *argv[])
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_NOPARACHUTE);
 	Mix_Init(MIX_INIT_OGG);
 
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+	if(context_is_compat)
+	{
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+	} else {
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+	}
 
 	SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
 	SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
@@ -65,6 +74,25 @@ int main(int argc, char *argv[])
 		SDL_WINDOW_OPENGL);
 
 	window_gl = SDL_GL_CreateContext(window);
+	if(window_gl == NULL)
+	{
+		if(!context_is_compat)
+		{
+			printf("COULD NOT CREATE CORE CONTEXT! Falling back to GL 2.1 compat.\n");
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+
+			window_gl = SDL_GL_CreateContext(window);
+		}
+
+		if(window_gl == NULL)
+		{
+			printf("*** FATAL - COULD NOT CREATE OPENGL 2.1 COMPAT OR OPENGL 3.2 CORE CONTEXT.\n");
+			return 1;
+		}
+	}
+
 	SDL_GL_SetSwapInterval(0); // disable vsync, this is a benchmark
 	//SDL_GL_SetSwapInterval(-1); // late swap tearing if you want it
 	printf("GL version %i\n", epoxy_gl_version());

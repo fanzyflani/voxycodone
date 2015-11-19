@@ -1,10 +1,7 @@
-#version 150
+#version 130
 
 // vim: syntax=c
-
-// true: faster, but some slopes get "pinched" out of the scene
-// false: slower but safer
-const bool do_slopes = true;
+const bool precise_shadows = true;
 
 uniform float time;
 uniform sampler2DArray tex_tiles;
@@ -19,14 +16,15 @@ in vec3 vert_ray_step;
 flat in vec3 vert_cam_pos;
 in vec2 vert_tc;
 
-out vec2 out_depth;
+out vec4 out_color;
 
-void trace_scene(vec3 ray_pos, vec3 ray_dir, bool shadow_mode, out float trace_output)
+vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, inout float atime)
 {
 	const int STEPS = 200;
+	vec4 out_color = vec4(0.0);
 
-	trace_output = 0.0;
-	float atime = 0.0;
+	float logsub = log(720.0/8.0);
+	//logsub += log(length(vec3(vert_tc.x * 1280.0/720.0, vert_tc.y, 1.0)));
 
 	if(any(lessThan(ray_pos, vec3(bound_min))) || any(greaterThanEqual(ray_pos, vec3(bound_max))))
 	{
@@ -45,11 +43,11 @@ void trace_scene(vec3 ray_pos, vec3 ray_dir, bool shadow_mode, out float trace_o
 		// If it's behind us, don't draw it
 		// (otherwise you get a kinda fun bug)
 		if(time_exit < 0.001)
-			return;
+			return out_color;
 
 		// Cannot enter after we exit - this means we didn't even hit
 		if(time_enter > time_exit)
-			return;
+			return out_color;
 
 		// Advance
 		atime += time_enter + 0.1;
@@ -70,7 +68,7 @@ void trace_scene(vec3 ray_pos, vec3 ray_dir, bool shadow_mode, out float trace_o
 	vec3 norm = vec3(0.0, 0.0, 1.0);
 	float norm_slope_time = 40.0;
 
-	if(do_slopes && lblk.b != 0x00U)
+	if(lblk.b != 0x00U)
 	{
 		vec3 old_norm = norm;
 		norm = vec3(0.0);
@@ -85,7 +83,7 @@ void trace_scene(vec3 ray_pos, vec3 ray_dir, bool shadow_mode, out float trace_o
 		if((lblk.b & 0x40U) != 0U) { norm += vec3( 1.0,-1.0, 1.0); popcnt++; }
 		if((lblk.b & 0x80U) != 0U) { norm += vec3( 1.0, 1.0, 1.0); popcnt++; }
 
-		if(popcnt == 0)
+		if(popcnt == 0 || dot(norm, norm) < 0.01)
 		{
 			norm = old_norm;
 		} else {
@@ -124,37 +122,52 @@ void trace_scene(vec3 ray_pos, vec3 ray_dir, bool shadow_mode, out float trace_o
 		last_crossed = equal(vtime, vec3(mintime));
 
 		// Check if we made it in time
-		if(do_slopes && mintime >= norm_slope_time)
+		if(mintime >= norm_slope_time)
 		{
 			// We didn't
+			vec4 cbase = vec4(1.0);
 
-			if(shadow_mode)
+			vec3 ntx, nty;
+			if(norm.x == 0.0 && norm.z == 0.0)
+				ntx = -normalize(cross(norm, vec3(0.0, 0.0, 1.0)));
+			else
+				ntx = -normalize(cross(norm, vec3(0.0, 1.0, 0.0)));
+			nty = normalize(cross(norm, ntx));
+			vec3 antx = abs(ntx);
+			vec3 anty = abs(nty);
+			ntx *= (max(antx.x, max(antx.y, antx.z)));
+			nty *= (max(anty.x, max(anty.y, anty.z)));
+			aoffs -= norm_slope_time*adir;
+			vec3 new_suboffs = mix(1.0-aoffs, aoffs, lessThan(ray_dir, vec3(0.0)));
+			new_suboffs -= 0.5;
+			vec2 tc = vec2(dot(ntx, new_suboffs), dot(nty, new_suboffs));
+			tc += 0.5;
+			cbase *= texture(tex_tiles, vec3(tc, float(lblk.r)), log(atime+norm_slope_time)-logsub);
+			vec3 col = cbase.rgb;
+
+			float diff = max(0.0, -dot(norm, ray_dir));
+			const float amb = 0.1;
+			diff = (1.0-amb)*diff + amb;
+
+			if(lblk.a == 1U)
+				col.rg *= 0.3;
+			else if(lblk.a == 2U)
+				col.gb *= 0.3;
+
+			if(cbase.a != 1.0)
 			{
-				vec3 ntx, nty;
-				if(norm.x == 0.0 && norm.z == 0.0)
-					ntx = -normalize(cross(norm, vec3(0.0, 0.0, 1.0)));
-				else
-					ntx = -normalize(cross(norm, vec3(0.0, 1.0, 0.0)));
-				nty = normalize(cross(norm, ntx));
-				vec3 new_suboffs = mix(1.0-aoffs, aoffs, lessThan(ray_dir, vec3(0.0)));
-				vec2 tc = vec2(dot(ntx, new_suboffs), dot(nty, new_suboffs));
-				float cbase = texture(tex_tiles, vec3(tc, float(lblk.r)), atime).a;
-
-				if(cbase < 1.0)
-				{
-					float tm = cbase;
-					trace_output = 1.0 - trace_output;
-					trace_output *= 1.0 - tm;
-					trace_output = 1.0 - trace_output;
-					if(trace_output > 254.0/255.0) break;
-				} else {
-					trace_output = 1.0;
-					atime += norm_slope_time;
-					break;
-				}
+				float tm = cbase.a;
+				//col = vec3(0.0, 0.0, 1.0);
+				out_color.a = 1.0 - out_color.a;
+				out_color.rgb += out_color.a*tm*col*diff;
+				out_color.a *= 1.0 - tm;
+				out_color.a = 1.0 - out_color.a;
+				if(out_color.a > 254.0/255.0) return out_color;
 			} else {
+				out_color.rgb += (1.0 - out_color.a)*col*diff;
+				out_color.a = 1.0;
 				atime += norm_slope_time;
-				break;
+				return out_color;
 			}
 		}
 
@@ -170,6 +183,11 @@ void trace_scene(vec3 ray_pos, vec3 ray_dir, bool shadow_mode, out float trace_o
 		// Get next voxel
 		if(any(lessThan(cell, bound_min>>layer)) || any(greaterThanEqual(cell<<layer, bound_max)))
 		{
+			/*
+			out_color.rgb = vec3(last_crossed);
+			if(dot(vec3(last_crossed), vec3(cell_dir)) < 0.0)
+				out_color.rgb = 1.0 - out_color.rgb;
+			*/
 			break;
 		}
 		uvec4 blk = texelFetch(tex_map, cell, layer);
@@ -207,11 +225,10 @@ void trace_scene(vec3 ray_pos, vec3 ray_dir, bool shadow_mode, out float trace_o
 
 		if(blk.r != 0x00U)
 		{
+			vec4 cbase = vec4(1.0);
 			norm = mix(vec3(0.0), -sign(ray_dir), last_crossed);
-			vec3 norig = vec3(0.5);
 
-			// 0x0FU: -Y, -X, -Z
-			if(do_slopes && blk.b != 0x00U)
+			if(blk.b != 0x00U)
 			{
 				vec3 old_norm = norm;
 				norm = vec3(0.0);
@@ -226,7 +243,7 @@ void trace_scene(vec3 ray_pos, vec3 ray_dir, bool shadow_mode, out float trace_o
 				if((blk.b & 0x40U) != 0U) { norm += vec3( 1.0,-1.0, 1.0); popcnt++; }
 				if((blk.b & 0x80U) != 0U) { norm += vec3( 1.0, 1.0, 1.0); popcnt++; }
 
-				if(popcnt == 0)
+				if(popcnt == 0 || dot(norm, norm) < 0.5)
 				{
 					norm = old_norm;
 				} else {
@@ -259,38 +276,46 @@ void trace_scene(vec3 ray_pos, vec3 ray_dir, bool shadow_mode, out float trace_o
 				}
 			}
 
-			if(shadow_mode)
-			{
-				vec3 ntx, nty;
-				if(norm.x == 0.0 && norm.z == 0.0)
-					ntx = -normalize(cross(norm, vec3(0.0, 0.0, 1.0)));
-				else
-					ntx = -normalize(cross(norm, vec3(0.0, 1.0, 0.0)));
-				nty = normalize(cross(norm, ntx));
-				vec3 new_suboffs = mix(1.0-aoffs, aoffs, lessThan(ray_dir, vec3(0.0)));
-				vec2 tc = vec2(dot(ntx, new_suboffs), dot(nty, new_suboffs));
-				float cbase = texture(tex_tiles, vec3(tc, float(blk.r)), atime).a;
+			float diff = max(0.0, -dot(norm, ray_dir));
+			const float amb = 0.1;
+			diff = (1.0-amb)*diff + amb;
 
-				if(cbase < 1.0)
-				{
-					float tm = cbase;
-					trace_output = 1.0 - trace_output;
-					trace_output *= 1.0 - tm;
-					trace_output = 1.0 - trace_output;
-					if(trace_output > 254.0/255.0) break;
-				} else {
-					trace_output = 1.0;
-					break;
-				}
+			vec3 ntx, nty;
+			if(norm.x == 0.0 && norm.z == 0.0)
+				ntx = -normalize(cross(norm, vec3(0.0, 0.0, 1.0)));
+			else
+				ntx = -normalize(cross(norm, vec3(0.0, 1.0, 0.0)));
+			nty = normalize(cross(norm, ntx));
+			vec3 new_suboffs = mix(1.0-aoffs, aoffs, lessThan(ray_dir, vec3(0.0)));
+			vec2 tc = vec2(dot(ntx, new_suboffs), dot(nty, new_suboffs));
+			cbase *= texture(tex_tiles, vec3(tc, float(blk.r)), log(atime)-logsub);
+			//cbase *= texture(tex_tiles, vec3(tc, float(blk.b)), atime);
+			//cbase.a = 1.0;
+			vec3 col = cbase.rgb;
+			if(blk.a == 1U)
+				col.rg *= 0.3;
+			else if(blk.a == 2U)
+				col.gb *= 0.3;
+
+			if(cbase.a < 1.0)
+			{
+				float tm = cbase.a;
+				//col = vec3(0.0, 0.0, 1.0);
+				out_color.a = 1.0 - out_color.a;
+				out_color.rgb += out_color.a*tm*col*diff;
+				out_color.a *= 1.0 - tm;
+				out_color.a = 1.0 - out_color.a;
+				if(out_color.a > 254.0/255.0) return out_color;
 			} else {
-				break;
+				out_color.rgb += (1.0 - out_color.a)*col*diff;
+				out_color.a = 1.0;
+				return out_color;
 			}
 		}
 		lblk = blk;
 	}
 
-	if(!shadow_mode)
-		trace_output = atime;
+	return out_color;
 }
 
 void main()
@@ -301,6 +326,9 @@ void main()
 	vec3 ray_dir = normalize(vert_ray_step);
 
 	float new_time = 0.0;
+	float pretrace_time = 0.0;
+	float pretrace_shadow = 0.0;
+	float pretrace_shadow_variance = 0.0;
 
 	if(have_depth_in)
 	{
@@ -311,18 +339,44 @@ void main()
 		vec2 d11 = textureOffset(tex_depth_in, vert_tc, ivec2( 0, 1)).rg;
 		vec2 dtime = min(dbb, min(min(d00, d01), min(d10, d11)));
 		vec2 rtime = max(dbb, max(max(d00, d01), max(d10, d11)));
-		dtime.r -= min(1.0, rtime.r-dtime.r);
+		pretrace_time = dtime.r;
+		pretrace_shadow = rtime.g;
+		pretrace_shadow_variance = rtime.g - dtime.g;
+		dtime -= min(vec2(1.0), rtime-dtime);
 		dtime = max(vec2(0.0), dtime);
 		new_time = dtime.r;
 		ray_pos += ray_dir * new_time;
+
+		//out_color = vec4(1.0); out_color *= 10.0/dtime; return;
 	}
 
-	trace_scene(ray_pos, ray_dir, false, out_depth.r);
-	out_depth.r += new_time;
-	trace_scene(ray_pos + ray_dir*((out_depth.r - new_time)-0.01),
-		normalize(vec3(0.3, 1.0, 0.3)),
-		true, out_depth.g);
-}
+	float atime_main = new_time;
+	float atime_shad = 0.0;
+	out_color = trace_scene(ray_pos, ray_dir, atime_main);
 
+	if(true) // Shadows
+	{
+		//if(out_color.a >= 1.0/255.0)
+		if(out_color.a >= 1.0)
+		{
+			vec3 shadow_ray_pos = ray_pos + ray_dir*(atime_main - new_time - 0.01);
+			vec4 shadow_color = vec4(0.0);
+			if((!precise_shadows) || (pretrace_shadow_variance < 0.01 && abs(atime_main - new_time) < 0.3))
+			{
+				shadow_color.a = pretrace_shadow;
+			} else {
+				shadow_color = trace_scene(shadow_ray_pos,
+					normalize(vec3(0.3, 1.0, 0.3)),
+				atime_shad);
+			}
+			out_color.rgb *= ((1.0-shadow_color.a)*0.6+0.4);
+		} else {
+			out_color.rgb *= 0.4;
+		}
+	}
+
+	out_color.rgb += BG.rgb * (1.0-out_color.a);
+	out_color.a = 1.0;
+}
 
 
