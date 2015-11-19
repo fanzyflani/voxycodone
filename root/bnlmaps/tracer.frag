@@ -1,6 +1,7 @@
 #version 150
 
 // vim: syntax=c
+const bool precise_shadows = true;
 
 uniform float time;
 uniform sampler2DArray tex_tiles;
@@ -193,13 +194,17 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, out float atime)
 		// Ascension
 		if(blk.r == 0x00U && (blk.a & 0xF0U) != 0x00U)
 		{
-			while(layer < layer_max && layer < int((blk.a)>>4))
+			int target_layer = min(layer_max, int((blk.a)>>4U));
+			int layers_to_ascend = target_layer - layer;
+
+			if(layers_to_ascend >= 1)
 			{
-				layer++;
-				ivec3 cell_lower = cell & 1;
-				cell >>= 1;
-				aoffs += mix(vec3(1-cell_lower), vec3(cell_lower), lessThan(ray_dir, vec3(0.0)));
-				aoffs /= 2.0;
+				layer += layers_to_ascend;
+				int lmask = (1<<layers_to_ascend)-1;
+				ivec3 cell_lower = cell & lmask;
+				cell >>= layers_to_ascend;
+				aoffs += mix(vec3(lmask-cell_lower), vec3(cell_lower), lessThan(ray_dir, vec3(0.0)));
+				aoffs /= float(1<<layers_to_ascend);
 			}
 
 			blk = texelFetch(tex_map, cell, layer);
@@ -334,7 +339,7 @@ void main()
 		vec2 dtime = min(dbb, min(min(d00, d01), min(d10, d11)));
 		vec2 rtime = max(dbb, max(max(d00, d01), max(d10, d11)));
 		pretrace_time = dtime.r;
-		pretrace_shadow = dtime.g;
+		pretrace_shadow = rtime.g;
 		pretrace_shadow_variance = rtime.g - dtime.g;
 		dtime -= min(vec2(1.0), rtime-dtime);
 		dtime = max(vec2(0.0), dtime);
@@ -355,7 +360,7 @@ void main()
 		{
 			vec3 shadow_ray_pos = ray_pos + ray_dir*(atime_main - 0.01);
 			vec4 shadow_color = vec4(0.0);
-			if(pretrace_shadow_variance < 0.01 && abs(atime_main) < 0.3)
+			if((!precise_shadows) || (pretrace_shadow_variance < 0.01 && abs(atime_main) < 0.3))
 			{
 				shadow_color.a = pretrace_shadow;
 			} else {

@@ -1,7 +1,7 @@
 screen_w, screen_h = draw.screen_size_get()
 screen_scale = 1
 
-DEPTHONLY = 4
+DEPTHONLY = 2
 DEPTHONLY_MIN = 2
 DEPTHONLY_STEP = 2
 

@@ -177,13 +177,17 @@ void trace_scene(vec3 ray_pos, vec3 ray_dir, bool shadow_mode, out float trace_o
 		// Ascension
 		if(blk.r == 0x00U && (blk.a & 0xF0U) != 0x00U)
 		{
-			while(layer < layer_max && layer < int((blk.a)>>4))
+			int target_layer = min(layer_max, int((blk.a)>>4U));
+			int layers_to_ascend = target_layer - layer;
+
+			if(layers_to_ascend >= 1)
 			{
-				layer++;
-				ivec3 cell_lower = cell & 1;
-				cell >>= 1;
-				aoffs += mix(vec3(1-cell_lower), vec3(cell_lower), lessThan(ray_dir, vec3(0.0)));
-				aoffs /= 2.0;
+				layer += layers_to_ascend;
+				int lmask = (1<<layers_to_ascend)-1;
+				ivec3 cell_lower = cell & lmask;
+				cell >>= layers_to_ascend;
+				aoffs += mix(vec3(lmask-cell_lower), vec3(cell_lower), lessThan(ray_dir, vec3(0.0)));
+				aoffs /= float(1<<layers_to_ascend);
 			}
 
 			blk = texelFetch(tex_map, cell, layer);
