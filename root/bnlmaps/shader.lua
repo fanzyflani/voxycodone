@@ -26,7 +26,11 @@ if VOXYCODONE_GL_COMPAT_PROFILE then
 
 	]=],
 
-	frag = bin_load("glsl/compat/tracer.frag"),
+	frag =
+	"#version 120\n"..
+	string.format("const vec2 MULDEPTH = 4.0/vec2(%f, %f);\n", screen_w/screen_scale, screen_h/screen_scale)..
+	bin_load("glsl/compat/tracer.frag"),
+
 	}, {"in_vertex",}, {"out_color",}), shader.new({
 	vert = [=[
 	#version 120

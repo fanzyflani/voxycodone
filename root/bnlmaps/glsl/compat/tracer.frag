@@ -1,10 +1,13 @@
-#version 120
+// version 120
 
 // vim: syntax=c
 const bool precise_shadows = true;
 
 const vec3 MULDIM = 1.0/vec3(256.0+32.0, 64.0+32.0, 128.0);
-const vec2 MULDEPTH = 4.0/vec2(1280.0, 720.0); // TODO MAKE THIS UNIFORM
+// FIXME: completely fucks up when compiled as a uniform
+//uniform vec2 imuldepth;
+//const vec2 MULDEPTH = 4.0/vec2(1280.0, 720.0);
+//const vec2 IMULDEPTH = vec2(1280.0, 720.0)/4.0;
 
 uniform float time;
 uniform sampler3D tex_tiles;
@@ -341,6 +344,7 @@ void main()
 
 	if(have_depth_in)
 	{
+		//vec2 MULDEPTH = 1.0/imuldepth;
 		vec2 dbb = texture2D(tex_depth_in, vert_tc + MULDEPTH*vec2( 0.0, 0.0)).rg;
 		vec2 d00 = texture2D(tex_depth_in, vert_tc + MULDEPTH*vec2(-1.0, 0.0)).rg;
 		vec2 d01 = texture2D(tex_depth_in, vert_tc + MULDEPTH*vec2( 0.0,-1.0)).rg;

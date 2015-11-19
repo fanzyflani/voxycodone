@@ -43,8 +43,14 @@ int main(int argc, char *argv[])
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_NOPARACHUTE);
 	Mix_Init(MIX_INIT_OGG);
 
+	/*if(!epoxy_has_gl_extension("GL_EXT_gpu_shader4"))
+	{
+		context_is_compat = true;
+	}*/
+
 	if(context_is_compat)
 	{
+		printf("Forcing COMPAT profile\n");
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
@@ -95,7 +101,13 @@ int main(int argc, char *argv[])
 
 	SDL_GL_SetSwapInterval(0); // disable vsync, this is a benchmark
 	//SDL_GL_SetSwapInterval(-1); // late swap tearing if you want it
-	printf("GL version %i\n", epoxy_gl_version());
+	int glver = epoxy_gl_version();
+	printf("GL version %i\n", glver);
+	if(glver < 30)
+	{
+		printf("SWITCHING TO COMPAT PROFILE\n");
+		context_is_compat = true;
+	}
 
 #ifndef WIN32
 	signal(SIGINT, SIG_DFL);
