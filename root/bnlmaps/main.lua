@@ -307,7 +307,7 @@ MAX_LAYER = 5
 
 if VOXYCODONE_GL_COMPAT_PROFILE then
 	--tex_map = texture.new("3", MAX_LAYER+1, "4nb", MAX_LX, MAX_LY, MAX_LZ, "nnn", "4nb")
-	tex_map = texture.new("3", 1, "4nb", MAX_LX, MAX_LY, MAX_LZ, "nn", "4nb")
+	tex_map = texture.new("3", 1, "4nb", MAX_LX, MAX_LY*2, MAX_LZ, "nn", "4nb")
 else
 	tex_map = texture.new("3", MAX_LAYER+1, "4ub", MAX_LX, MAX_LY, MAX_LZ, "nnn", "4ub")
 end
@@ -429,8 +429,8 @@ end
 print("Actually loading textures")
 if VOXYCODONE_GL_COMPAT_PROFILE then
 	for layer=0,MAX_LAYER do
-		texture.load_sub(tex_map, "3", layer,
-			0, 0, 0,
+		texture.load_sub(tex_map, "3", 0,
+			0, MAX_LY*2-((MAX_LY*2)>>layer), 0,
 			MAX_LX>>(layer),
 			MAX_LY>>(layer),
 			MAX_LZ>>(layer),

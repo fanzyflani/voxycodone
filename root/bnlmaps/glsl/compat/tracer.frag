@@ -3,7 +3,7 @@
 // vim: syntax=c
 const bool precise_shadows = true;
 
-const vec3 MULDIM = 1.0/vec3(256.0+32.0, 64.0+32.0, 128.0);
+const vec3 MULDIM = 1.0/vec3(256.0+32.0, (64.0+32.0)*2.0, 128.0);
 // FIXME: completely fucks up when compiled as a uniform
 //uniform vec2 imuldepth;
 //const vec2 MULDEPTH = 4.0/vec2(1280.0, 720.0);
@@ -23,6 +23,12 @@ invariant varying vec3 vert_cam_pos;
 varying vec2 vert_tc;
 
 //out vec4 out_color;
+
+vec4 map_get(vec3 cell, int layer)
+{
+	vec3 offs = vec3(0.0, 1.0-1.0/floor(0.01 + pow(2.0, float(layer))), 0.0);
+	return floor(0.5 + 255.0*texture3D(tex_map, offs + (cell+0.5)*MULDIM));
+}
 
 vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, inout float atime)
 {
@@ -60,7 +66,7 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, inout float atime)
 		ray_pos += ray_dir * (time_enter + 0.1);
 	}
 
-	const int layer_max = 0; // FIXME: LOD seems broken
+	const int layer_max = 5;
 	int layer = 0;
 	ray_pos /= 1.0*pow(2.0, float(layer));
 	ivec3 cell = ivec3(floor(ray_pos));
@@ -70,7 +76,7 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, inout float atime)
 	vec3 aoffs = mix(1.0-src_suboffs, src_suboffs, vec3(lessThan(ray_dir, vec3(0.0))));
 	vec3 adir = abs(ray_dir);
 	bvec3 last_crossed = bvec3(false, false, true);
-	vec4 lblk = floor(0.5+255.0*texture3D(tex_map, (cell+0.5)*MULDIM, float(layer)));
+	vec4 lblk = map_get(cell, layer);
 	vec3 norm = vec3(0.0, 0.0, 1.0);
 	float norm_slope_time = 40.0;
 
@@ -198,7 +204,7 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, inout float atime)
 			*/
 			break;
 		}
-		vec4 blk = floor(0.5+255.0*texture3D(tex_map, (cell+0.5)*MULDIM, float(layer)));
+		vec4 blk = map_get(cell, layer);
 
 		// Ascension
 		if(blk.r == 0.0 && floor(blk.a/16.0+0.1) != 0.0)
@@ -216,7 +222,7 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, inout float atime)
 				aoffs /= lmask;
 			}
 
-			blk = floor(0.5+255.0*texture3D(tex_map, (cell+0.5)*MULDIM, float(layer)));
+			blk = map_get(cell, layer);
 		} else {
 			// Descension
 			while(layer > 0 && blk.r != 0.0)
@@ -230,7 +236,7 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, inout float atime)
 					ivec3(floor(0.5+mix(vec3(0.0), vec3(1.0), vec3(greaterThan(aoffs, vec3(1.0))))))
 				));
 				aoffs -= vec3(greaterThan(aoffs, vec3(1.0)));
-				blk = floor(0.5+255.0*texture3D(tex_map, (cell+0.5)*MULDIM, float(layer)));
+				blk = map_get(cell, layer);
 			}
 		}
 
