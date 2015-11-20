@@ -1,4 +1,5 @@
 if VOXYCODONE_GL_COMPAT_PROFILE then
+	local selector = bin_load("glsl/compat/selector.frag")
 	return shader.new({
 	vert = [=[
 	#version 120
@@ -27,9 +28,9 @@ if VOXYCODONE_GL_COMPAT_PROFILE then
 	]=],
 
 	frag =
-	"#version 120\n"..
+	"#version 120\n#define TRACER\n"..
 	string.format("const vec2 MULDEPTH = 4.0/vec2(%f, %f);\n", screen_w/screen_scale, screen_h/screen_scale)..
-	bin_load("glsl/compat/tracer.frag"),
+	selector,
 
 	}, {"in_vertex",}, {"out_color",}), shader.new({
 	vert = [=[
@@ -58,9 +59,15 @@ if VOXYCODONE_GL_COMPAT_PROFILE then
 
 	]=],
 
-	frag = bin_load("glsl/compat/beamer.frag"),
+	frag =
+	"#version 120\n#define BEAMER\n"..
+	string.format("const vec2 MULDEPTH = 4.0/vec2(%f, %f);\n", screen_w/screen_scale, screen_h/screen_scale)..
+	selector,
+
 	}, {"in_vertex",}, {"out_depth",})
 end
+
+local selector = bin_load("glsl/selector.frag")
 
 return shader.new({
 vert = [=[
@@ -89,7 +96,7 @@ void main()
 
 ]=],
 
-frag = bin_load("glsl/tracer.frag"),
+frag = "#version 130\n#define TRACER\n"..selector,
 }, {"in_vertex",}, {"out_color",}), shader.new({
 vert = [=[
 #version 130
@@ -117,7 +124,7 @@ void main()
 
 ]=],
 
-frag = bin_load("glsl/beamer.frag"),
+frag = "#version 130\n#define BEAMER\n"..selector,
 }, {"in_vertex",}, {"out_depth",})
 
 

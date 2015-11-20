@@ -1,10 +1,16 @@
-// version 120
+//version 120
 
 // vim: syntax=c
 const bool precise_shadows = true;
 
+// true: faster, but some slopes get "pinched" out of the scene
+// false: slower but safer
+const bool do_slopes_beamer = true;
+
 const vec3 MULDIM = 1.0/vec3(256.0+32.0, (64.0+32.0)*2.0, 128.0);
+
 // FIXME: completely fucks up when compiled as a uniform
+// FIXME: completely fucks up on an actual 4500MHD even when compiled as const
 //uniform vec2 imuldepth;
 //const vec2 MULDEPTH = 4.0/vec2(1280.0, 720.0);
 //const vec2 IMULDEPTH = vec2(1280.0, 720.0)/4.0;
@@ -22,21 +28,26 @@ varying vec3 vert_ray_step;
 invariant varying vec3 vert_cam_pos;
 varying vec2 vert_tc;
 
-//out vec4 out_color;
-
 vec4 map_get(vec3 cell, int layer)
 {
 	vec3 offs = vec3(0.0, 1.0-1.0/floor(0.01 + pow(2.0, float(layer))), 0.0);
 	return floor(0.5 + 255.0*texture3D(tex_map, offs + (cell+0.5)*MULDIM));
 }
 
-vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, inout float atime)
+#ifdef BEAMER
+void trace_scene(vec3 ray_pos, vec3 ray_dir, bool shadow_mode, out float trace_output)
+#else
+void trace_scene(vec3 ray_pos, vec3 ray_dir, inout float atime, out vec4 out_color)
+#endif
 {
 	const int STEPS = 200;
-	vec4 out_color = vec4(0.0);
 
-	float logsub = log(720.0/8.0);
-	//logsub += log(length(vec3(vert_tc.x * 1280.0/720.0, vert_tc.y, 1.0)));
+#ifdef BEAMER
+	trace_output = 0.0;
+	float atime = 0.0;
+#else
+	out_color = vec4(0.0);
+#endif
 
 	if(any(lessThan(ray_pos, vec3(bound_min))) || any(greaterThanEqual(ray_pos, vec3(bound_max))))
 	{
@@ -55,18 +66,23 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, inout float atime)
 		// If it's behind us, don't draw it
 		// (otherwise you get a kinda fun bug)
 		if(time_exit < 0.001)
-			return out_color;
+			return;
 
 		// Cannot enter after we exit - this means we didn't even hit
 		if(time_enter > time_exit)
-			return out_color;
+			return;
 
 		// Advance
 		atime += time_enter + 0.1;
 		ray_pos += ray_dir * (time_enter + 0.1);
 	}
 
+#ifdef BEAMER
+	const int layer_max = 0;
+#else
 	const int layer_max = 5;
+#endif
+
 	int layer = 0;
 	ray_pos /= 1.0*pow(2.0, float(layer));
 	ivec3 cell = ivec3(floor(ray_pos));
@@ -80,7 +96,11 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, inout float atime)
 	vec3 norm = vec3(0.0, 0.0, 1.0);
 	float norm_slope_time = 40.0;
 
+#ifdef BEAMER
+	if(do_slopes_beamer && lblk.b != 0.0)
+#else
 	if(lblk.b != 0.0)
+#endif
 	{
 		vec3 old_norm = norm;
 		norm = vec3(0.0);
@@ -135,9 +155,14 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, inout float atime)
 		last_crossed = equal(vtime, vec3(mintime));
 
 		// Check if we made it in time
+#ifdef BEAMER
+		if(do_slopes_beamer && mintime >= norm_slope_time)
+#else
 		if(mintime >= norm_slope_time)
+#endif
 		{
 			// We didn't
+#ifndef BEAMER
 			vec4 cbase = vec4(1.0);
 
 			vec3 ntx, nty;
@@ -166,21 +191,55 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, inout float atime)
 				col.rg *= 0.3;
 			else if(lblk.a == 2U)
 				col.gb *= 0.3;
+#endif
 
+#ifdef BEAMER
+			if(shadow_mode)
+#else
 			if(cbase.a != 1.0)
+#endif
 			{
+#ifdef BEAMER
+				vec3 ntx, nty;
+				if(norm.x == 0.0 && norm.z == 0.0)
+					ntx = -normalize(cross(norm, vec3(0.0, 0.0, 1.0)));
+				else
+					ntx = -normalize(cross(norm, vec3(0.0, 1.0, 0.0)));
+				nty = normalize(cross(norm, ntx));
+				vec3 new_suboffs = mix(1.0-aoffs, aoffs, vec3(lessThan(ray_dir, vec3(0.0))));
+				vec2 tc = vec2(dot(ntx, new_suboffs), dot(nty, new_suboffs));
+				float cbase = texture3D(tex_tiles, vec3(tc, float(lblk.r+0.5)/256.0)).a;
+
+				if(cbase < 1.0)
+				{
+					float tm = cbase;
+					trace_output = 1.0 - trace_output;
+					trace_output *= 1.0 - tm;
+					trace_output = 1.0 - trace_output;
+					if(trace_output > 254.0/255.0) break;
+				} else {
+					trace_output = 1.0;
+					atime += norm_slope_time;
+					break;
+				}
+#else
 				float tm = cbase.a;
 				//col = vec3(0.0, 0.0, 1.0);
 				out_color.a = 1.0 - out_color.a;
 				out_color.rgb += out_color.a*tm*col*diff;
 				out_color.a *= 1.0 - tm;
 				out_color.a = 1.0 - out_color.a;
-				if(out_color.a > 254.0/255.0) return out_color;
+				if(out_color.a > 254.0/255.0) return;
+#endif
 			} else {
+				atime += norm_slope_time;
+#ifdef BEAMER
+				break;
+#else
 				out_color.rgb += (1.0 - out_color.a)*col*diff;
 				out_color.a = 1.0;
-				atime += norm_slope_time;
-				return out_color;
+				return;
+#endif
 			}
 		}
 
@@ -197,11 +256,6 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, inout float atime)
 		if(any(lessThan(cell, ivec3(floor(bound_min/pow(2.0, float(layer))))))
 			|| any(greaterThanEqual(ivec3(cell*pow(2.0, float(layer))), bound_max)))
 		{
-			/*
-			out_color.rgb = vec3(last_crossed);
-			if(dot(vec3(last_crossed), vec3(cell_dir)) < 0.0)
-				out_color.rgb = 1.0 - out_color.rgb;
-			*/
 			break;
 		}
 		vec4 blk = map_get(cell, layer);
@@ -242,10 +296,16 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, inout float atime)
 
 		if(blk.r != 0.0)
 		{
+#ifndef BEAMER
 			vec4 cbase = vec4(1.0);
+#endif
 			norm = mix(vec3(0.0), -sign(ray_dir), vec3(last_crossed));
 
+#ifdef BEAMER
+			if(do_slopes_beamer && blk.b != 0.0)
+#else
 			if(blk.b != 0.0)
+#endif
 			{
 				vec3 old_norm = norm;
 				norm = vec3(0.0);
@@ -261,7 +321,7 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, inout float atime)
 				if(tsrc >= 127.5) { norm += vec3( 1.0,-1.0,-1.0); popcnt++; tsrc -= 128.0; } tsrc *= 2.0;
 				if(tsrc >= 127.5) { norm += vec3(-1.0,-1.0,-1.0); popcnt++; tsrc -= 128.0; } tsrc *= 2.0;
 
-				if(popcnt == 0 || dot(norm, norm) < 0.5)
+				if(popcnt == 0 || dot(norm, norm) < 0.01)
 				{
 					norm = old_norm;
 				} else {
@@ -294,6 +354,7 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, inout float atime)
 				}
 			}
 
+#ifndef BEAMER
 			float diff = max(0.0, -dot(norm, ray_dir));
 			const float amb = 0.1;
 			diff = (1.0-amb)*diff + amb;
@@ -314,26 +375,61 @@ vec4 trace_scene(vec3 ray_pos, vec3 ray_dir, inout float atime)
 				col.rg *= 0.3;
 			else if(blk.a == 2U)
 				col.gb *= 0.3;
+#endif
 
+#ifdef BEAMER
+			if(shadow_mode)
+#else
 			if(cbase.a < 1.0)
+#endif
 			{
+#ifdef BEAMER
+				vec3 ntx, nty;
+				if(norm.x == 0.0 && norm.z == 0.0)
+					ntx = -normalize(cross(norm, vec3(0.0, 0.0, 1.0)));
+				else
+					ntx = -normalize(cross(norm, vec3(0.0, 1.0, 0.0)));
+				nty = normalize(cross(norm, ntx));
+				vec3 new_suboffs = mix(1.0-aoffs, aoffs, vec3(lessThan(ray_dir, vec3(0.0))));
+				vec2 tc = vec2(dot(ntx, new_suboffs), dot(nty, new_suboffs));
+				float cbase = texture3D(tex_tiles, vec3(tc, float(blk.r+0.5)/256.0)).a;
+
+				if(cbase < 1.0)
+				{
+					float tm = cbase;
+					trace_output = 1.0 - trace_output;
+					trace_output *= 1.0 - tm;
+					trace_output = 1.0 - trace_output;
+					if(trace_output > 254.0/255.0) break;
+				} else {
+					trace_output = 1.0;
+					break;
+				}
+#else
 				float tm = cbase.a;
-				//col = vec3(0.0, 0.0, 1.0);
 				out_color.a = 1.0 - out_color.a;
 				out_color.rgb += out_color.a*tm*col*diff;
 				out_color.a *= 1.0 - tm;
 				out_color.a = 1.0 - out_color.a;
-				if(out_color.a > 254.0/255.0) return out_color;
+				if(out_color.a > 254.0/255.0) return;
+#endif
 			} else {
+#ifdef BEAMER
+				break;
+#else
 				out_color.rgb += (1.0 - out_color.a)*col*diff;
 				out_color.a = 1.0;
-				return out_color;
+				return;
+#endif
 			}
 		}
 		lblk = blk;
 	}
 
-	return out_color;
+#ifdef BEAMER
+	if(!shadow_mode)
+		trace_output = atime;
+#endif
 }
 
 void main()
@@ -344,9 +440,11 @@ void main()
 	vec3 ray_dir = normalize(vert_ray_step);
 
 	float new_time = 0.0;
+#ifndef BEAMER
 	float pretrace_time = 0.0;
 	float pretrace_shadow = 0.0;
 	float pretrace_shadow_variance = 0.0;
+#endif
 
 	if(have_depth_in)
 	{
@@ -358,20 +456,29 @@ void main()
 		vec2 d11 = texture2D(tex_depth_in, vert_tc + MULDEPTH*vec2( 0.0, 1.0)).rg;
 		vec2 dtime = min(dbb, min(min(d00, d01), min(d10, d11)));
 		vec2 rtime = max(dbb, max(max(d00, d01), max(d10, d11)));
+#ifdef BEAMER
+		dtime.r -= min(1.0, rtime.r-dtime.r);
+#else
 		pretrace_time = dtime.r;
 		pretrace_shadow = rtime.g;
 		pretrace_shadow_variance = rtime.g - dtime.g;
 		dtime -= min(vec2(1.0), rtime-dtime);
+#endif
 		dtime = max(vec2(0.0), dtime);
 		new_time = dtime.r;
 		ray_pos += ray_dir * new_time;
-
-		//gl_FragColor = vec4(1.0); gl_FragColor.rgb *= 10.0/dtime.r; return;
 	}
 
+#ifdef BEAMER
+	trace_scene(ray_pos, ray_dir, false, gl_FragData[0].r);
+	gl_FragData[0].r += new_time;
+	trace_scene(ray_pos + ray_dir*((gl_FragData[0].r - new_time)-0.01),
+		normalize(vec3(0.3, 1.0, 0.3)),
+		true, gl_FragData[0].g);
+#else
 	float atime_main = new_time;
 	float atime_shad = 0.0;
-	gl_FragColor = trace_scene(ray_pos, ray_dir, atime_main);
+	trace_scene(ray_pos, ray_dir, atime_main, gl_FragColor);
 
 	if(true) // Shadows
 	{
@@ -384,9 +491,9 @@ void main()
 			{
 				shadow_color.a = pretrace_shadow;
 			} else {
-				shadow_color = trace_scene(shadow_ray_pos,
+				trace_scene(shadow_ray_pos,
 					normalize(vec3(0.3, 1.0, 0.3)),
-				atime_shad);
+				atime_shad, shadow_color);
 			}
 			gl_FragColor.rgb *= ((1.0-shadow_color.a)*0.6+0.4);
 		} else {
@@ -396,6 +503,6 @@ void main()
 
 	gl_FragColor.rgb += BG.rgb * (1.0-gl_FragColor.a);
 	gl_FragColor.a = 1.0;
+#endif
 }
-
 
