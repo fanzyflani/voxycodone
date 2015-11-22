@@ -2,7 +2,7 @@ screen_scale = 2
 
 require("util")
 require("voxel")
-require("scene/voxygen")
+require("scene/voxdata")
 
 cur_scene_idx = #SCENE_LIST
 cur_scene = SCENE_LIST[cur_scene_idx]
@@ -175,7 +175,7 @@ function init_gfx()
 
 	-- Voxel landscape
 	-- THIS IS SLOW
-	voxygen_load_repeated_chunk("dat/voxel1.voxygen")
+	voxdata_load_repeated_chunk("dat/voxel1.voxygen")
 end
 
 render_sec_first_current = 0

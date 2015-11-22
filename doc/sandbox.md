@@ -16,7 +16,7 @@ Server
 * Root directory is a subset of its parent's
 * Writable directory is `${ROOT}/save/`
 * Message link to remote clients
-* Can spawn Plugin, Blind (XXX: may drop the Plugin bit)
+* Can spawn Plugin, Blind
 
 Client
 ------
@@ -31,7 +31,9 @@ Plugin
 ------
 
 * Root directory is a subset of its parent's
+* Drawable to FBO
 * Can spawn Blind
+* Basically Client but with a physical root dir rather than a network dir, and without networking
 
 Blind
 -----

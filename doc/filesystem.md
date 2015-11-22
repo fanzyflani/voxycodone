@@ -11,13 +11,30 @@ There are two different types of root filesystems:
 
 The root filesystem for a sandbox will be one of those.
 
-`bin_save` will only be provided to the System sandbox.
+`bin_save` will only be provided to the System and Server sandboxes.
 Use the appropriate messaging API to shove stuff into storage.
 (TODO: make said messaging API)
 
 `dofile` depends on the global `loadfile` which depends on the global `bin_load`.
 This means that you can make `bin_load` point to something else,
 and `dofile` and `loadfile` will end up using that instead.
+
+----
+
+Valid filename characters:
+
+	-.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ[]_abcdefghijklmnopqrstuvwxyz
+
+If you abuse case-insensitivity I reserve the right to punch you. In the face. With a truck.
+
+Also I legitimately can't remember why I added [] to the list.
+This is the same list used in Iceball, and I conceived this list about 3 years ago.
+
+Valid path separators:
+
+	/
+
+These will be strictly checked.
 
 ----
 

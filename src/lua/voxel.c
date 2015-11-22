@@ -1,6 +1,6 @@
 #include "common.h"
 
-static void fill_voxygen_subchunk(uint8_t **voxygen_buf, int layer, int sx, int sy, int sz, uint8_t c)
+static void fill_voxdata_subchunk(uint8_t **voxdata_buf, int layer, int sx, int sy, int sz, uint8_t c)
 {
 	int lsize = 128>>layer;
 	assert(layer >= 0);
@@ -15,7 +15,7 @@ static void fill_voxygen_subchunk(uint8_t **voxygen_buf, int layer, int sx, int 
 	assert((sx>>layer)+lsize*((sz>>layer)+lsize*(sy>>layer)) < (128>>layer)*(128>>layer)*(128>>layer));
 	assert((c & 0x80) == 0);
 	//if(layer == 0) c &= ~0x80;
-	voxygen_buf[layer][(sx>>layer)+lsize*((sz>>layer)+lsize*(sy>>layer))] = c;
+	voxdata_buf[layer][(sx>>layer)+lsize*((sz>>layer)+lsize*(sy>>layer))] = c;
 
 	if(layer > 0)
 	{
@@ -34,18 +34,18 @@ static void fill_voxygen_subchunk(uint8_t **voxygen_buf, int layer, int sx, int 
 		int l0 = 0;
 		int l1 = 1<<layer;
 
-		fill_voxygen_subchunk(voxygen_buf, layer, sx+l0, sy+l0, sz+l0, c);
-		fill_voxygen_subchunk(voxygen_buf, layer, sx+l1, sy+l0, sz+l0, c);
-		fill_voxygen_subchunk(voxygen_buf, layer, sx+l0, sy+l0, sz+l1, c);
-		fill_voxygen_subchunk(voxygen_buf, layer, sx+l1, sy+l0, sz+l1, c);
-		fill_voxygen_subchunk(voxygen_buf, layer, sx+l0, sy+l1, sz+l0, c);
-		fill_voxygen_subchunk(voxygen_buf, layer, sx+l1, sy+l1, sz+l0, c);
-		fill_voxygen_subchunk(voxygen_buf, layer, sx+l0, sy+l1, sz+l1, c);
-		fill_voxygen_subchunk(voxygen_buf, layer, sx+l1, sy+l1, sz+l1, c);
+		fill_voxdata_subchunk(voxdata_buf, layer, sx+l0, sy+l0, sz+l0, c);
+		fill_voxdata_subchunk(voxdata_buf, layer, sx+l1, sy+l0, sz+l0, c);
+		fill_voxdata_subchunk(voxdata_buf, layer, sx+l0, sy+l0, sz+l1, c);
+		fill_voxdata_subchunk(voxdata_buf, layer, sx+l1, sy+l0, sz+l1, c);
+		fill_voxdata_subchunk(voxdata_buf, layer, sx+l0, sy+l1, sz+l0, c);
+		fill_voxdata_subchunk(voxdata_buf, layer, sx+l1, sy+l1, sz+l0, c);
+		fill_voxdata_subchunk(voxdata_buf, layer, sx+l0, sy+l1, sz+l1, c);
+		fill_voxdata_subchunk(voxdata_buf, layer, sx+l1, sy+l1, sz+l1, c);
 	}
 }
 
-static void decode_voxygen_subchunk(uint8_t **voxygen_buf, const char *fdata, size_t fdlen, off_t *fdoffs, int layer, int sx, int sy, int sz)
+static void decode_voxdata_subchunk(uint8_t **voxdata_buf, const char *fdata, size_t fdlen, off_t *fdoffs, int layer, int sx, int sy, int sz)
 {
 	assert(*fdoffs < fdlen);
 	int c = (int)fdata[(*fdoffs)++];
@@ -57,42 +57,42 @@ static void decode_voxygen_subchunk(uint8_t **voxygen_buf, const char *fdata, si
 
 		// Write
 		int lsize = 128>>layer;
-		voxygen_buf[layer][(sx>>layer)+lsize*((sz>>layer)+lsize*(sy>>layer))] = c;
+		voxdata_buf[layer][(sx>>layer)+lsize*((sz>>layer)+lsize*(sy>>layer))] = c;
 
 		// Descend
 		layer--;
 		int l0 = 0;
 		int l1 = 1<<layer;
-		decode_voxygen_subchunk(voxygen_buf, fdata, fdlen, fdoffs, layer, sx+l0, sy+l0, sz+l0);
-		decode_voxygen_subchunk(voxygen_buf, fdata, fdlen, fdoffs, layer, sx+l0, sy+l1, sz+l0);
-		decode_voxygen_subchunk(voxygen_buf, fdata, fdlen, fdoffs, layer, sx+l1, sy+l0, sz+l0);
-		decode_voxygen_subchunk(voxygen_buf, fdata, fdlen, fdoffs, layer, sx+l1, sy+l1, sz+l0);
-		decode_voxygen_subchunk(voxygen_buf, fdata, fdlen, fdoffs, layer, sx+l0, sy+l0, sz+l1);
-		decode_voxygen_subchunk(voxygen_buf, fdata, fdlen, fdoffs, layer, sx+l0, sy+l1, sz+l1);
-		decode_voxygen_subchunk(voxygen_buf, fdata, fdlen, fdoffs, layer, sx+l1, sy+l0, sz+l1);
-		decode_voxygen_subchunk(voxygen_buf, fdata, fdlen, fdoffs, layer, sx+l1, sy+l1, sz+l1);
+		decode_voxdata_subchunk(voxdata_buf, fdata, fdlen, fdoffs, layer, sx+l0, sy+l0, sz+l0);
+		decode_voxdata_subchunk(voxdata_buf, fdata, fdlen, fdoffs, layer, sx+l0, sy+l1, sz+l0);
+		decode_voxdata_subchunk(voxdata_buf, fdata, fdlen, fdoffs, layer, sx+l1, sy+l0, sz+l0);
+		decode_voxdata_subchunk(voxdata_buf, fdata, fdlen, fdoffs, layer, sx+l1, sy+l1, sz+l0);
+		decode_voxdata_subchunk(voxdata_buf, fdata, fdlen, fdoffs, layer, sx+l0, sy+l0, sz+l1);
+		decode_voxdata_subchunk(voxdata_buf, fdata, fdlen, fdoffs, layer, sx+l0, sy+l1, sz+l1);
+		decode_voxdata_subchunk(voxdata_buf, fdata, fdlen, fdoffs, layer, sx+l1, sy+l0, sz+l1);
+		decode_voxdata_subchunk(voxdata_buf, fdata, fdlen, fdoffs, layer, sx+l1, sy+l1, sz+l1);
 
 	} else {
 		// Fill
-		fill_voxygen_subchunk(voxygen_buf, layer, sx, sy, sz, c);
+		fill_voxdata_subchunk(voxdata_buf, layer, sx, sy, sz, c);
 	}
 }
 
-static void decode_voxygen_chunk(uint8_t **voxygen_buf, const char *fdata, size_t fdlen, off_t *fdoffs)
+static void decode_voxdata_chunk(uint8_t **voxdata_buf, const char *fdata, size_t fdlen, off_t *fdoffs)
 {
 	int sx, sy, sz;
 
 	for(sz = 0; sz < 128; sz += 16)
 	for(sx = 0; sx < 128; sx += 16)
 	for(sy = 0; sy < 128; sy += 16)
-		decode_voxygen_subchunk(voxygen_buf, fdata, fdlen, fdoffs, 4, sx, sy, sz);
+		decode_voxdata_subchunk(voxdata_buf, fdata, fdlen, fdoffs, 4, sx, sy, sz);
 }
 
 static int lbind_voxel_decode_chunk(lua_State *L)
 {
 	const char *fdata;
 	size_t fdlen;
-	uint8_t *voxygen_buf[5];
+	uint8_t *voxdata_buf[5];
 	int i, layer;
 
 	if(lua_gettop(L) < 1)
@@ -102,14 +102,14 @@ static int lbind_voxel_decode_chunk(lua_State *L)
 	if(fdata == NULL)
 		return luaL_error(L, "expected string for argument 1");
 
-	voxygen_buf[0] = malloc(128*128*128);
-	voxygen_buf[1] = malloc(64*64*64);
-	voxygen_buf[2] = malloc(32*32*32);
-	voxygen_buf[3] = malloc(16*16*16);
-	voxygen_buf[4] = malloc(8*8*8);
+	voxdata_buf[0] = malloc(128*128*128);
+	voxdata_buf[1] = malloc(64*64*64);
+	voxdata_buf[2] = malloc(32*32*32);
+	voxdata_buf[3] = malloc(16*16*16);
+	voxdata_buf[4] = malloc(8*8*8);
 
 	off_t fdoffs = 0;
-	decode_voxygen_chunk(voxygen_buf, fdata, fdlen, &fdoffs);
+	decode_voxdata_chunk(voxdata_buf, fdata, fdlen, &fdoffs);
 
 	//printf("Copying temp voxel data\n");
 	lua_newtable(L);
@@ -119,7 +119,7 @@ static int lbind_voxel_decode_chunk(lua_State *L)
 
 		for(i = 0; i < ((1<<(7*3))>>(layer*3)); i++)
 		{
-			lua_pushinteger(L, voxygen_buf[layer][i]);
+			lua_pushinteger(L, voxdata_buf[layer][i]);
 			lua_seti(L, -2, i+1);
 		}
 
@@ -128,11 +128,11 @@ static int lbind_voxel_decode_chunk(lua_State *L)
 
 	//printf("Freeing temp voxel data\n");
 
-	free(voxygen_buf[0]);
-	free(voxygen_buf[1]);
-	free(voxygen_buf[2]);
-	free(voxygen_buf[3]);
-	free(voxygen_buf[4]);
+	free(voxdata_buf[0]);
+	free(voxdata_buf[1]);
+	free(voxdata_buf[2]);
+	free(voxdata_buf[3]);
+	free(voxdata_buf[4]);
 
 	return 1;
 }
@@ -147,17 +147,17 @@ static int lbind_voxel_upload_chunk_repeated(lua_State *L)
 	int cx, cz;
 	const int cy = 0;
 	int sx, sy, sz;
-	uint8_t *voxygen_buf[5];
+	uint8_t *voxdata_buf[5];
 	int i, layer;
 
 	if(lua_gettop(L) < 2)
 		return luaL_error(L, "expected 2 arguments to voxel.upload_chunk_repeated");
 
-	voxygen_buf[0] = malloc(128*128*128);
-	voxygen_buf[1] = malloc(64*64*64);
-	voxygen_buf[2] = malloc(32*32*32);
-	voxygen_buf[3] = malloc(16*16*16);
-	voxygen_buf[4] = malloc(8*8*8);
+	voxdata_buf[0] = malloc(128*128*128);
+	voxdata_buf[1] = malloc(64*64*64);
+	voxdata_buf[2] = malloc(32*32*32);
+	voxdata_buf[3] = malloc(16*16*16);
+	voxdata_buf[4] = malloc(8*8*8);
 
 	//printf("Copying temp voxel data\n");
 
@@ -169,7 +169,7 @@ static int lbind_voxel_upload_chunk_repeated(lua_State *L)
 		for(i = 0; i < ((1<<(7*3))>>(layer*3)); i++)
 		{
 			lua_geti(L, -1, i+1);
-			voxygen_buf[layer][i] = lua_tointeger(L, -1);
+			voxdata_buf[layer][i] = lua_tointeger(L, -1);
 			lua_pop(L, 1);
 		}
 
@@ -186,18 +186,18 @@ static int lbind_voxel_upload_chunk_repeated(lua_State *L)
 		for(sx = 0; sx < 512; sx += lsize)
 		for(sy = 0; sy < lsize; sy += lsize)
 		{
-			glTexSubImage3D(GL_TEXTURE_3D, 0, sx, sz, sy + ly, lsize, lsize, lsize, GL_RED_INTEGER, GL_UNSIGNED_BYTE, voxygen_buf[layer]);
+			glTexSubImage3D(GL_TEXTURE_3D, 0, sx, sz, sy + ly, lsize, lsize, lsize, GL_RED_INTEGER, GL_UNSIGNED_BYTE, voxdata_buf[layer]);
 			//printf("%i - %i %i %i %i\n", glGetError(), sx, sy, sz, ly);
 		}
 	}
 	glBindTexture(GL_TEXTURE_3D, 0);
 
 	//printf("Freeing temp voxel data\n");
-	free(voxygen_buf[0]);
-	free(voxygen_buf[1]);
-	free(voxygen_buf[2]);
-	free(voxygen_buf[3]);
-	free(voxygen_buf[4]);
+	free(voxdata_buf[0]);
+	free(voxdata_buf[1]);
+	free(voxdata_buf[2]);
+	free(voxdata_buf[3]);
+	free(voxdata_buf[4]);
 
 	//int err = glGetError();
 	//printf("tex_vox %i\n", err);

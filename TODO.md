@@ -39,13 +39,13 @@ Game engine
 Graphics
 --------
 
-* [ ] OpenGL 2.1 (base + FBO) support
+* [x] OpenGL 2.1 (base + FBO) support
 * [ ] Expose more than just the 2D double-triangle VAO for drawing
 * [ ] `GL_ARB_direct_state_access`
 * [x] Geometry shaders
 * [ ] Different rendering methods:
   * [x] OpenGL 3.2 reference raytracer
-  * [ ] Beamtracer (requires FBO texture to use a mipmap pyramid)
+  * [x] Beamtracer (requires FBO texture to use a mipmap pyramid)
   * [ ] OpenGL 2.1 raytracer/beamtracer
   * [ ] Filthy disgusting triangle mesh renderer
 * [ ] Some form of raytracing antialiasing (FSAA in beamtracer perhaps?)
@@ -81,15 +81,15 @@ Audio
 Filesystem
 ----------
 
-* [ ] Proper path security
-* [ ] Sandbox root directory
+* [x] Proper path security
+* [x] Sandbox root directory
 * [ ] Network root directory
 
 Security
 --------
 
 * [ ] Sandbox models (# denotes available for dedicated server):
-  * [ ] System - can spawn Client, Server, Blind; drawable
+  * [x] System - can spawn Client, Server, Blind; drawable
   * [ ] Server# - can spawn Blind; can message clients + parent
   * [ ] Client - file access dictated by Server packages; drawable onto a System-provided FBO; can spawn Blind; can message server + parent
   * [ ] Plugin #? - can spawn Blind; can message parent

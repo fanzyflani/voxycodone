@@ -18,7 +18,7 @@ static int lbind_bin_load(lua_State *L)
 
 	size_t len;
 	const char *fname = luaL_checkstring(L, 1);
-	char *data = fs_bin_load_direct(fname, &len); // FIXME: replace with a checked fs call once it exists
+	char *data = fs_bin_load(L, fname, &len);
 
 	if(data == NULL)
 	{
@@ -59,7 +59,7 @@ static int lbind_loadfile(lua_State *L)
 
 	// Load file as string
 	size_t len;
-	//char *data = fs_bin_load_direct(fname, &len); // FIXME: replace with a checked fs call once it exists
+	//char *data = fs_bin_load(L, fname, &len);
 	lua_getglobal(L, "bin_load");
 	lua_pushvalue(L, 1);
 	lua_call(L, 1, 1);
@@ -111,10 +111,25 @@ static int lbind_dofile(lua_State *L)
 	return 0;
 }
 
-lua_State *init_lua_system(void)
+lua_State *init_lua_vm(enum vc_vm vmtyp, const char *root, int port)
 {
+	assert(vmtyp >= 0 && vmtyp < VM_TYPE_COUNT);
+
 	// Create state
 	lua_State *L = luaL_newstate();
+
+	// Create extraspace
+	struct vc_extraspace *es = malloc(sizeof(struct vc_extraspace));
+	*(struct vc_extraspace **)(lua_getextraspace(L)) = es;
+	es->vmtyp = vmtyp;
+	es->root_dir = NULL;
+
+	if(vmtyp == VM_CLIENT)
+	{
+		// TODO: connect
+	} else if(vmtyp != VM_BLIND) {
+		es->root_dir = strdup(root);
+	}
 
 	// Open builtin libraries
 	luaL_requiref(L, "base", luaopen_base, 1);
@@ -152,7 +167,7 @@ lua_State *init_lua_system(void)
 void init_lua(void)
 {
 	// Create system state
-	lua_State *L = Lbase = init_lua_system();
+	lua_State *L = Lbase = init_lua_vm(VM_SYSTEM, "root/", 0);
 
 	// Run main.lua
 	printf("Running root/main.lua\n");

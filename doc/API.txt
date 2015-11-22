@@ -51,6 +51,13 @@ data:str = bin_load(fname:str):
 
 	Returns nil on error.
 
+	Errors include:
+	- root directory + filename exceeding 255 chars in length
+	  - This limit would be higher if it weren't for Windows. Fuck Windows.
+	  - As a sidenote, limit is currently checked relative to the current directory.
+	    So on Windows it can blow over the limit anyway.
+	    Solution: Use a real OS.
+
 draw
 ----
 

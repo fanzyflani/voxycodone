@@ -122,17 +122,8 @@ int main(int argc, char *argv[])
 	int fps = 0;
 	char hands = '/';
 
-	// TODO: move this to Lua somehow {
-	// Get textures from Lua state
-	//lua_getglobal(Lbase, "tex_ray_vox"); tex_ray_vox = lua_tointeger(Lbase, -1); lua_pop(Lbase, 1);
-
-	// Send voxel landscape
-	//glBindTexture(GL_TEXTURE_3D, tex_ray_vox);
-	//voxygen_load_repeated_chunk("dat/voxel1.voxygen");
-	//glBindTexture(GL_TEXTURE_3D, 0);
-	// }
-
 	Mix_OpenAudio(44100, AUDIO_S16SYS, 2, 4096);
+
 	// TODO: clean this up {
 	//Mix_Chunk *music = Mix_LoadWAV("dat/ds15rel-gm.ogg");
 	//int music_chn = Mix_PlayChannel(-1, music, 0);
@@ -212,6 +203,9 @@ int main(int argc, char *argv[])
 		//SDL_Delay(10);
 #endif
 	}
+
+	// Clean up
+	free(lua_getextraspace(Lbase));
 
 	return 0;
 }

@@ -47,33 +47,29 @@ GLAPI void APIENTRY glTexSubImage2D( GLenum target, GLint level, GLint xoffset, 
 #define false 0
 #define true 1
 
-#define SPH_MAX (1024)
-#define SPILIST_MAX (1024+1024)
-#define KD_MAX (2048)
-#define LIGHT_MAX (32)
+// ENUMS
+enum vc_vm {
+	VM_BLIND = 0,
+	VM_CLIENT,
+	VM_SERVER,
+	VM_PLUGIN,
+	VM_SYSTEM,
 
-struct sph {
-	double v[3];
-	double rad;
-	uint32_t rgba;
-	int idx;
+	VM_TYPE_COUNT
 };
 
-struct kd {
-	struct kd *children[2];
-	struct kd *parent;
-	int *contents;
-	double split_point;
-	int idx;
-	int split_axis;
-	int contents_offs;
-	int contents_len;
-	double b1[3], b2[3];
-	// TODO: other things
+// STRUCTS
+struct vc_extraspace
+{
+	enum vc_vm vmtyp;
+	char *root_dir;
+
+	// TODO: ENet socket stuff
 };
 
 // fs.c
 char *fs_bin_load_direct(const char *fname, size_t *len);
+char *fs_bin_load(lua_State *L, const char *fname, size_t *len);
 
 // glslpp.c
 GLuint init_shader_str(const char *ray_v_src, const char *ray_f_src, const char *ray_g_src, lua_State *L);
@@ -84,24 +80,6 @@ extern GLuint va_ray_vbo;
 extern GLuint va_ray_vao;
 
 void init_gfx(void);
-
-// kd.c
-extern double bmin_x;
-extern double bmin_y;
-extern double bmin_z;
-extern double bmax_x;
-extern double bmax_y;
-extern double bmax_z;
-
-extern int kd_list_len;
-extern struct kd kd_list[KD_MAX];
-extern GLuint kd_data_split_axis[KD_MAX];
-extern GLfloat kd_data_split_point[KD_MAX];
-
-extern int spilist[SPILIST_MAX];
-extern int spilist_len;
-
-void kd_generate(void);
 
 // lbind.c
 extern lua_State *Lbase;
@@ -117,10 +95,4 @@ extern int mouse_locked;
 extern int context_is_compat;
 extern SDL_Window *window;
 extern double render_sec_current;
-extern int key_pos_dxn;
-extern int key_pos_dxp;
-extern int key_pos_dyn;
-extern int key_pos_dyp;
-extern int key_pos_dzn;
-extern int key_pos_dzp;
 
