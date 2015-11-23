@@ -5,7 +5,7 @@ DEPTHONLY = 2
 DEPTHONLY_MIN = 2
 DEPTHONLY_STEP = 2
 
-MAP_NAME = "mountain_express"
+MAP_NAME = "block_docks"
 
 -- from SDL_keycode.h
 SDLK_ESCAPE = 27

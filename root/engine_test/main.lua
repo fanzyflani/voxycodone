@@ -1,8 +1,10 @@
 screen_scale = 2
 
+dofile("emul.lua")
+
 require("util")
 require("voxel")
-require("scene/voxdata")
+require("scene/voxygen")
 
 cur_scene_idx = #SCENE_LIST
 cur_scene = SCENE_LIST[cur_scene_idx]
@@ -337,4 +339,19 @@ function hook_tick(sec_current, sec_delta)
 end
 
 init_gfx()
+
+function hook_poll()
+	local k, v
+	for k, v in ipairs(sandbox.mbox) do
+		if v[2] == "hook_tick" then hook_tick(v[3], v[4])
+		elseif v[2] == "hook_render" then hook_render(v[3])
+		elseif v[2] == "hook_key" then hook_key(v[3], v[4])
+		elseif v[2] == "hook_mouse_button" then hook_mouse_button(v[3], v[4])
+		elseif v[2] == "hook_mouse_motion" then hook_mouse_motion(v[3], v[4], v[5], v[6])
+		else print("UNHANDLED MESSAGE TYPE", v[2])
+		end
+	end
+
+	sandbox.mbox = {}
+end
 
