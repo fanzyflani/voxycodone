@@ -25,6 +25,8 @@ static int lbind_misc_mouse_visible_set(lua_State *L)
 
 static int lbind_misc_exit(lua_State *L)
 {
+	// FIXME: needs to pass back to parent
+
 	do_exit = true;
 
 	return 0;

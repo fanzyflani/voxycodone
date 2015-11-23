@@ -7,6 +7,7 @@ void lbind_setup_draw(lua_State *L);
 void lbind_setup_fbo(lua_State *L);
 void lbind_setup_matrix(lua_State *L);
 void lbind_setup_misc(lua_State *L);
+void lbind_setup_sandbox(lua_State *L);
 void lbind_setup_shader(lua_State *L);
 void lbind_setup_texture(lua_State *L);
 void lbind_setup_voxel(lua_State *L);
@@ -111,17 +112,29 @@ static int lbind_dofile(lua_State *L)
 	return 0;
 }
 
-lua_State *init_lua_vm(enum vc_vm vmtyp, const char *root, int port)
+lua_State *init_lua_vm(lua_State *Lparent, enum vc_vm vmtyp, const char *root, int port)
 {
 	assert(vmtyp >= 0 && vmtyp < VM_TYPE_COUNT);
 
 	// Create state
-	lua_State *L = luaL_newstate();
+	lua_State *L = NULL;
+
+	// FIXME: confirm if this is safe!
+	if(true || Lparent == NULL)
+	{
+		L = luaL_newstate();
+	} else {
+		L = lua_newthread(Lparent);
+		// FIXME FIXME XXX THIS IS FUCKING DANGEROUS I CAN'T QUITE SET THE GLOBAL ENVIRONMENT YET
+		//lua_newtable(L);
+		//lua_setupvalue(L, );
+	}
 
 	// Create extraspace
 	struct vc_extraspace *es = malloc(sizeof(struct vc_extraspace));
 	*(struct vc_extraspace **)(lua_getextraspace(L)) = es;
 	es->vmtyp = vmtyp;
+	es->Lparent = Lparent;
 	es->root_dir = NULL;
 
 	if(vmtyp == VM_CLIENT)
@@ -132,33 +145,37 @@ lua_State *init_lua_vm(enum vc_vm vmtyp, const char *root, int port)
 	}
 
 	// Open builtin libraries
-	luaL_requiref(L, "base", luaopen_base, 1);
-	luaL_requiref(L, "string", luaopen_string, 1);
-	luaL_requiref(L, "math", luaopen_math, 1);
-	luaL_requiref(L, "table", luaopen_table, 1);
+	if(vmtyp != VM_BLIND) { luaL_requiref(L, "base", luaopen_base, 1); lua_pop(L, 1); }
+	luaL_requiref(L, "string", luaopen_string, 1); lua_pop(L, 1);
+	luaL_requiref(L, "math", luaopen_math, 1); lua_pop(L, 1);
+	luaL_requiref(L, "table", luaopen_table, 1); lua_pop(L, 1);
 
 	// package is now emulated in Lua, and io will be
 
-	// Open filesystem stuff
-	lua_pushcfunction(L, lbind_bin_load); lua_setglobal(L, "bin_load");
+	if(vmtyp != VM_BLIND)
+	{
+		// Open filesystem stuff
+		lua_pushcfunction(L, lbind_bin_load); lua_setglobal(L, "bin_load");
 
-	// Apply shims
-	lua_pushcfunction(L, lbind_dofile); lua_setglobal(L, "dofile");
-	lua_pushcfunction(L, lbind_loadfile); lua_setglobal(L, "loadfile");
+		// Apply shims
+		lua_pushcfunction(L, lbind_dofile); lua_setglobal(L, "dofile");
+		lua_pushcfunction(L, lbind_loadfile); lua_setglobal(L, "loadfile");
 
-	//
-	// Create tables to fill in
-	//
-	lbind_setup_draw(L);
-	lbind_setup_fbo(L);
-	lbind_setup_matrix(L);
-	lbind_setup_misc(L);
-	lbind_setup_shader(L);
-	lbind_setup_texture(L);
-	lbind_setup_voxel(L);
+		//
+		// Create tables to fill in
+		//
+		lbind_setup_draw(L);
+		lbind_setup_fbo(L);
+		lbind_setup_matrix(L);
+		lbind_setup_misc(L);
+		lbind_setup_sandbox(L);
+		lbind_setup_shader(L);
+		lbind_setup_texture(L);
+		lbind_setup_voxel(L);
 
-	// Set some globals
-	lua_pushboolean(L, context_is_compat); lua_setglobal(L, "VOXYCODONE_GL_COMPAT_PROFILE");
+		// Set some globals
+		lua_pushboolean(L, context_is_compat); lua_setglobal(L, "VOXYCODONE_GL_COMPAT_PROFILE");
+	}
 
 	// Return
 	return L;
@@ -167,7 +184,7 @@ lua_State *init_lua_vm(enum vc_vm vmtyp, const char *root, int port)
 void init_lua(void)
 {
 	// Create system state
-	lua_State *L = Lbase = init_lua_vm(VM_SYSTEM, "root/", 0);
+	lua_State *L = Lbase = init_lua_vm(NULL, VM_SYSTEM, "root/", 0);
 
 	// Run main.lua
 	printf("Running root/main.lua\n");

@@ -25,7 +25,7 @@
 // libepoxy calls wglGetProcAddress for stuff that's core in 1.1
 // at least on Wine this returns NULL for a lot of things
 // so we have to get to the opengl32.dll crap directly
-#undef glBindTexture
+#undef glBindT/xture
 #undef glDrawArrays
 #undef glGenTextures
 #undef glTexImage2D
@@ -62,6 +62,7 @@ enum vc_vm {
 struct vc_extraspace
 {
 	enum vc_vm vmtyp;
+	lua_State *Lparent;
 	char *root_dir;
 
 	// TODO: ENet socket stuff
@@ -84,6 +85,7 @@ void init_gfx(void);
 // lbind.c
 extern lua_State *Lbase;
 
+lua_State *init_lua_vm(lua_State *Lparent, enum vc_vm vmtyp, const char *root, int port);
 void init_lua(void);
 
 // scene.c

@@ -13,6 +13,7 @@ OBJS = \
 	$(OBJDIR)/lua/fbo.o \
 	$(OBJDIR)/lua/matrix.o \
 	$(OBJDIR)/lua/misc.o \
+	$(OBJDIR)/lua/sandbox.o \
 	$(OBJDIR)/lua/shader.o \
 	$(OBJDIR)/lua/texture.o \
 	$(OBJDIR)/lua/voxel.o \

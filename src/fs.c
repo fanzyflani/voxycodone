@@ -106,7 +106,7 @@ char *fs_bin_load(lua_State *L, const char *fname, size_t *len)
 
 	// Get new validated path
 	char *new_fname = fs_dir_extend(es->root_dir, fname);
-	printf("%s %s %s\n", es->root_dir, fname, new_fname);
+	//printf("%s %s %s\n", es->root_dir, fname, new_fname);
 	if(new_fname == NULL)
 		return NULL;
 

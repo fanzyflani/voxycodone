@@ -60,10 +60,10 @@ VM system
 ---------
 
 * [ ] Sandbox spawning:
-  * [ ] System sandbox
+  * [x] System sandbox
   * [ ] Client sandbox
   * [ ] Server sandbox
-  * [ ] Blind sandbox
+  * [x] Blind sandbox
   * [ ] Plugin sandbox
 * [ ] Sandbox message passing
 
@@ -92,11 +92,11 @@ Security
   * [x] System - can spawn Client, Server, Blind; drawable
   * [ ] Server# - can spawn Blind; can message clients + parent
   * [ ] Client - file access dictated by Server packages; drawable onto a System-provided FBO; can spawn Blind; can message server + parent
-  * [ ] Plugin #? - can spawn Blind; can message parent
-  * [ ] Blind# - only has math, string, table; no message passing, just direct access from parent
+  * [ ] Plugin# - can spawn Blind; can message parent
+  * [x] Blind# - only has math, string, table; no message passing, just direct access from parent
 * [ ] Message passing system
 * [ ] Wrap file access builtins to suit models:
-  * [ ] Local crap
+  * [x] Local crap
   * [ ] Network client
   * [ ] Network server
 

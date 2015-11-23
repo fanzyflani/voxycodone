@@ -12,6 +12,11 @@ Quick notes on types.
 
 Special types:
 
+* VMTypeStr: A sandbox/VM type to make:
+  * "blind"
+  * "client"
+  * "server"
+  * "plugin"
 * TexTypeStr: A texture type which maps accordingly:
   * "1": GL_TEXTURE_1D
   * "2": GL_TEXTURE_2D
@@ -147,6 +152,47 @@ misc.mouse_grab_set(arg:b):
 misc.mouse_visible_set(arg:b):
 	Sets/clears mouse visibility.
 
+sandbox
+-------
+
+vm:VMRef/nil = sandbox.new(typ:VMTypeStr, ...):
+_G:Table/nil = sandbox.new(typ:VMTypeStr, ...):
+	Create a sandbox with the given type.
+	Returns nil on failure.
+	Returns the global table if you used a blind VM.
+	Returns a VMRef if you used a normal VM.
+
+	Arguments to be provided for each type:
+
+	* blind: A string containing Lua code to be parsed and executed.
+	* client: A string containing a hostname and an int containing a UDP port to connect to.
+	* server, plugin: A string containing a root directory relative to the current VM's path.
+
+	VMs that can be created by each type:
+
+	* blind: NONE
+	* client: blind (cannot create anything that can access anything! possible security issue)
+	* server: plugin, blind
+	* plugin: blind
+	* system: server, client, plugin, blind
+
+vm:VMRef/nil = sandbox.parent_get():
+	-- TODO: IMPLEMENT
+
+	Get the parent of the current sandbox.
+
+sandbox.send(vm:VMRef/nil, ...):
+	-- TODO: IMPLEMENT
+
+	Sends a message to the given VM's mailbox.
+
+sandbox.mbox:
+	-- TODO: IMPLEMENT
+
+	A table containing this VM's mailbox.
+
+	The mailbox directly references this.
+
 shader
 ------
 
@@ -168,8 +214,6 @@ shader.use(sh:ShaderRef/nil):
 
 	Sets the shader to be used for rendering.
 
---- TODO! ---
-
 loc:0i = shader.uniform_location_get(sh:ShaderRef, name:str):
 	Gets the location of a uniform in a shader.
 	
@@ -189,6 +233,9 @@ shader.uniform_ui(loc:0i, x:f [, y:f [, z:f [, w:f]]]):
 
 shader.uniform_fv(loc:0i, elements:i, dims:i in [1,4], data:f[]):
 	Sets a float|vec[234] uniform array in the current shader.
+
+texture
+-------
 
 tex:TexRef = texture.new(target:TexTypeStr, levels:i, int_fmt:TexFmtStr,
 		xsize:i [, ysize:i [, zsize:i]],
@@ -231,6 +278,9 @@ texture.load_sub(tex:TexRef, target:TexTypeStr, level:i,
 
 texture.gen_mipmaps(tex:TexRef, target:TexTypeStr):
 	Generates mipmaps for a texture using glGenerateMipmap.
+
+voxel
+-----
 
 voxels:i[levels][] = voxel.decode_chunk(data:str, levels:i, chunkshift:i):
 	ACCEL FUNCTION

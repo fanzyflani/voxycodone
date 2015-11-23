@@ -1,5 +1,19 @@
 -- Temporary emulation layer for to-be-proposed API
 
+test = sandbox.new("blind", [=[
+foo = "bar"
+function hax()
+	print("hi")
+end
+]=])
+print(test)
+for k,v in pairs(test) do
+	print(">", k, v)
+end
+print(string)
+print(test.string)
+print(pcall(test.hax)) -- NOT RECOMMENDED
+
 do
 	--MAIN_MODULE = "engine_test"
 	--MAIN_MODULE = "menu"
