@@ -1,3 +1,15 @@
+IMPORTANT: Functions marked with "@@@" can have their state mutilated between contexts.
+Do NOT rely on any "defaults" for these after a context switch!
+
+Context switches can happen due to these:
+
+* sandbox.poll() was called.
+* New sandbox was created.
+* Hook finished executing.
+* Metamethod called on target sandbox.send function.
+  * This behaviour may be deprecated if it's found to be too difficult to secure.
+    Having said that, it's not a recommended practice.
+
 Quick notes on types.
 
 * b = boolean
@@ -80,14 +92,14 @@ draw.blit():
 
 	Really only useful for raytracing.
 
-draw.buffers_set(buf_list:i[]):
+draw.buffers_set(buf_list:i[]): @@@
 	glDrawBuffers(#buf_list, GL_COLOR_ATTACHMENT0 + buf_list);
 
 	Useful for setting up FBOs with multiple outputs.
 	
 	A good list to pass when you're done is {0}.
 
-draw.viewport_set(x:i, y:i, xlen:i, ylen:i):
+draw.viewport_set(x:i, y:i, xlen:i, ylen:i): @@@
 	glViewport(x, y, xlen, ylen);
 
 	Bottom-left origin. Measured in pixels.
@@ -103,7 +115,7 @@ fb:FBORef = fbo.new():
 fbo.bind_tex(fb:FBORef, attachment_idx:0i, texture_type:TexTypeStr, tex:TexRef, level:0i):
 	Binds a texture to an FBO.
 
-fbo.target_set(fb:FBORef/nil):
+fbo.target_set(fb:FBORef/nil): @@@
 	Sets the current FBO.
 
 isvalid:b = fbo.validate(fb:FBORef):
@@ -180,26 +192,34 @@ _G:Table/nil = sandbox.new("blind", code:str):
 	For non-blind contexts, the code will be fetched from "main.lua" in the context root.
 
 sandbox.poll(vm:VMRef)
-	-- TODO: IMPLEMENT
-
 	Call hook_poll on this sandbox.
 
-vm:VMRef/nil = sandbox.parent_get():
-	-- TODO: IMPLEMENT
+	No, you cannot poll your parent.
 
-	Get the parent of the current sandbox.
-
-sandbox.send(vm:VMRef, ...):
-	-- TODO: IMPLEMENT
-
+sandbox.send(vm:VMRef/true, ...):
 	Sends a message to the given VM's mailbox.
+	If vm is true, send to the current VM's parent.
+
+	Arguments can be any of the following types:
+	* nil
+	* boolean
+	* string
+	* number
+	* integer
+
+	Any other types will be rejected.
 
 sandbox.mbox:
-	-- TODO: IMPLEMENT
-
 	A table containing this VM's mailbox.
-
 	The mailbox directly references this.
+
+	Entries begin with the source VM
+	(or true if it comes from the parent),
+	then the arguments follow afterwards.
+
+	You can set this to pretty much anything,
+	but if it's not a table, expect it to crash.
+	(Best to just set it to an empty table after checking its contents.)
 
 shader
 ------
@@ -217,7 +237,7 @@ sh:ShaderRef = shader.new(srclist:ShaderTable, in_attrs:str[], out_binds:str[]):
 	This will be fixed before the API reaches a point
 	where I would actually care about backwards compatibility.
 
-shader.use(sh:ShaderRef/nil):
+shader.use(sh:ShaderRef/nil): @@@
 	glUseProgram(sh);
 
 	Sets the shader to be used for rendering.
@@ -230,16 +250,16 @@ loc:0i = shader.uniform_location_get(sh:ShaderRef, name:str):
 shader.uniform_matrix_4f(loc:0i, val:Mat4):
 	Sets a matrix uniform in the current shader.
 
-shader.uniform_f(loc:0i, x:f [, y:f [, z:f [, w:f]]]):
+shader.uniform_f(loc:0i, x:f [, y:f [, z:f [, w:f]]]): @@@
 	Sets a float|vec[234] uniform in the current shader.
 
-shader.uniform_i(loc:0i, x:f [, y:f [, z:f [, w:f]]]):
+shader.uniform_i(loc:0i, x:f [, y:f [, z:f [, w:f]]]): @@@
 	Sets an int|ivec[234] uniform in the current shader.
 
-shader.uniform_ui(loc:0i, x:f [, y:f [, z:f [, w:f]]]):
+shader.uniform_ui(loc:0i, x:f [, y:f [, z:f [, w:f]]]): @@@
 	Sets a uint|uvec[234] uniform in the current shader.
 
-shader.uniform_fv(loc:0i, elements:i, dims:i in [1,4], data:f[]):
+shader.uniform_fv(loc:0i, elements:i, dims:i in [1,4], data:f[]): @@@
 	Sets a float|vec[234] uniform array in the current shader.
 
 texture
@@ -259,7 +279,7 @@ tex:TexRef = texture.new(target:TexTypeStr, levels:i, int_fmt:TexFmtStr,
 
 	(If in doubt, set fmt to the same thing as int_fmt.)
 
-texture.unit_set(unit:0i, target:TexTypeStr, tex:TexRef):
+texture.unit_set(unit:0i, target:TexTypeStr, tex:TexRef): @@@
 	Sets a texture unit to a given texture.
 
 	WARNING: This tends to get overwritten by these calls:

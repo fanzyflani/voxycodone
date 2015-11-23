@@ -63,6 +63,7 @@ struct vc_extraspace
 {
 	enum vc_vm vmtyp;
 	lua_State *Lparent;
+	lua_State **pLself;
 	char *root_dir;
 
 	// TODO: ENet socket stuff

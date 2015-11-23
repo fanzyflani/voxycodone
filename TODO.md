@@ -65,7 +65,7 @@ VM system
   * [ ] Server sandbox
   * [x] Blind sandbox
   * [x] Plugin sandbox
-* [ ] Sandbox message passing
+* [x] Sandbox message passing
 * [ ] Find out how to delete and/or remove sandboxes
 
 Audio
@@ -93,9 +93,9 @@ Security
   * [x] System - can spawn Client, Server, Blind; drawable
   * [ ] Server# - can spawn Blind; can message clients + parent
   * [ ] Client - file access dictated by Server packages; drawable onto a System-provided FBO; can spawn Blind; can message server + parent
-  * [ ] Plugin# - can spawn Blind; can message parent
+  * [x] Plugin# - can spawn Blind; can message parent
   * [x] Blind# - only has math, string, table; no message passing, just direct access from parent
-* [ ] Message passing system
+* [x] Message passing system
 * [ ] Wrap file access builtins to suit models:
   * [x] Local crap
   * [ ] Network client

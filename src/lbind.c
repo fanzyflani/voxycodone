@@ -135,6 +135,7 @@ lua_State *init_lua_vm(lua_State *Lparent, enum vc_vm vmtyp, const char *root, i
 	*(struct vc_extraspace **)(lua_getextraspace(L)) = es;
 	es->vmtyp = vmtyp;
 	es->Lparent = Lparent;
+	es->pLself = NULL;
 	es->root_dir = NULL;
 
 	if(vmtyp == VM_CLIENT)
