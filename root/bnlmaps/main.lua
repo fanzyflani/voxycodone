@@ -28,9 +28,12 @@ cam_vel_x = 0.0
 cam_vel_y = 0.0
 cam_vel_z = 0.0
 
+loading = nil
+
 function hook_key(key, state)
 	if key == SDLK_ESCAPE and not state then
 		misc.exit()
+	elseif loading then return
 	elseif key == SDLK_w then key_pos_dzp = state
 	elseif key == SDLK_s then key_pos_dzn = state
 	elseif key == SDLK_a then key_pos_dxn = state
@@ -41,7 +44,8 @@ function hook_key(key, state)
 end
 
 function hook_mouse_button(button, state)
-	if button == 1 and not state then
+	if loading then return
+	elseif button == 1 and not state then
 		mouse_locked = not mouse_locked
 		misc.mouse_grab_set(mouse_locked)
 	elseif button == 2 and state then
@@ -62,6 +66,7 @@ function hook_mouse_button(button, state)
 end
 
 function hook_mouse_motion(x, y, dx, dy)
+	if loading then return end
 	if not mouse_locked then return end
 
 	cam_rot_y = cam_rot_y - dx*math.pi/1000.0
@@ -71,9 +76,21 @@ function hook_mouse_motion(x, y, dx, dy)
 	if cam_rot_x >  clamp then cam_rot_x =  clamp end
 end
 
+function hook_render_loading(sec_current)
+	if not shader_loading then return end
+
+	draw.buffers_set({0})
+	fbo.target_set(nil)
+	shader.use(shader_loading)
+	shader.uniform_f(shader.uniform_location_get(shader_loading, "time"), sec_current)
+	draw.viewport_set(0, 0, screen_w, screen_h)
+	draw.blit()
+end
+
 fps_tick = nil
 fps_count = 0
 function hook_render(sec_current)
+	if loading then return hook_render_loading(sec_current) end
 	fps_tick = fps_tick or (sec_current + 1.0)
 	if sec_current >= fps_tick then
 		fps_tick = fps_tick + 1.0
@@ -173,6 +190,8 @@ function hook_render(sec_current)
 end
 
 function hook_tick(sec_current, sec_delta)
+	if loading then return end
+
 	-- This is a Lua implementation
 	-- of a C function
 	-- which was originally written in Lua.
@@ -266,201 +285,240 @@ do
 end
 ]]
 
-shader_tracer, shader_beamer = loadfile("shader.lua")()
-assert(shader_tracer)
-assert(shader_beamer)
+function load_stuff()
+	shader_tracer, shader_beamer = loadfile("shader.lua")()
+	assert(shader_tracer)
+	assert(shader_beamer)
 
-print("Loading tiles!")
--- TODO: make this shit behave at the seams
-if VOXYCODONE_GL_COMPAT_PROFILE then
-	tex_tiles = texture.new("3", 1, "4nb", 64, 64, 256, "nn", "4nb")
-else
-	tex_tiles = texture.new("2a", 6, "4nb", 64, 64, 256, "nll", "4nb")
-end
-do
-	local data = bin_load("dat/tiles.tga")
-	local x, y, z, i
-	local l = {}
-	for z=0,256-1 do
-		local zoffs = 4*64*64*z
-	for x=0,(64*64*4)-1,4 do
-		i = 18 + x + 4*64*64*(255-z)
-		l[1 + x + zoffs] = data:byte(i+3)
-		l[2 + x + zoffs] = data:byte(i+2)
-		l[3 + x + zoffs] = data:byte(i+1)
-		l[4 + x + zoffs] = data:byte(i+4)
-	end
-	end
+	print("Loading tiles!")
+	-- TODO: make this shit behave at the seams
 	if VOXYCODONE_GL_COMPAT_PROFILE then
-		texture.load_sub(tex_tiles, "3", 0, 0, 0, 0, 64, 64, 256, "4nb", l)
+		tex_tiles = texture.new("3", 1, "4nb", 64, 64, 256, "nn", "4nb")
 	else
-		texture.load_sub(tex_tiles, "2a", 0, 0, 0, 0, 64, 64, 256, "4nb", l)
-		texture.gen_mipmaps(tex_tiles, "2a")
+		tex_tiles = texture.new("2a", 6, "4nb", 64, 64, 256, "nll", "4nb")
 	end
-end
-print("Tiles loaded")
+	do
+		local data = bin_load("dat/tiles.tga")
+		local x, y, z, i
+		local l = {}
+		for z=0,256-1 do
+			coroutine.yield()
+			local zoffs = 4*64*64*z
+		for x=0,(64*64*4)-1,4 do
+			i = 18 + x + 4*64*64*(255-z)
+			l[1 + x + zoffs] = data:byte(i+3)
+			l[2 + x + zoffs] = data:byte(i+2)
+			l[3 + x + zoffs] = data:byte(i+1)
+			l[4 + x + zoffs] = data:byte(i+4)
+		end
+		end
+		if VOXYCODONE_GL_COMPAT_PROFILE then
+			texture.load_sub(tex_tiles, "3", 0, 0, 0, 0, 64, 64, 256, "4nb", l)
+		else
+			texture.load_sub(tex_tiles, "2a", 0, 0, 0, 0, 64, 64, 256, "4nb", l)
+			texture.gen_mipmaps(tex_tiles, "2a")
+		end
+	end
+	print("Tiles loaded")
 
-MAX_LX = 256+32
-MAX_LY = 64+32
-MAX_LZ = 128
-MAX_LAYER = 5
+	MAX_LX = 256+32
+	MAX_LY = 64+32
+	MAX_LZ = 128
+	MAX_LAYER = 5
 
-if VOXYCODONE_GL_COMPAT_PROFILE then
-	--tex_map = texture.new("3", MAX_LAYER+1, "4nb", MAX_LX, MAX_LY, MAX_LZ, "nnn", "4nb")
-	tex_map = texture.new("3", 1, "4nb", MAX_LX, MAX_LY*2, MAX_LZ, "nn", "4nb")
-else
-	tex_map = texture.new("3", MAX_LAYER+1, "4ub", MAX_LX, MAX_LY, MAX_LZ, "nnn", "4ub")
-end
-mdata = bin_load("map/"..MAP_NAME.."/map.dat")
-map_lx, map_ly, map_lz = string.unpack("< i2 i2 i2", mdata:sub(1,6))
-print (map_lx, map_ly, map_lz)
-assert (#mdata == 6 + 4*map_lx*map_ly*map_lz)
+	if VOXYCODONE_GL_COMPAT_PROFILE then
+		--tex_map = texture.new("3", MAX_LAYER+1, "4nb", MAX_LX, MAX_LY, MAX_LZ, "nnn", "4nb")
+		tex_map = texture.new("3", 1, "4nb", MAX_LX, MAX_LY*2, MAX_LZ, "nn", "4nb")
+	else
+		tex_map = texture.new("3", MAX_LAYER+1, "4ub", MAX_LX, MAX_LY, MAX_LZ, "nnn", "4ub")
+	end
+	mdata = bin_load("map/"..MAP_NAME.."/map.dat")
+	coroutine.yield()
+	map_lx, map_ly, map_lz = string.unpack("< i2 i2 i2", mdata:sub(1,6))
+	print (map_lx, map_ly, map_lz)
+	assert (#mdata == 6 + 4*map_lx*map_ly*map_lz)
 
-local x,y,z,i,j
-local map_octree = {}
-local l = {}
-map_octree[1] = l
-print("Prepping")
+	local x,y,z,i,j
+	local map_octree = {}
+	local l = {}
+	map_octree[1] = l
+	print("Prepping")
 
-i = 0
-for i = 1,MAX_LX*MAX_LY*MAX_LZ*4 do
-	l[i] = 0
-end
+	i = 0
+	for i = 1,MAX_LX*MAX_LY*MAX_LZ*4 do
+		l[i] = 0
+	end
+	coroutine.yield()
 
-print("Loading")
-i = 0
-for x = 0,map_lx-1 do
-for y = 0,map_ly-1 do
-for z = 0,map_lz-1 do
-	--j = z + map_lz*(y + map_ly*x)
-	j = (x+(MAX_LX-map_lx)//2) + MAX_LX*(y + MAX_LY*(z+(MAX_LZ-map_lz)//2))
-	l[j*4+1], l[j*4+2], l[j*4+3], l[j*4+4] = string.unpack("< I1 I1 I1 I1", mdata:sub(7+i*4, 10+i*4))
-	i = i + 1
-end
-end
-end
+	print("Loading")
+	i = 0
+	for x = 0,map_lx-1 do
+	for y = 0,map_ly-1 do
+	for z = 0,map_lz-1 do
+		--j = z + map_lz*(y + map_ly*x)
+		j = (x+(MAX_LX-map_lx)//2) + MAX_LX*(y + MAX_LY*(z+(MAX_LZ-map_lz)//2))
+		l[j*4+1], l[j*4+2], l[j*4+3], l[j*4+4] = string.unpack("< I1 I1 I1 I1", mdata:sub(7+i*4, 10+i*4))
+		i = i + 1
+	end
+	end
+		coroutine.yield()
+	end
 
-print("Subdividing")
-local tlx = MAX_LX
-local tly = MAX_LY
-local tlz = MAX_LZ
+	print("Subdividing")
+	local tlx = MAX_LX
+	local tly = MAX_LY
+	local tlz = MAX_LZ
 
-local layer
-for layer=1,MAX_LAYER do
-	--print(layer)
-	local pl = l
-	local pop = 0
-	l = {}
-	map_octree[layer+1] = l
-	local tlx2 = tlx//2
-	local tly2 = tly//2
-	local tlz2 = tlz//2
-	local vk
-	vk = 0
-	for z = 0,tlz-1,2 do
-	for y = 0,tly-1,2 do
-	for x = 0,tlx-1,2 do
-		local sx, sy, sz
-		local v
-		v = 0x00
+	local layer
+	for layer=1,MAX_LAYER do
+		--print(layer)
+		local pl = l
+		local pop = 0
+		l = {}
+		map_octree[layer+1] = l
+		local tlx2 = tlx//2
+		local tly2 = tly//2
+		local tlz2 = tlz//2
+		local vk
+		vk = 0
+		for z = 0,tlz-1,2 do
+		for y = 0,tly-1,2 do
+		for x = 0,tlx-1,2 do
+			local sx, sy, sz
+			local v
+			v = 0x00
 
-		for sx=0,1 do
-		for sy=0,1 do
-		for sz=0,1 do
-			if v == 0x00 then
-				local nv = pl[1 + 4*(x+sx + tlx*(y+sy + tly*(z+sz)))]
-				if nv ~= 0x00 then
-					v = nv
-					pop = pop + 1
+			for sx=0,1 do
+			for sy=0,1 do
+			for sz=0,1 do
+				if v == 0x00 then
+					local nv = pl[1 + 4*(x+sx + tlx*(y+sy + tly*(z+sz)))]
+					if nv ~= 0x00 then
+						v = nv
+						pop = pop + 1
+					end
+				end
+			end
+			end
+			end
+
+			l[1 + vk] = v
+			l[2 + vk] = 0
+			l[3 + vk] = 0
+			l[4 + vk] = 0
+			vk = vk + 4
+		end
+		end
+			if z % 16 == 0 then coroutine.yield() end
+		end
+
+		tlx = tlx2
+		tly = tly2
+		tlz = tlz2
+
+		print(pop)
+		coroutine.yield()
+	end
+
+	print("Communicating ascension info")
+	for layer=MAX_LAYER-1,0,-1 do
+		print(layer)
+		-- TODO!
+		local tlx = MAX_LX>>layer
+		local tly = MAX_LY>>layer
+		local tlz = MAX_LZ>>layer
+		local tlx2 = MAX_LX>>(layer+1)
+		local tly2 = MAX_LY>>(layer+1)
+		local tlz2 = MAX_LZ>>(layer+1)
+
+		local dl = map_octree[layer+1]
+		local sl = map_octree[layer+2]
+
+		for z = 0,tlz-1 do
+		for y = 0,tly-1 do
+		for x = 0,tlx-1 do
+			local sk = 4*((x>>1) + tlx2*((y>>1) + tly2*(z>>1)))
+			if sl[sk+1] == 0x00 then
+				local k = 4*(x + tlx*(y + tly*z))
+
+				if layer == MAX_LAYER-1 then
+					dl[k+4] = (dl[k+4] & 0x0F) | (MAX_LAYER<<4)
+				else
+					dl[k+4] = (dl[k+4] & 0x0F) | math.max((sl[sk+4]&0xF0), (layer+1)<<4)
 				end
 			end
 		end
 		end
+			if z % 16 == 0 then coroutine.yield() end
 		end
-
-		l[1 + vk] = v
-		l[2 + vk] = 0
-		l[3 + vk] = 0
-		l[4 + vk] = 0
-		vk = vk + 4
-	end
-	end
+		coroutine.yield()
 	end
 
-	tlx = tlx2
-	tly = tly2
-	tlz = tlz2
-
-	print(pop)
-end
-
-print("Communicating ascension info")
-for layer=MAX_LAYER-1,0,-1 do
-	print(layer)
-	-- TODO!
-	local tlx = MAX_LX>>layer
-	local tly = MAX_LY>>layer
-	local tlz = MAX_LZ>>layer
-	local tlx2 = MAX_LX>>(layer+1)
-	local tly2 = MAX_LY>>(layer+1)
-	local tlz2 = MAX_LZ>>(layer+1)
-
-	local dl = map_octree[layer+1]
-	local sl = map_octree[layer+2]
-
-	for z = 0,tlz-1 do
-	for y = 0,tly-1 do
-	for x = 0,tlx-1 do
-		local sk = 4*((x>>1) + tlx2*((y>>1) + tly2*(z>>1)))
-		if sl[sk+1] == 0x00 then
-			local k = 4*(x + tlx*(y + tly*z))
-
-			if layer == MAX_LAYER-1 then
-				dl[k+4] = (dl[k+4] & 0x0F) | (MAX_LAYER<<4)
-			else
-				dl[k+4] = (dl[k+4] & 0x0F) | math.max((sl[sk+4]&0xF0), (layer+1)<<4)
-			end
+	print("Actually loading textures")
+	if VOXYCODONE_GL_COMPAT_PROFILE then
+		for layer=0,MAX_LAYER do
+			texture.load_sub(tex_map, "3", 0,
+				0, MAX_LY*2-((MAX_LY*2)>>layer), 0,
+				MAX_LX>>(layer),
+				MAX_LY>>(layer),
+				MAX_LZ>>(layer),
+				"4nb", map_octree[layer+1]
+			)
+			coroutine.yield()
+		end
+	else
+		for layer=0,MAX_LAYER do
+			texture.load_sub(tex_map, "3", layer,
+				0, 0, 0,
+				MAX_LX>>(layer),
+				MAX_LY>>(layer),
+				MAX_LZ>>(layer),
+				"4ub", map_octree[layer+1]
+			)
+			coroutine.yield()
 		end
 	end
+
+	tex_screen = texture.new("2", 1, "4nb", screen_w//screen_scale, screen_h//screen_scale, "ll", "4nb")
+	coroutine.yield()
+	fbo_scene = fbo.new()
+	fbo.bind_tex(fbo_scene, 0, "2", tex_screen, 0)
+	assert(fbo.validate(fbo_scene))
+
+	tex_depth = {}
+	fbo_depth = {}
+	for i=DEPTHONLY_MIN,DEPTHONLY_STEP do
+		tex_depth[i] = texture.new("2", 1, "2f", (screen_w//screen_scale)>>i, (screen_h//screen_scale)>>i, "nn", "1f")
+		fbo_depth[i] = fbo.new()
+		fbo.bind_tex(fbo_depth[i], 0, "2", tex_depth[i], 0)
+		assert(fbo.validate(fbo_depth[i]))
+		coroutine.yield()
 	end
-	end
+
+	print("Done!")
 end
 
-print("Actually loading textures")
-if VOXYCODONE_GL_COMPAT_PROFILE then
-	for layer=0,MAX_LAYER do
-		texture.load_sub(tex_map, "3", 0,
-			0, MAX_LY*2-((MAX_LY*2)>>layer), 0,
-			MAX_LX>>(layer),
-			MAX_LY>>(layer),
-			MAX_LZ>>(layer),
-			"4nb", map_octree[layer+1]
-		)
-	end
-else
-	for layer=0,MAX_LAYER do
-		texture.load_sub(tex_map, "3", layer,
-			0, 0, 0,
-			MAX_LX>>(layer),
-			MAX_LY>>(layer),
-			MAX_LZ>>(layer),
-			"4ub", map_octree[layer+1]
-		)
-	end
-end
+loading = coroutine.create(load_stuff)
 
-tex_screen = texture.new("2", 1, "4nb", screen_w//screen_scale, screen_h//screen_scale, "ll", "4nb")
-fbo_scene = fbo.new()
-fbo.bind_tex(fbo_scene, 0, "2", tex_screen, 0)
-assert(fbo.validate(fbo_scene))
+function hook_poll()
+	local k, v
+	for k, v in ipairs(sandbox.mbox) do
+		if v[2] == "hook_tick" then hook_tick(v[3], v[4])
+		elseif v[2] == "hook_render" then hook_render(v[3])
+		elseif v[2] == "hook_key" then hook_key(v[3], v[4])
+		elseif v[2] == "hook_mouse_button" then hook_mouse_button(v[3], v[4])
+		elseif v[2] == "hook_mouse_motion" then hook_mouse_motion(v[3], v[4], v[5], v[6])
+		else print("UNHANDLED MESSAGE TYPE", v[2])
+		end
+	end
 
-tex_depth = {}
-fbo_depth = {}
-for i=DEPTHONLY_MIN,DEPTHONLY_STEP do
-	tex_depth[i] = texture.new("2", 1, "2f", (screen_w//screen_scale)>>i, (screen_h//screen_scale)>>i, "nn", "1f")
-	fbo_depth[i] = fbo.new()
-	fbo.bind_tex(fbo_depth[i], 0, "2", tex_depth[i], 0)
-	assert(fbo.validate(fbo_depth[i]))
+	sandbox.mbox = {}
+
+	if loading then
+		if not coroutine.resume(loading) then
+			loading = nil
+		end
+	end
 end
 
 if VOXYCODONE_GL_COMPAT_PROFILE then
@@ -514,22 +572,35 @@ else
 	}
 	]=],
 	}, {"in_vertex"}, {"out_color"})
+
+	shader_loading = shader.new({
+	vert = [=[
+	#version 130
+	in vec2 in_vertex;
+	out vec2 tc;
+
+	void main()
+	{
+		gl_Position = vec4(in_vertex, 0.1, 1.0);
+		tc = in_vertex*0.5+0.5;
+	}
+	]=],
+	frag = [=[
+	#version 130
+
+	in vec2 tc;
+	out vec4 out_color;
+	uniform float time;
+
+	void main()
+	{
+		out_color = vec4(sin(tc.x*5.0+time), sin(tc.y*5.0-time), sin(tc.x*3.0-tc.y*3.0+time*0.5), 1.0);
+	}
+	]=],
+	}, {"in_vertex"}, {"out_color"})
+
+	assert(shader_loading)
 end
 
 assert(shader_blit1)
-
-function hook_poll()
-	local k, v
-	for k, v in ipairs(sandbox.mbox) do
-		if v[2] == "hook_tick" then hook_tick(v[3], v[4])
-		elseif v[2] == "hook_render" then hook_render(v[3])
-		elseif v[2] == "hook_key" then hook_key(v[3], v[4])
-		elseif v[2] == "hook_mouse_button" then hook_mouse_button(v[3], v[4])
-		elseif v[2] == "hook_mouse_motion" then hook_mouse_motion(v[3], v[4], v[5], v[6])
-		else print("UNHANDLED MESSAGE TYPE", v[2])
-		end
-	end
-
-	sandbox.mbox = {}
-end
 

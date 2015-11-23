@@ -1,5 +1,5 @@
 screen_w, screen_h = draw.screen_size_get()
-screen_scale = 1
+screen_scale = 4
 
 -- from SDL_keycode.h
 SDLK_ESCAPE = 27
@@ -17,6 +17,8 @@ function hook_mouse_motion(x, y, dx, dy)
 end
 
 function hook_render(sec_current)
+	draw.buffers_set({0})
+
 	fbo.target_set(fbo_scene)
 	shader.use(shader_test)
 	shader.uniform_f(shader.uniform_location_get(shader_test, "time"), sec_current)

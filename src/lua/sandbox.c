@@ -192,12 +192,50 @@ static int lbind_sandbox_poll(lua_State *L)
 	if(es->vmtyp == VM_BLIND) return luaL_error(L, "EDOOFUS: should not be able to touch sandboxes from blind!");
 	if(estarget->vmtyp == VM_BLIND) return luaL_error(L, "EDOOFUS: should not be able to touch blind sandboxes!");
 
+	// Set FBO
+	// FIXME: need to reset textures on context switches
+	if(estarget->fbo != -1)
+		glBindFramebuffer(GL_FRAMEBUFFER, estarget->fbo);
+
 	// Call hook
 	lua_getglobal(Ltarget, "hook_poll");
 	lua_call(Ltarget, 0, 0);
 
+	// Reset FBO
+	if(es->fbo != -1)
+		glBindFramebuffer(GL_FRAMEBUFFER, es->fbo);
+
 	// Return!
 	return 0;
+}
+
+static int lbind_sandbox_fbo_get_tex(lua_State *L)
+{
+	int i;
+	if(lua_gettop(L) < 1)
+		return luaL_error(L, "expected 1 argument to sandbox.fbo_get_tex");
+
+	struct vc_extraspace *es = *(struct vc_extraspace **)(lua_getextraspace(L));
+
+	// Get target
+	lua_State **pLtarget = luaL_checkudata(L, 1, "VMRef");
+	lua_State *Ltarget = *pLtarget;
+
+	struct vc_extraspace *estarget = *(struct vc_extraspace **)(lua_getextraspace(Ltarget));
+
+	if(es->vmtyp == VM_BLIND) return luaL_error(L, "EDOOFUS: should not be able to touch sandboxes from blind!");
+	if(estarget->vmtyp == VM_BLIND) return luaL_error(L, "EDOOFUS: should not be able to touch blind sandboxes!");
+
+	// Get FBO texture
+	if(estarget->fbo == 0)
+		lua_pushnil(L);
+	else if(estarget->fbo != -1)
+		lua_pushinteger(L, estarget->fbo_ctex);
+	else
+		lua_pushnil(L);
+
+	// Return!
+	return 1;
 }
 
 void lbind_setup_sandbox(lua_State *L)
@@ -206,6 +244,7 @@ void lbind_setup_sandbox(lua_State *L)
 	lua_pushcfunction(L, lbind_sandbox_new); lua_setfield(L, -2, "new");
 	lua_pushcfunction(L, lbind_sandbox_send); lua_setfield(L, -2, "send");
 	lua_pushcfunction(L, lbind_sandbox_poll); lua_setfield(L, -2, "poll");
+	lua_pushcfunction(L, lbind_sandbox_fbo_get_tex); lua_setfield(L, -2, "fbo_get_tex");
 	lua_newtable(L); lua_setfield(L, -2, "mbox");
 	lua_setglobal(L, "sandbox");
 }

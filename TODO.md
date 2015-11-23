@@ -67,6 +67,9 @@ VM system
   * [x] Plugin sandbox
 * [x] Sandbox message passing
 * [ ] Find out how to delete and/or remove sandboxes
+* [ ] Delegation mode
+  * [ ] Input delegation (considering returning a sandbox or list)
+  * [ ] Graphics delegation (considering having a render call)
 
 Audio
 -----
@@ -100,6 +103,7 @@ Security
   * [x] Local crap
   * [ ] Network client
   * [ ] Network server
+* [ ] Ensure textures / FBOs don't leak between contexts
 
 Lua code acceleration
 ---------------------

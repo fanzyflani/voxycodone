@@ -92,7 +92,7 @@ draw.blit():
 
 	Really only useful for raytracing.
 
-draw.buffers_set(buf_list:i[]): @@@
+draw.buffers_set(buf_list:0i[]): @@@
 	glDrawBuffers(#buf_list, GL_COLOR_ATTACHMENT0 + buf_list);
 
 	Useful for setting up FBOs with multiple outputs.
@@ -117,6 +117,12 @@ fbo.bind_tex(fb:FBORef, attachment_idx:0i, texture_type:TexTypeStr, tex:TexRef, 
 
 fbo.target_set(fb:FBORef/nil): @@@
 	Sets the current FBO.
+	nil denotes default target.
+
+	WARNING: This tends to get overwritten by these calls:
+	* sandbox.new
+
+	It also gets explicitly set to nil on context switch.
 
 isvalid:b = fbo.validate(fb:FBORef):
 	Checks if an FBO is valid.
@@ -191,7 +197,14 @@ _G:Table/nil = sandbox.new("blind", code:str):
 	Code will be run before execution.
 	For non-blind contexts, the code will be fetched from "main.lua" in the context root.
 
-sandbox.poll(vm:VMRef)
+tex:TexRef/nil = sandbox.fbo_get_tex(vm:VMRef):
+	Get the colour texture for the FBO used by this sandbox.
+
+	You cannot get your parent's FBO textures.
+
+	Returns nil if the sandbox doesn't have an FBO.
+
+sandbox.poll(vm:VMRef):
 	Call hook_poll on this sandbox.
 
 	No, you cannot poll your parent.
@@ -283,6 +296,7 @@ texture.unit_set(unit:0i, target:TexTypeStr, tex:TexRef): @@@
 	Sets a texture unit to a given texture.
 
 	WARNING: This tends to get overwritten by these calls:
+	* sandbox.new
 	* texture.new
 	* texture.load_sub
 	* texture.gen_mipmaps

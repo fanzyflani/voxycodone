@@ -62,9 +62,14 @@ enum vc_vm {
 struct vc_extraspace
 {
 	enum vc_vm vmtyp;
+
 	lua_State *Lparent;
 	lua_State **pLself;
 	char *root_dir;
+
+	GLint fbo; // -1 == no rendering!
+	GLuint fbo_ctex; // 0 == no rendering!
+	//GLuint fbo_dstex; // 0 == no rendering!
 
 	// TODO: ENet socket stuff
 };

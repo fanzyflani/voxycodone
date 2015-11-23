@@ -137,6 +137,7 @@ lua_State *init_lua_vm(lua_State *Lparent, enum vc_vm vmtyp, const char *root, i
 	es->Lparent = Lparent;
 	es->pLself = NULL;
 	es->root_dir = NULL;
+	es->fbo = -1;
 
 	if(vmtyp == VM_CLIENT)
 	{
@@ -145,8 +146,68 @@ lua_State *init_lua_vm(lua_State *Lparent, enum vc_vm vmtyp, const char *root, i
 		es->root_dir = strdup(root);
 	}
 
+	if(vmtyp == VM_SYSTEM)
+	{
+		es->fbo = 0;
+
+	} else if(vmtyp != VM_BLIND) {
+		es->fbo = -1;
+
+		// Generate FBO
+		glGenFramebuffers(1, (GLuint *)&(es->fbo));
+		glBindFramebuffer(GL_FRAMEBUFFER, es->fbo);
+
+		// Generate textures
+		int xlen, ylen;
+		SDL_GetWindowSize(window, &xlen, &ylen);
+		glGenTextures(1, &(es->fbo_ctex));
+		//glGenTextures(1, &(es->fbo_dstex));
+		if(epoxy_has_gl_extension("GL_ARB_texture_storage"))
+		{
+			// Allocate texture C0
+			glBindTexture(GL_TEXTURE_2D, es->fbo_ctex);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_REPEAT);
+			glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, xlen, ylen);
+
+			// Allocate texture DS
+			// TODO!
+
+			glBindTexture(GL_TEXTURE_2D, 0);
+
+		} else {
+			// Allocate texture C0
+			glBindTexture(GL_TEXTURE_2D, es->fbo_ctex);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_REPEAT);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, xlen, ylen, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+			// Allocate texture DS
+			// TODO!
+
+			glBindTexture(GL_TEXTURE_2D, 0);
+		}
+
+		// Bind textures
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, es->fbo_ctex, 0);
+		//glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, es->fbo_dstex, 0);
+		assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+
+		// Release FBO
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
+
 	// Open builtin libraries
 	if(vmtyp != VM_BLIND) { luaL_requiref(L, "base", luaopen_base, 1); lua_pop(L, 1); }
+	if(vmtyp != VM_BLIND) { luaL_requiref(L, "coroutine", luaopen_coroutine, 1); lua_pop(L, 1); }
 	luaL_requiref(L, "string", luaopen_string, 1); lua_pop(L, 1);
 	luaL_requiref(L, "math", luaopen_math, 1); lua_pop(L, 1);
 	luaL_requiref(L, "table", luaopen_table, 1); lua_pop(L, 1);
