@@ -64,8 +64,9 @@ VM system
   * [ ] Client sandbox
   * [ ] Server sandbox
   * [x] Blind sandbox
-  * [ ] Plugin sandbox
+  * [x] Plugin sandbox
 * [ ] Sandbox message passing
+* [ ] Find out how to delete and/or remove sandboxes
 
 Audio
 -----

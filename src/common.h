@@ -70,6 +70,7 @@ struct vc_extraspace
 
 // fs.c
 char *fs_bin_load_direct(const char *fname, size_t *len);
+char *fs_dir_extend(const char *root_dir, const char *fname);
 char *fs_bin_load(lua_State *L, const char *fname, size_t *len);
 
 // glslpp.c

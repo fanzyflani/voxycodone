@@ -156,7 +156,7 @@ sandbox
 -------
 
 vm:VMRef/nil = sandbox.new(typ:VMTypeStr, ...):
-_G:Table/nil = sandbox.new(typ:VMTypeStr, ...):
+_G:Table/nil = sandbox.new("blind", code:str):
 	Create a sandbox with the given type.
 	Returns nil on failure.
 	Returns the global table if you used a blind VM.
@@ -176,12 +176,20 @@ _G:Table/nil = sandbox.new(typ:VMTypeStr, ...):
 	* plugin: blind
 	* system: server, client, plugin, blind
 
+	Code will be run before execution.
+	For non-blind contexts, the code will be fetched from "main.lua" in the context root.
+
+sandbox.poll(vm:VMRef)
+	-- TODO: IMPLEMENT
+
+	Call hook_poll on this sandbox.
+
 vm:VMRef/nil = sandbox.parent_get():
 	-- TODO: IMPLEMENT
 
 	Get the parent of the current sandbox.
 
-sandbox.send(vm:VMRef/nil, ...):
+sandbox.send(vm:VMRef, ...):
 	-- TODO: IMPLEMENT
 
 	Sends a message to the given VM's mailbox.

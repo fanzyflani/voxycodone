@@ -1,5 +1,4 @@
 -- Temporary emulation layer for to-be-proposed API
-
 test = sandbox.new("blind", [=[
 foo = "bar"
 function hax()
@@ -31,6 +30,11 @@ do
 	function bin_load(fname, ...)
 		return old_bin_load(""..MAIN_MODULE.."/"..fname, ...)
 	end
+
+	-- TODO: client sandboxes
+	-- Yes, this thing works, but we lack proper messaging hooks.
+	--vm_client = sandbox.new("plugin", MAIN_MODULE)
+	--misc.exit()
 
 	-- Run!
 	return fn(...)

@@ -129,6 +129,7 @@ int main(int argc, char *argv[])
 	//int music_chn = Mix_PlayChannel(-1, music, 0);
 	// }
 
+	if(!do_exit)
 	for(;;)
 	{
 		SDL_Event ev;
