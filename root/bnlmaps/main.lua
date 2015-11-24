@@ -520,8 +520,9 @@ function hook_poll()
 	sandbox.mbox = {}
 
 	if loading then
-		if not coroutine.resume(loading) then
+		if loading ~= "load_forever" and not coroutine.resume(loading) then
 			loading = nil
+			--loading = "load_forever"
 		end
 	end
 end
@@ -606,8 +607,8 @@ else
 
 		float rang = time*1.4;
 		ltc = cos(rang)*ltc + sin(rang)*vec2(-ltc.y, ltc.x);
-		ltc += time*vec2(2.0, 1.0)*0.3;
 		ltc *= 0.8 + (-sin(time*1.3)*0.5+0.5)*1.8;
+		ltc += time*vec2(2.0, 1.0)*0.3;
 
 		ltc += 0.5;
 		//if(min(ltc.x, ltc.y) >= 0.0 && max(ltc.x, ltc.y) < 1.0)

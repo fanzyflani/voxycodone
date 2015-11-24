@@ -1,7 +1,7 @@
 -- TODO: remove redundancy and actually have a default raymarcher and concat shit into it
 return shader.new({
 vert = [=[
-#version 150
+#version 130
 
 uniform float time;
 
@@ -30,7 +30,7 @@ void main()
 ]=],
 
 frag = [=[
-#version 150
+#version 130
 
 uniform float time;
 uniform sampler2D tex_noise;
