@@ -83,6 +83,8 @@ function hook_render_loading(sec_current)
 	fbo.target_set(nil)
 	shader.use(shader_loading)
 	shader.uniform_f(shader.uniform_location_get(shader_loading, "time"), sec_current)
+	shader.uniform_i(shader.uniform_location_get(shader_loading, "tex0"), 0)
+	texture.unit_set(0, "2", tex_loading)
 	draw.viewport_set(0, 0, screen_w, screen_h)
 	draw.blit()
 end
@@ -302,7 +304,7 @@ function load_stuff()
 		local x, y, z, i
 		local l = {}
 		for z=0,256-1 do
-			coroutine.yield()
+			if z % 16 == 0 then coroutine.yield() end
 			local zoffs = 4*64*64*z
 		for x=0,(64*64*4)-1,4 do
 			i = 18 + x + 4*64*64*(255-z)
@@ -347,6 +349,9 @@ function load_stuff()
 	i = 0
 	for i = 1,MAX_LX*MAX_LY*MAX_LZ*4 do
 		l[i] = 0
+		if i % (1<<19) == 0 then
+			coroutine.yield()
+		end
 	end
 	coroutine.yield()
 
@@ -409,7 +414,7 @@ function load_stuff()
 			vk = vk + 4
 		end
 		end
-			if z % 16 == 0 then coroutine.yield() end
+			if z % 32 == 0 then coroutine.yield() end
 		end
 
 		tlx = tlx2
@@ -449,7 +454,7 @@ function load_stuff()
 			end
 		end
 		end
-			if z % 16 == 0 then coroutine.yield() end
+			if z % 2 == 0 then coroutine.yield() end
 		end
 		coroutine.yield()
 	end
@@ -591,10 +596,29 @@ else
 	in vec2 tc;
 	out vec4 out_color;
 	uniform float time;
+	uniform sampler2D tex0;
 
 	void main()
 	{
-		out_color = vec4(sin(tc.x*5.0+time), sin(tc.y*5.0-time), sin(tc.x*3.0-tc.y*3.0+time*0.5), 1.0);
+		vec2 ltc = tc - 0.5;
+		ltc.x *= 1280.0/720.0;
+		out_color.a = 0.0;
+
+		float rang = time*1.4;
+		ltc = cos(rang)*ltc + sin(rang)*vec2(-ltc.y, ltc.x);
+		ltc += time*vec2(2.0, 1.0)*0.3;
+		ltc *= 0.8 + (-sin(time*1.3)*0.5+0.5)*1.8;
+
+		ltc += 0.5;
+		//if(min(ltc.x, ltc.y) >= 0.0 && max(ltc.x, ltc.y) < 1.0)
+			out_color = texture(tex0, ltc, 0);
+
+		if(out_color.a < 1.0)
+			out_color = vec4(
+				sin(tc.x*5.0+time),
+				sin(tc.y*5.0-time),
+				sin(tc.x*3.0-tc.y*3.0+time*0.5),
+				1.0);
 	}
 	]=],
 	}, {"in_vertex"}, {"out_color"})
@@ -603,4 +627,20 @@ else
 end
 
 assert(shader_blit1)
+
+do
+	local data = bin_load("dat/loading.tga")
+	local x, i
+	local l = {}
+	for x=0,(512*512*4)-1,4 do
+		i = 18 + x
+		l[1 + x] = data:byte(i+3)
+		l[2 + x] = data:byte(i+2)
+		l[3 + x] = data:byte(i+1)
+		l[4 + x] = data:byte(i+4)
+	end
+
+	tex_loading = texture.new("2", 1, "4nb", 512, 512, "nn", "4nb")
+	texture.load_sub(tex_loading, "2", 0, 0, 0, 512, 512, "4nb", l)
+end
 
