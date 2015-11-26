@@ -81,6 +81,7 @@ in vec2 in_vertex;
 out vec3 vert_ray_step;
 flat out vec3 vert_cam_pos;
 out vec2 vert_tc;
+out vec2 vert_vertex;
 
 void main()
 {
@@ -91,6 +92,7 @@ void main()
 		-1.0, 0.0)).xyz;
 	vert_cam_pos = (in_cam_inverse * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
 	vert_tc = (in_vertex+1.0)/2.0;
+	vert_vertex = in_vertex * vec2(1280.0/720.0, 1.0);
 	gl_Position = vec4(in_vertex, 0.1, 1.0);
 }
 
@@ -109,6 +111,7 @@ in vec2 in_vertex;
 out vec3 vert_ray_step;
 flat out vec3 vert_cam_pos;
 out vec2 vert_tc;
+out vec2 vert_vertex;
 
 void main()
 {
@@ -119,6 +122,7 @@ void main()
 		-1.0, 0.0)).xyz;
 	vert_cam_pos = (in_cam_inverse * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
 	vert_tc = (in_vertex+1.0)/2.0;
+	vert_vertex = in_vertex * vec2(1280.0/720.0, 1.0);
 	gl_Position = vec4(in_vertex, 0.1, 1.0);
 }
 

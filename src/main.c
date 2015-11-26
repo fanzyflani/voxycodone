@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	//SDL_GL_SetSwapInterval(0); // disable vsync, this is a benchmark
+	//SDL_GL_SetSwapInterval(0); // disable vsync
 	SDL_GL_SetSwapInterval(-1); // late swap tearing if you want it
 	int glver = epoxy_gl_version();
 	printf("GL version %i\n", glver);

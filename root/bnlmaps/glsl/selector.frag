@@ -19,6 +19,7 @@ uniform ivec3 bound_max;
 in vec3 vert_ray_step;
 flat in vec3 vert_cam_pos;
 in vec2 vert_tc;
+in vec2 vert_vertex;
 
 #ifdef BEAMER
 out vec2 out_depth;
@@ -417,6 +418,9 @@ void main()
 {
 	const vec4 BG = vec4(0.1, 0.0, 0.2, 1.0);
 
+	float fisheye = 1.0*length(vec3(vert_vertex, 1.0));
+	float ifisheye = 1.0/fisheye;
+
 	vec3 ray_pos = vert_cam_pos + vec3((bound_max+bound_min)/2) + 0.5;
 	vec3 ray_dir = normalize(vert_ray_step);
 
@@ -427,24 +431,64 @@ void main()
 	float pretrace_shadow_variance = 0.0;
 #endif
 
+	bool need_extra_trace = false;
+
 	if(have_depth_in)
 	{
+		// FIXME this needs a tidyup
 		vec2 dbb = textureOffset(tex_depth_in, vert_tc, ivec2( 0, 0)).rg;
-		vec2 d00 = textureOffset(tex_depth_in, vert_tc, ivec2(-1, 0)).rg;
-		vec2 d01 = textureOffset(tex_depth_in, vert_tc, ivec2( 0,-1)).rg;
-		vec2 d10 = textureOffset(tex_depth_in, vert_tc, ivec2( 1, 0)).rg;
-		vec2 d11 = textureOffset(tex_depth_in, vert_tc, ivec2( 0, 1)).rg;
-		vec2 dtime = min(dbb, min(min(d00, d01), min(d10, d11)));
-		vec2 rtime = max(dbb, max(max(d00, d01), max(d10, d11)));
+		vec2 dx0 = textureOffset(tex_depth_in, vert_tc, ivec2(-1, 0)).rg;
+		vec2 dy0 = textureOffset(tex_depth_in, vert_tc, ivec2( 0,-1)).rg;
+		vec2 dx1 = textureOffset(tex_depth_in, vert_tc, ivec2( 1, 0)).rg;
+		vec2 dy1 = textureOffset(tex_depth_in, vert_tc, ivec2( 0, 1)).rg;
+		//vec2 dx2 = textureOffset(tex_depth_in, vert_tc, ivec2( 2, 0)).rg;
+		//vec2 dy2 = textureOffset(tex_depth_in, vert_tc, ivec2( 0, 2)).rg;
+		vec2 dtime = max(dbb, max(max(dx0, dx1), max(dy0, dy1)));
+		vec2 rtime = min(dbb, min(min(dx0, dx1), min(dy0, dy1)));
+
+		dtime.r = ifisheye/dtime.r;
+		rtime.r = ifisheye/rtime.r;
+
+		float dgradx0 = dbb.r - dx0.r;
+		float dgrady0 = dbb.r - dy0.r;
+		float dgradx1 = dx1.r - dbb.r;
+		float dgrady1 = dy1.r - dbb.r;
+		//float dgradx2 = dx2.r - dx1.r;
+		//float dgrady2 = dy2.r - dy1.r;
+		//float dgrad2x = max(abs(dgradx1 - dgradx0), abs(dgradx2 - dgradx1));
+		//float dgrad2y = max(abs(dgrady1 - dgrady0), abs(dgrady2 - dgrady1));
+		float dgrad2x = abs(dgradx1 - dgradx0);
+		float dgrad2y = abs(dgrady1 - dgrady0);
+		float d = dgrad2x + dgrad2y;
 #ifdef BEAMER
-		dtime.r -= min(1.0, rtime.r-dtime.r);
+		// FIXME this is probably incorrect now
+		// by FIXME i mean "fix or chuck it out"
+		//dtime.r -= min(1.0, dtime.r-rtime.r);
 #else
 		pretrace_time = dtime.r;
 		pretrace_shadow = rtime.g;
-		pretrace_shadow_variance = rtime.g - dtime.g;
-		dtime -= min(vec2(1.0), rtime-dtime);
+		//pretrace_shadow_variance = rtime.g - dtime.g;
+		pretrace_shadow_variance = dtime.g - rtime.g;
 #endif
-		dtime = max(vec2(0.0), dtime);
+		bool fast_trace = (d < 1.0/256.0);
+
+		if(fast_trace)
+		{
+			new_time = ifisheye/dbb.r - 0.01;
+
+			if(texelFetch(tex_map, ivec3(floor(ray_pos + ray_dir * new_time)), 0).r != 0x00U)
+				fast_trace = false;
+		}
+
+		if(fast_trace)
+		{
+			dtime.r = new_time;
+		} else {
+			dtime.r -= 1.0;
+			need_extra_trace = true;
+		}
+
+		dtime.r = max(0.0, dtime.r);
 		new_time = dtime.r;
 		ray_pos += ray_dir * new_time;
 	}
@@ -455,10 +499,13 @@ void main()
 	trace_scene(ray_pos + ray_dir*((out_depth.r - new_time)-0.01),
 		normalize(vec3(0.3, 1.0, 0.3)),
 		true, out_depth.g);
+	out_depth.r = ifisheye/out_depth.r;
 #else
 	float atime_main = new_time;
 	float atime_shad = 0.0;
 	trace_scene(ray_pos, ray_dir, atime_main, out_color);
+	//out_color.r += atime_main - new_time;
+	//if(need_extra_trace) out_color.b += 1.0;
 
 	if(true) // Shadows
 	{
@@ -471,6 +518,7 @@ void main()
 			{
 				shadow_color.a = pretrace_shadow;
 			} else {
+				//out_color.g += 1.0;
 				trace_scene(shadow_ray_pos,
 					normalize(vec3(0.3, 1.0, 0.3)),
 				atime_shad, shadow_color);

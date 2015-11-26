@@ -493,7 +493,7 @@ function load_stuff()
 	tex_depth = {}
 	fbo_depth = {}
 	for i=DEPTHONLY_MIN,DEPTHONLY_STEP do
-		tex_depth[i] = texture.new("2", 1, "2f", (screen_w//screen_scale)>>i, (screen_h//screen_scale)>>i, "nn", "1f")
+		tex_depth[i] = texture.new("2", 1, "2f", (screen_w//screen_scale)>>i, (screen_h//screen_scale)>>i, "ll", "1f")
 		fbo_depth[i] = fbo.new()
 		fbo.bind_tex(fbo_depth[i], 0, "2", tex_depth[i], 0)
 		assert(fbo.validate(fbo_depth[i]))
