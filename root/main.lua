@@ -144,6 +144,7 @@ do
 	vm_menu = sandbox.new("plugin", "menu")
 	vm_current = vm_menu
 
-	vm_client = sandbox.new("plugin", "bnlmaps")
+	--vm_client = sandbox.new("plugin", "bnlmaps")
+	vm_client = sandbox.new("plugin", "q1map")
 	vm_current = vm_client
 end

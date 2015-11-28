@@ -17,17 +17,17 @@ API
 * [ ] Expose more stuff in libs:
   * [ ] 1D textures
   * [ ] Cubemaps
-  * [ ] Fill in all dims for these (TODOs in brackets):
-    * [ ] `texture.load_sub` (1D)
-    * [ ] `texture.new` (1D)
-  * [ ] Support more texture formats:
+  * [x] Fill in all dims for these (TODOs in brackets):
+    * [x] `texture.load_sub` (1D)
+    * [x] `texture.new` (1D)
+  * [x] Support more texture formats:
     * [x] `GL_FLOAT`
-    * [ ] `GL_BYTE`
-    * [ ] `GL_SHORT`
-    * [ ] `GL_INT`
+    * [x] `GL_BYTE`
+    * [x] `GL_SHORT`
+    * [x] `GL_INT`
     * [x] `GL_UNSIGNED_BYTE`
-    * [ ] `GL_UNSIGNED_SHORT`
-    * [ ] `GL_UNSIGNED_INT`
+    * [x] `GL_UNSIGNED_SHORT`
+    * [x] `GL_UNSIGNED_INT`
   * [ ] `matrix.*`
   * [ ] `shader.uniform_*`
 

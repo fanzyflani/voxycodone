@@ -290,6 +290,114 @@ static int lbind_shader_uniform_fv(lua_State *L)
 	return 0;
 }
 
+static int lbind_shader_uniform_iv(lua_State *L)
+{
+	int i;
+
+	int top = lua_gettop(L);
+	if(top < 4)
+		return luaL_error(L, "expected at least 4 arguments to shader.uniform_iv");
+
+	lua_len(L, 4);
+	size_t size = lua_tointeger(L, -1);
+	lua_pop(L, 1);
+
+	size_t len = lua_tointeger(L, 2);
+	size_t elems = lua_tointeger(L, 3);
+	if(elems < 1 || elems > 4)
+		return luaL_error(L, "invalid element count");
+	if(len*elems > size || len*elems < elems || len*elems < len)
+		return luaL_error(L, "invalid length");
+
+	size_t bsize_c = len*elems;
+	if(bsize_c < len || bsize_c < elems)
+		return luaL_error(L, "size overflow");
+	size_t bsize = bsize_c * sizeof(int32_t);
+	if(bsize < sizeof(float) || bsize < bsize_c)
+		return luaL_error(L, "size overflow");
+
+	int32_t *data = malloc(bsize);
+
+	for(i = 0; i < bsize_c; i++)
+	{
+		lua_geti(L, 4, i+1);
+		int32_t f = lua_tointeger(L, -1);
+		lua_pop(L, 1);
+		data[i] = f;
+	}
+
+	GLint idx = lua_tointeger(L, 1);
+	//printf("%i %u %u %u\n", idx, len, elems, size);
+	switch(elems)
+	{
+		case 1: glUniform1iv(idx, len, data); break;
+		case 2: glUniform2iv(idx, len, data); break;
+		case 3: glUniform3iv(idx, len, data); break;
+		case 4: glUniform4iv(idx, len, data); break;
+
+		default:
+			return luaL_error(L, "EDOOFUS: invalid element count");
+	}
+
+	free(data);
+
+	return 0;
+}
+
+static int lbind_shader_uniform_uiv(lua_State *L)
+{
+	int i;
+
+	int top = lua_gettop(L);
+	if(top < 4)
+		return luaL_error(L, "expected at least 4 arguments to shader.uniform_uiv");
+
+	lua_len(L, 4);
+	size_t size = lua_tointeger(L, -1);
+	lua_pop(L, 1);
+
+	size_t len = lua_tointeger(L, 2);
+	size_t elems = lua_tointeger(L, 3);
+	if(elems < 1 || elems > 4)
+		return luaL_error(L, "invalid element count");
+	if(len*elems > size || len*elems < elems || len*elems < len)
+		return luaL_error(L, "invalid length");
+
+	size_t bsize_c = len*elems;
+	if(bsize_c < len || bsize_c < elems)
+		return luaL_error(L, "size overflow");
+	size_t bsize = bsize_c * sizeof(uint32_t);
+	if(bsize < sizeof(float) || bsize < bsize_c)
+		return luaL_error(L, "size overflow");
+
+	uint32_t *data = malloc(bsize);
+
+	for(i = 0; i < bsize_c; i++)
+	{
+		lua_geti(L, 4, i+1);
+		uint32_t f = lua_tointeger(L, -1);
+		lua_pop(L, 1);
+		data[i] = f;
+	}
+
+	GLint idx = lua_tointeger(L, 1);
+	//printf("%i %u %u %u\n", idx, len, elems, size);
+	switch(elems)
+	{
+		case 1: glUniform1uiv(idx, len, data); break;
+		case 2: glUniform2uiv(idx, len, data); break;
+		case 3: glUniform3uiv(idx, len, data); break;
+		case 4: glUniform4uiv(idx, len, data); break;
+
+		default:
+			return luaL_error(L, "EDOOFUS: invalid element count");
+	}
+
+	free(data);
+
+	return 0;
+}
+
 void lbind_setup_shader(lua_State *L)
 {
 	lua_newtable(L);
@@ -301,5 +409,7 @@ void lbind_setup_shader(lua_State *L)
 	lua_pushcfunction(L, lbind_shader_uniform_i); lua_setfield(L, -2, "uniform_i");
 	lua_pushcfunction(L, lbind_shader_uniform_ui); lua_setfield(L, -2, "uniform_ui");
 	lua_pushcfunction(L, lbind_shader_uniform_fv); lua_setfield(L, -2, "uniform_fv");
+	lua_pushcfunction(L, lbind_shader_uniform_iv); lua_setfield(L, -2, "uniform_iv");
+	lua_pushcfunction(L, lbind_shader_uniform_uiv); lua_setfield(L, -2, "uniform_uiv");
 	lua_setglobal(L, "shader");
 }

@@ -275,6 +275,12 @@ shader.uniform_ui(loc:0i, x:f [, y:f [, z:f [, w:f]]]): @@@
 shader.uniform_fv(loc:0i, elements:i, dims:i in [1,4], data:f[]): @@@
 	Sets a float|vec[234] uniform array in the current shader.
 
+shader.uniform_iv(loc:0i, elements:i, dims:i in [1,4], data:f[]): @@@
+	Sets an int|ivec[234] uniform array in the current shader.
+
+shader.uniform_uiv(loc:0i, elements:i, dims:i in [1,4], data:f[]): @@@
+	Sets a uint|uvec[234] uniform array in the current shader.
+
 texture
 -------
 

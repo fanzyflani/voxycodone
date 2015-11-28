@@ -233,6 +233,8 @@ static int lbind_texture_load_sub(lua_State *L)
 	if(data == NULL)
 		return luaL_error(L, "could not allocate temp buffer for texture");
 
+	glBindTexture(tex_target, tex);
+
 	switch(data_fmt_typ)
 	{
 		case GL_FLOAT:
@@ -245,13 +247,63 @@ static int lbind_texture_load_sub(lua_State *L)
 			}
 			break;
 
+		case GL_BYTE:
+			for(i = 0; i < becount; i++)
+			{
+				lua_geti(L, aidx, i+1);
+				int32_t f = lua_tointeger(L, -1);
+				lua_pop(L, 1);
+				((int8_t *)data)[i] = f;
+			}
+			break;
+
+		case GL_SHORT:
+			for(i = 0; i < becount; i++)
+			{
+				lua_geti(L, aidx, i+1);
+				int32_t f = lua_tointeger(L, -1);
+				lua_pop(L, 1);
+				((int16_t *)data)[i] = f;
+			}
+			break;
+
+		case GL_INT:
+			for(i = 0; i < becount; i++)
+			{
+				lua_geti(L, aidx, i+1);
+				int32_t f = lua_tointeger(L, -1);
+				lua_pop(L, 1);
+				((int32_t *)data)[i] = f;
+			}
+			break;
+
 		case GL_UNSIGNED_BYTE:
 			for(i = 0; i < becount; i++)
 			{
 				lua_geti(L, aidx, i+1);
-				float f = lua_tointeger(L, -1);
+				uint32_t f = lua_tointeger(L, -1);
 				lua_pop(L, 1);
 				((uint8_t *)data)[i] = f;
+			}
+			break;
+
+		case GL_UNSIGNED_SHORT:
+			for(i = 0; i < becount; i++)
+			{
+				lua_geti(L, aidx, i+1);
+				uint32_t f = lua_tointeger(L, -1);
+				lua_pop(L, 1);
+				((uint16_t *)data)[i] = f;
+			}
+			break;
+
+		case GL_UNSIGNED_INT:
+			for(i = 0; i < becount; i++)
+			{
+				lua_geti(L, aidx, i+1);
+				uint32_t f = lua_tointeger(L, -1);
+				lua_pop(L, 1);
+				((uint32_t *)data)[i] = f;
 			}
 			break;
 
@@ -260,8 +312,15 @@ static int lbind_texture_load_sub(lua_State *L)
 			return luaL_error(L, "TODO support data format \"%s\"", data_fmt_str);
 	}
 
-	if(dims == 2)
+	if(dims == 1)
 	{
+		//printf("%08X %08X %08X\n", tex_target, data_fmt_format, data_fmt_typ);
+		glTexSubImage1D(tex_target, level, xoffs, xlen,
+			data_fmt_format, data_fmt_typ, data);
+
+		free(data);
+
+	} else if(dims == 2) {
 		//printf("%08X %08X %08X\n", tex_target, data_fmt_format, data_fmt_typ);
 		glTexSubImage2D(tex_target, level, xoffs, yoffs, xlen, ylen,
 			data_fmt_format, data_fmt_typ, data);
@@ -357,7 +416,9 @@ static int lbind_texture_new(lua_State *L)
 
 	if(epoxy_has_gl_extension("GL_ARB_texture_storage"))
 	{
-		if(dims == 2)
+		if(dims == 1)
+			glTexStorage1D(tex_target, levels, internal_fmt, xlen);
+		else if(dims == 2)
 			glTexStorage2D(tex_target, levels, internal_fmt, xlen, ylen);
 		else if(dims == 3)
 			glTexStorage3D(tex_target, levels, internal_fmt, xlen, ylen, zlen);
@@ -372,7 +433,11 @@ static int lbind_texture_new(lua_State *L)
 		texture_get_data_fmt(L, data_fmt_str, &data_fmt_format, &data_fmt_typ,
 			&data_fmt_cmps, &data_fmt_ebytes);
 
-		if(dims == 2)
+		if(dims == 1)
+			for(i = 0; i < levels; i++)
+				glTexImage1D(tex_target, i, internal_fmt, xlen>>i, 0,
+					data_fmt_format, data_fmt_typ, NULL);
+		else if(dims == 2)
 			for(i = 0; i < levels; i++)
 				glTexImage2D(tex_target, i, internal_fmt, xlen>>i, ylen>>i, 0,
 					data_fmt_format, data_fmt_typ, NULL);

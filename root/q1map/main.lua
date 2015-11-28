@@ -1,11 +1,9 @@
 screen_w, screen_h = draw.screen_size_get()
-screen_scale = 1
+screen_scale = 2
 
-DEPTHONLY = 2
-DEPTHONLY_MIN = 2
-DEPTHONLY_STEP = 2
+MAP_NAME = "start"
 
-MAP_NAME = "mountain_express"
+MAP_SPLIT_W = 1024
 
 -- from SDL_keycode.h
 SDLK_ESCAPE = 27
@@ -111,38 +109,6 @@ function hook_render(sec_current)
 
 	matrix.invert(mat_cam2, mat_cam1);
 
-	-- DEPTH
-	local i
-	for i=DEPTHONLY,DEPTHONLY_MIN,-DEPTHONLY_STEP do
-		fbo.target_set(fbo_depth[i])
-		shader.use(shader_beamer)
-		shader.uniform_f(shader.uniform_location_get(shader_beamer, "time"), sec_current)
-		shader.uniform_matrix_4f(shader.uniform_location_get(shader_beamer, "in_cam_inverse"), mat_cam2)
-		shader.uniform_i(shader.uniform_location_get(shader_beamer, "tex_map"), 0)
-		shader.uniform_i(shader.uniform_location_get(shader_beamer, "tex_depth_in"), 1)
-		shader.uniform_i(shader.uniform_location_get(shader_tracer, "tex_tiles"), 2)
-		shader.uniform_i(shader.uniform_location_get(shader_beamer, "bound_min")
-			, (MAX_LX-map_lx)//2-1
-			, 0-1
-			, (MAX_LZ-map_lz)//2-1
-			)
-		shader.uniform_i(shader.uniform_location_get(shader_beamer, "bound_max")
-			, (MAX_LX+map_lx)//2+1
-			, map_ly+1
-			, (MAX_LZ+map_lz)//2+1
-			)
-		shader.uniform_i(shader.uniform_location_get(shader_beamer, "have_depth_in"), (i < DEPTHONLY and 1) or 0)
-		texture.unit_set(0, "3", tex_map)
-		texture.unit_set(1, "2", tex_depth[i+DEPTHONLY_STEP]) -- out of range == nil
-		if VOXYCODONE_GL_COMPAT_PROFILE then
-			texture.unit_set(2, "3", tex_tiles)
-		else
-			texture.unit_set(2, "2a", tex_tiles)
-		end
-		draw.viewport_set(0, 0, (screen_w//screen_scale)>>i, (screen_h//screen_scale)>>i)
-		draw.blit()
-	end
-
 	-- SCENE
 	if screen_scale == 1 then
 		fbo.target_set(nil)
@@ -151,14 +117,10 @@ function hook_render(sec_current)
 	end
 
 	shader.use(shader_tracer)
-	shader.uniform_f(shader.uniform_location_get(shader_tracer, "imuldepth"),
-		(screen_w//screen_scale)/4.0, (screen_h//screen_scale)/4.0)
-
 	shader.uniform_f(shader.uniform_location_get(shader_tracer, "time"), sec_current)
 	shader.uniform_matrix_4f(shader.uniform_location_get(shader_tracer, "in_cam_inverse"), mat_cam2)
-	shader.uniform_i(shader.uniform_location_get(shader_tracer, "tex_map"), 0)
-	shader.uniform_i(shader.uniform_location_get(shader_tracer, "tex_depth_in"), 1)
-	shader.uniform_i(shader.uniform_location_get(shader_tracer, "tex_tiles"), 2)
+	--shader.uniform_i(shader.uniform_location_get(shader_tracer, "tex_map"), 0)
+	--[[
 	shader.uniform_i(shader.uniform_location_get(shader_tracer, "bound_min")
 		, (MAX_LX-map_lx)//2-1
 		, 0-1
@@ -169,14 +131,20 @@ function hook_render(sec_current)
 		, map_ly+1
 		, (MAX_LZ+map_lz)//2+1
 		)
-	shader.uniform_i(shader.uniform_location_get(shader_tracer, "have_depth_in"), (DEPTHONLY >= 1 and 1) or 0)
-	texture.unit_set(0, "3", tex_map)
-	texture.unit_set(1, "2", tex_depth[DEPTHONLY_MIN])
-	if VOXYCODONE_GL_COMPAT_PROFILE then
-		texture.unit_set(2, "3", tex_tiles)
-	else
-		texture.unit_set(2, "2a", tex_tiles)
-	end
+	]]
+	--texture.unit_set(0, "2", tex_map)
+	--[[
+	shader.uniform_iv(shader.uniform_location_get(shader_tracer,
+		"map_splits"), #map_splits // 4, 4, map_splits)
+	shader.uniform_fv(shader.uniform_location_get(shader_tracer,
+		"map_norms"), #map_norms // 4, 4, map_norms)
+	]]
+	shader.uniform_i(shader.uniform_location_get(shader_tracer,
+		"map_root"), map_root)
+	shader.uniform_i(shader.uniform_location_get(shader_tracer, "tex_map_norms"), 0)
+	shader.uniform_i(shader.uniform_location_get(shader_tracer, "tex_map_splits"), 1)
+	texture.unit_set(0, "1", tex_map_norms)
+	texture.unit_set(1, "2", tex_map_splits)
 	draw.viewport_set(0, 0, screen_w//screen_scale, screen_h//screen_scale)
 	draw.blit()
 
@@ -288,201 +256,179 @@ end
 ]]
 
 function load_stuff()
-	shader_tracer, shader_beamer = loadfile("shader.lua")()
+	if VOXYCODONE_GL_COMPAT_PROFILE then
+		error("too much effort for compat profile right now!")
+	end
+
+	shader_tracer = loadfile("shader.lua")()
 	assert(shader_tracer)
-	assert(shader_beamer)
 
-	print("Loading tiles!")
-	-- TODO: make this shit behave at the seams
-	if VOXYCODONE_GL_COMPAT_PROFILE then
-		tex_tiles = texture.new("3", 1, "4nb", 64, 64, 256, "nn", "4nb")
-	else
-		tex_tiles = texture.new("2a", 6, "4nb", 64, 64, 256, "nll", "4nb")
-	end
-	do
-		local data = bin_load("dat/tiles.tga")
-		local x, y, z, i
-		local l = {}
-		for z=0,256-1 do
-			if z % 16 == 0 then coroutine.yield() end
-			local zoffs = 4*64*64*z
-		for x=0,(64*64*4)-1,4 do
-			i = 18 + x + 4*64*64*(255-z)
-			l[1 + x + zoffs] = data:byte(i+3)
-			l[2 + x + zoffs] = data:byte(i+2)
-			l[3 + x + zoffs] = data:byte(i+1)
-			l[4 + x + zoffs] = data:byte(i+4)
-		end
-		end
-		if VOXYCODONE_GL_COMPAT_PROFILE then
-			texture.load_sub(tex_tiles, "3", 0, 0, 0, 0, 64, 64, 256, "4nb", l)
-		else
-			texture.load_sub(tex_tiles, "2a", 0, 0, 0, 0, 64, 64, 256, "4nb", l)
-			texture.gen_mipmaps(tex_tiles, "2a")
-		end
-	end
-	print("Tiles loaded")
-
-	MAX_LX = 256+32
-	MAX_LY = 64+32
-	MAX_LZ = 128
-	MAX_LAYER = 5
-
-	if VOXYCODONE_GL_COMPAT_PROFILE then
-		--tex_map = texture.new("3", MAX_LAYER+1, "4nb", MAX_LX, MAX_LY, MAX_LZ, "nnn", "4nb")
-		tex_map = texture.new("3", 1, "4nb", MAX_LX, MAX_LY*2, MAX_LZ, "nn", "4nb")
-	else
-		tex_map = texture.new("3", MAX_LAYER+1, "4ub", MAX_LX, MAX_LY, MAX_LZ, "nnn", "4ub")
-	end
-	mdata = bin_load("map/"..MAP_NAME.."/map.dat")
+	-- map
+	mdata = bin_load("dat/"..MAP_NAME..".bsp")
 	coroutine.yield()
-	map_lx, map_ly, map_lz = string.unpack("< i2 i2 i2", mdata:sub(1,6))
-	print (map_lx, map_ly, map_lz)
-	assert (#mdata == 6 + 4*map_lx*map_ly*map_lz)
+	bsp_version = string.unpack("< i4", mdata:sub(1,4))
+	print("BSP VERSION:", bsp_version)
+	assert(bsp_version == 29)
+	print("getting dirs")
 
-	local x,y,z,i,j
-	local map_octree = {}
-	local l = {}
-	map_octree[1] = l
-	print("Prepping")
+	local dirs = {}
+	map_dirs = dirs
+	local DIRNAMES = {
+		"entities", "planes", "miptex", "vertices", "visilist",
+		"nodes", "texinfo", "faces", "lightmaps", "clipnodes",
+		"leaves", "lface", "edges", "ledges", "models",
+	}
+	local k, v
+	for k, v in ipairs(DIRNAMES) do
+		local cpos, clen = string.unpack("< i4 i4", mdata:sub((k-1)*8+4+1, (k-1)*8+4+8))
+		local cdata = mdata:sub(cpos+1, cpos+clen)
+		local d = cdata
+		print(k, v, #cdata, clen - #cdata)
 
-	i = 0
-	for i = 1,MAX_LX*MAX_LY*MAX_LZ*4 do
-		l[i] = 0
-		if i % (1<<19) == 0 then
-			coroutine.yield()
-		end
-	end
-	coroutine.yield()
-
-	print("Loading")
-	i = 0
-	for x = 0,map_lx-1 do
-	for y = 0,map_ly-1 do
-	for z = 0,map_lz-1 do
-		--j = z + map_lz*(y + map_ly*x)
-		j = (x+(MAX_LX-map_lx)//2) + MAX_LX*(y + MAX_LY*(z+(MAX_LZ-map_lz)//2))
-		l[j*4+1], l[j*4+2], l[j*4+3], l[j*4+4] = string.unpack("< I1 I1 I1 I1", mdata:sub(7+i*4, 10+i*4))
-		i = i + 1
-	end
-	end
 		coroutine.yield()
-	end
 
-	print("Subdividing")
-	local tlx = MAX_LX
-	local tly = MAX_LY
-	local tlz = MAX_LZ
+		if v == "models" then
+			assert((clen % 64) == 0)
+			local i
+			local rlen = clen//64
+			d = {}
+			for i=0,rlen-1 do
+				local bx1, by1, bz1, bx2, by2, bz2,
+					ox, oy, oz,
+					node_id0,
+					node_id1,
+					node_id2,
+					node_id3,
+					numleafs, face_id, face_num =
+					string.unpack("< f f f f f f f f f i4 i4 i4 i4 i4 i4 i4",
+						cdata:sub(i*64+1, (i+1)*64))
+				d[i+1] = {
+					bx1 = bx1,
+					by1 = by1,
+					bz1 = bz1,
+					bx2 = bx2,
+					by2 = by2,
+					bz2 = bz2,
+					ox = ox,
+					oy = oy,
+					oz = oz,
+					node_id0 = node_id0,
+					node_id1 = node_id1,
+					node_id2 = node_id2,
+					node_id3 = node_id3,
+					numleafs = numleafs,
+					face_id = face_id,
+					face_num = face_num,
+				}
 
-	local layer
-	for layer=1,MAX_LAYER do
-		--print(layer)
-		local pl = l
-		local pop = 0
-		l = {}
-		map_octree[layer+1] = l
-		local tlx2 = tlx//2
-		local tly2 = tly//2
-		local tlz2 = tlz//2
-		local vk
-		vk = 0
-		for z = 0,tlz-1,2 do
-		for y = 0,tly-1,2 do
-		for x = 0,tlx-1,2 do
-			local sx, sy, sz
-			local v
-			v = 0x00
-
-			for sx=0,1 do
-			for sy=0,1 do
-			for sz=0,1 do
-				if v == 0x00 then
-					local nv = pl[1 + 4*(x+sx + tlx*(y+sy + tly*(z+sz)))]
-					if nv ~= 0x00 then
-						v = nv
-						pop = pop + 1
-					end
-				end
-			end
-			end
+				--print(i, numleafs)
 			end
 
-			l[1 + vk] = v
-			l[2 + vk] = 0
-			l[3 + vk] = 0
-			l[4 + vk] = 0
-			vk = vk + 4
-		end
-		end
-			if z % 32 == 0 then coroutine.yield() end
-		end
+		elseif v == "nodes" then
+			assert((clen % 24) == 0)
+			local i
+			local rlen = clen//24
+			d = {}
+			for i=0,rlen-1 do
+				local plane_id, front, back, bx1, by1, bz1, bx2, by2, bz2,
+						face_id, face_num = 
+					string.unpack("< i4 i2 i2 i2 i2 i2 i2 i2 i2 I2 I2",
+						cdata:sub(i*24+1, (i+1)*24))
+				d[i+1] = {
+					plane_id = plane_id,
+					front = front,
+					back = back,
+					bx1 = bx1,
+					by1 = by1,
+					bz1 = bz1,
+					bx2 = bx2,
+					by2 = by2,
+					bz2 = bz2,
+					face_id = face_id,
+					face_num = face_num,
+				}
+			end
 
-		tlx = tlx2
-		tly = tly2
-		tlz = tlz2
+		elseif v == "planes" then
+			assert((clen % 20) == 0)
+			local i
+			local rlen = clen//20
+			d = {}
+			for i=0,rlen-1 do
+				local x, y, z, ofs, typ = string.unpack("< f f f f i4",
+						cdata:sub(i*20+1, (i+1)*20))
+				d[i+1] = { x, y, z, ofs, typ } -- probably won't use typ
+			end
 
-		print(pop)
-		coroutine.yield()
-	end
+		elseif v == "vertices" then
+			assert((clen % 12) == 0)
+			local i
+			local rlen = clen//12
+			d = {}
+			for i=0,rlen-1 do
+				local x, y, z = string.unpack("< f f f",
+						cdata:sub(i*12+1, (i+1)*12))
+				d[i+1] = { x, y, z, }
+			end
 
-	print("Communicating ascension info")
-	for layer=MAX_LAYER-1,0,-1 do
-		print(layer)
-		-- TODO!
-		local tlx = MAX_LX>>layer
-		local tly = MAX_LY>>layer
-		local tlz = MAX_LZ>>layer
-		local tlx2 = MAX_LX>>(layer+1)
-		local tly2 = MAX_LY>>(layer+1)
-		local tlz2 = MAX_LZ>>(layer+1)
-
-		local dl = map_octree[layer+1]
-		local sl = map_octree[layer+2]
-
-		for z = 0,tlz-1 do
-		for y = 0,tly-1 do
-		for x = 0,tlx-1 do
-			local sk = 4*((x>>1) + tlx2*((y>>1) + tly2*(z>>1)))
-			if sl[sk+1] == 0x00 then
-				local k = 4*(x + tlx*(y + tly*z))
-
-				if layer == MAX_LAYER-1 then
-					dl[k+4] = (dl[k+4] & 0x0F) | (MAX_LAYER<<4)
-				else
-					dl[k+4] = (dl[k+4] & 0x0F) | math.max((sl[sk+4]&0xF0), (layer+1)<<4)
-				end
+		elseif v == "clipnodes" then
+			assert((clen % 8) == 0)
+			local i
+			local rlen = clen//8
+			d = {}
+			for i=0,rlen-1 do
+				local planenum, front, back = string.unpack("< I4 i2 i2",
+						cdata:sub(i*8+1, (i+1)*8))
+				d[i+1] = {
+					planenum = planenum,
+					front = front,
+					back = back,
+				}
 			end
 		end
-		end
-			if z % 2 == 0 then coroutine.yield() end
-		end
-		coroutine.yield()
+
+		dirs[v] = d
 	end
 
-	print("Actually loading textures")
-	if VOXYCODONE_GL_COMPAT_PROFILE then
-		for layer=0,MAX_LAYER do
-			texture.load_sub(tex_map, "3", 0,
-				0, MAX_LY*2-((MAX_LY*2)>>layer), 0,
-				MAX_LX>>(layer),
-				MAX_LY>>(layer),
-				MAX_LZ>>(layer),
-				"4nb", map_octree[layer+1]
-			)
-			coroutine.yield()
-		end
-	else
-		for layer=0,MAX_LAYER do
-			texture.load_sub(tex_map, "3", layer,
-				0, 0, 0,
-				MAX_LX>>(layer),
-				MAX_LY>>(layer),
-				MAX_LZ>>(layer),
-				"4ub", map_octree[layer+1]
-			)
-			coroutine.yield()
-		end
+	-- set up map info
+	map_norms = {}
+	map_splits = {}
+	map_root = map_dirs.models[1].node_id1
+	local i
+	for i=0,#map_dirs.clipnodes-1 do
+		local l = map_dirs.clipnodes[i+1]
+		map_splits[4*i+1] = l.planenum
+		map_splits[4*i+2] = l.front
+		map_splits[4*i+3] = l.back
+		map_splits[4*i+4] = -1
 	end
+	for i=0,#map_dirs.clipnodes-1 do
+		local l = map_dirs.clipnodes[i+1]
+		if l.front >= 0 then map_splits[4*l.front+4] = l.planenum end
+		if l.back >= 0 then map_splits[4*l.back+4] = l.planenum end
+	end
+	for i=0,#map_dirs.planes-1 do
+		local l = map_dirs.planes[i+1]
+		map_norms[4*i+1] = l[1]
+		map_norms[4*i+2] = l[3]
+		map_norms[4*i+3] = -l[2]
+		map_norms[4*i+4] = l[4] / 32.0
+		--print(l[1], l[2], l[3], l[4])
+	end
+
+	-- PAD
+	while (#map_splits % (MAP_SPLIT_W*4)) ~= 0 do
+		map_splits[#map_splits+1] = 0
+	end
+	print("S", #map_splits // 4, #map_norms // 4)
+
+	misc.gl_error()
+	tex_map_norms = texture.new("1", 1, "4f", #map_norms//4, "nn", "4f")
+	tex_map_splits = texture.new("2", 1, "4s", MAP_SPLIT_W, #map_splits//(4*MAP_SPLIT_W), "nn", "4s")
+	texture.load_sub(tex_map_norms, "1", 0, 0, #map_norms//4, "4f", map_norms)
+	texture.load_sub(tex_map_splits, "2", 0, 0, 0,
+		MAP_SPLIT_W, #map_splits//(4*MAP_SPLIT_W), "4s", map_splits)
+	print("TEX ERRS:", misc.gl_error())
 
 	tex_screen = texture.new("2", 1, "4nb", screen_w//screen_scale, screen_h//screen_scale, "ll", "4nb")
 	coroutine.yield()
@@ -490,17 +436,11 @@ function load_stuff()
 	fbo.bind_tex(fbo_scene, 0, "2", tex_screen, 0)
 	assert(fbo.validate(fbo_scene))
 
-	tex_depth = {}
-	fbo_depth = {}
-	for i=DEPTHONLY_MIN,DEPTHONLY_STEP do
-		tex_depth[i] = texture.new("2", 1, "2f", (screen_w//screen_scale)>>i, (screen_h//screen_scale)>>i, "ll", "1f")
-		fbo_depth[i] = fbo.new()
-		fbo.bind_tex(fbo_depth[i], 0, "2", tex_depth[i], 0)
-		assert(fbo.validate(fbo_depth[i]))
-		coroutine.yield()
-	end
+	--tex_map = texture.new("3", MAX_LAYER+1, "4ub", MAX_LX, MAX_LY, MAX_LZ, "nnn", "4ub")
 
 	print("Done!")
+	print("no error happened!")
+	return nil
 end
 
 loading = coroutine.create(load_stuff)
@@ -520,9 +460,13 @@ function hook_poll()
 	sandbox.mbox = {}
 
 	if loading then
-		if loading ~= "load_forever" and not coroutine.resume(loading) then
-			loading = nil
-			--loading = "load_forever"
+		if loading ~= "load_forever" then
+			local res, msg = coroutine.resume(loading)
+			if (not res) or coroutine.status(loading) == "dead" then
+				if (not res) and msg then error(msg) end
+				loading = nil
+				--loading = "load_forever"
+			end
 		end
 	end
 end
