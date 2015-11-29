@@ -4,6 +4,7 @@ screen_scale = 2
 MAP_NAME = "start"
 
 MAP_SPLIT_W = 1024
+MAP_USE_REAL_NODES = false
 
 -- from SDL_keycode.h
 SDLK_ESCAPE = 27
@@ -287,7 +288,32 @@ function load_stuff()
 
 		coroutine.yield()
 
-		if v == "models" then
+		if v == "leafs" then
+			assert((clen % 24) == 0)
+			local i
+			local rlen = clen//24
+			d = {}
+			for i=0,rlen-1 do
+				local plane_id, front, back, bx1, by1, bz1, bx2, by2, bz2,
+						face_id, face_num = 
+					string.unpack("< i4 i2 i2 i2 i2 i2 i2 i2 i2 I2 I2",
+						cdata:sub(i*24+1, (i+1)*24))
+				d[i+1] = {
+					plane_id = plane_id,
+					front = front,
+					back = back,
+					bx1 = bx1,
+					by1 = by1,
+					bz1 = bz1,
+					bx2 = bx2,
+					by2 = by2,
+					bz2 = bz2,
+					face_id = face_id,
+					face_num = face_num,
+				}
+			end
+
+		elseif v == "models" then
 			assert((clen % 64) == 0)
 			local i
 			local rlen = clen//64
@@ -395,18 +421,6 @@ function load_stuff()
 	map_splits = {}
 	map_root = map_dirs.models[1].node_id1
 	local i
-	for i=0,#map_dirs.clipnodes-1 do
-		local l = map_dirs.clipnodes[i+1]
-		map_splits[4*i+1] = l.planenum
-		map_splits[4*i+2] = l.front
-		map_splits[4*i+3] = l.back
-		map_splits[4*i+4] = -1
-	end
-	for i=0,#map_dirs.clipnodes-1 do
-		local l = map_dirs.clipnodes[i+1]
-		if l.front >= 0 then map_splits[4*l.front+4] = l.planenum end
-		if l.back >= 0 then map_splits[4*l.back+4] = l.planenum end
-	end
 	for i=0,#map_dirs.planes-1 do
 		local l = map_dirs.planes[i+1]
 		map_norms[4*i+1] = l[1]
@@ -414,6 +428,28 @@ function load_stuff()
 		map_norms[4*i+3] = -l[2]
 		map_norms[4*i+4] = l[4] / 32.0
 		--print(l[1], l[2], l[3], l[4])
+	end
+
+	-- clipnodes?
+	if MAP_USE_REAL_NODES then
+		-- TODO!
+		for i=0,#map_dirs.clipnodes-1 do
+			local l = map_dirs.clipnodes[i+1]
+			local l2 = map_dirs.planes[l.planenum+1]
+			map_splits[4*i+1] = l.planenum
+			map_splits[4*i+2] = l.front
+			map_splits[4*i+3] = l.back
+			map_splits[4*i+4] = -1
+		end
+	else
+		for i=0,#map_dirs.clipnodes-1 do
+			local l = map_dirs.clipnodes[i+1]
+			local l2 = map_dirs.planes[l.planenum+1]
+			map_splits[4*i+1] = l.planenum
+			map_splits[4*i+2] = l.front
+			map_splits[4*i+3] = l.back
+			map_splits[4*i+4] = -1
+		end
 	end
 
 	-- PAD

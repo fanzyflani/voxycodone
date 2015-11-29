@@ -1,5 +1,10 @@
 selector = [=[
 
+const bool ENTRY_CHECKS = true; // required to go out
+const bool OVERFLOW_CHECKS = true; // SHOULD BE TRUE IDEALLY UNLESS YOU CAN GUARANTEE NO OVERFLOW.
+const bool TAIL_CALL_NEAR_AIR = true;
+const bool STEP_ERROR_MARKER = false;
+
 in vec3 vert_ray_step;
 flat in vec3 vert_cam_pos;
 in vec2 vert_tc;
@@ -11,10 +16,17 @@ uniform int map_root;
 uniform sampler1D tex_map_norms;
 uniform isampler2D tex_map_splits;
 
-const int STACK_MAX = 32;
+// sweet spot: 15
+// if we hit 16, it slows down
+const int STACK_MAX = 15;
 int nsl[STACK_MAX];
-int nsn[STACK_MAX];
 float nsz[STACK_MAX];
+int nsp;
+
+vec4 get_norm(int norm_idx)
+{
+	return texelFetch(tex_map_norms, norm_idx, 0);
+}
 
 void main()
 {
@@ -26,20 +38,20 @@ void main()
 	// Create stack
 	// keep the numbers small, otherwise they spill registers like mad
 	// which slows things down horribly
-	int nsp = 0;
+	nsp = 0;
 	int nidx = map_root;
 
 	// Traverse
 	const int MAX_STEPS = 500;
 	out_color = vec4(vert_tc, 0.5, 1.0);
-	vec4 tnorm = vec4(0.0);
+	int tnorm_idx = -1;
 	bool has_entered = false;
 
 	for(int step = 0; step < MAX_STEPS; step++)
 	{
-		if(nidx == -1 || (nidx == -2 && !has_entered))
+		if(nidx == -1 || (ENTRY_CHECKS && nidx == -2 && !has_entered))
 		{
-			if((!has_entered) && nidx == -1)
+			if(ENTRY_CHECKS && (!has_entered) && nidx == -1)
 				has_entered = true;
 
 			if(nsp == 0)
@@ -48,16 +60,15 @@ void main()
 			nidx = nsl[--nsp];
 			znear = zfar;
 			zfar = nsz[nsp];
-			int tnorm_idx = nsn[nsp];
-			tnorm = texelFetch(tex_map_norms, tnorm_idx, 0);
+			tnorm_idx = nidx&0xFFFF;
+			nidx >>= 16;
 			continue;
 		}
 
 		if(nidx < 0)
 		{
-			float fside1 = dot(tnorm, vec4(ray_pos, -1.0));
-			float sign1 = sign(fside1);
-			float diff = max(0.0, -sign1*dot(tnorm.xyz, ray_dir));
+			vec4 tnorm = get_norm(tnorm_idx);
+			float diff = abs(dot(tnorm.xyz, ray_dir));
 			float amb = 0.1;
 			diff *= 1.0 - amb;
 			out_color = vec4(vec3(1.0)*(diff+amb), 1.0);
@@ -68,62 +79,57 @@ void main()
 		ivec3 split = texelFetch(tex_map_splits, ivec2(nidx&1023, nidx>>10), 0).xyz;
 
 		// Get normal
-		vec4 norm = texelFetch(tex_map_norms, split.x, 0).xyzw;
+		vec4 norm = get_norm(split.x);
 
 		// Check side
 		float fside1 = dot(norm, vec4(ray_pos + ray_dir*znear, -1.0));
 		float fside2 = dot(norm, vec4(ray_pos + ray_dir*zfar, -1.0));
-		float sign1 = sign(fside1);
-		float sign2 = sign(fside2);
-		int side1 = max(0, int(sign(fside1)));
-		int side2 = max(0, int(sign(fside2)));
 
-		if(side1 != side2)
+		if(fside1*fside2 < 0.0)
 		{
 			// split
 
-			if(nsp >= STACK_MAX)
+			ivec2 nf = (fside1 > 0.0 ? split.yz : split.zy);
+			int near = nf.x;
+			int far  = nf.y;
+
+			float zsplit = znear-fside1/dot(norm.xyz, ray_dir);
+
+			// this does work.
+			// i've not determined if it improves things, though.
+			if(TAIL_CALL_NEAR_AIR && near == -1)
+			{
+				if(ENTRY_CHECKS) has_entered = true;
+				tnorm_idx = split.x;
+				znear = zsplit;
+				nidx = far;
+				continue;
+			}
+
+			if(OVERFLOW_CHECKS && nsp >= STACK_MAX)
 			{
 				// STACK OVERFLOW!
 				out_color = vec4(1.0, 0.0, 0.0, 1.0);
 				return;
 			}
 
-			if(zfar < znear)
-			{
-				// Collapse
-				out_color = vec4(0.0, 0.0, 1.0, 1.0);
-				return;
-			}
-
 			nsz[nsp] = zfar;
-			nsn[nsp] = split.x;
+			nidx = near;
+			nsl[nsp++] = (far<<16)|split.x;
+			zfar = zsplit;
 
-			// TODO: work this out
-			zfar = -fside1/dot(norm.xyz, ray_dir);
-			zfar += znear;
-
-		}
-
-		if(side1 > 0)
-		{
+		} else if(fside1 > 0.0) {
 			// front
 			nidx = split.y;
-
-			if(side1 != side2)
-				nsl[nsp++] = split.z;
 
 		} else {
 			// back
 			nidx = split.z;
-
-			if(side1 != side2)
-				nsl[nsp++] = split.y;
 		}
 	}
 
 	// Need more steps!
-	out_color = vec4(0.0, 1.0, 0.0, 1.0);
+	if(STEP_ERROR_MARKER) out_color = vec4(0.0, 1.0, 0.0, 1.0);
 }
 
 ]=]
