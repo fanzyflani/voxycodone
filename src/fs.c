@@ -10,14 +10,24 @@ char *fs_bin_load_direct(const char *fname, size_t *len)
 		return NULL;
 	
 	size_t totlen = 0;
-	char *buf = malloc(1024);
+#define FS_FETCH_LEN (1024*10)
+	size_t freelen = FS_FETCH_LEN;
+
+	int fd = fileno(fp);
+	struct stat sb;
+	if(fstat(fd, &sb) == 0)
+	{
+		if((sb.st_mode & S_IFMT) == S_IFREG)
+			freelen = sb.st_size;
+	}
+
+	char *buf = malloc(freelen+1);
 	buf[0] = '\x00';
 
 	//printf("{%s}\n", fname);
 	for(;;)
 	{
-		char subbuf[1025];
-		size_t res = fread(subbuf, 1, 1024, fp);
+		size_t res = fread(buf+totlen, 1, freelen, fp);
 		//printf("%li\n", res);
 		if(res == -1)
 			break;
@@ -25,13 +35,11 @@ char *fs_bin_load_direct(const char *fname, size_t *len)
 			break;
 
 		//printf("{%s}\n", subbuf);
-		subbuf[res] = '\x00';
-		buf = realloc(buf, totlen+res+1024);
+		buf[totlen+res] = '\x00';
+		freelen = FS_FETCH_LEN;
+		buf = realloc(buf, totlen+res+freelen+1);
 		assert(buf != NULL);
-
-		memcpy(buf+totlen, subbuf, res);
 		totlen += res;
-		buf[totlen] = '\x00';
 	}
 
 	fclose(fp);

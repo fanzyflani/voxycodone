@@ -4,6 +4,8 @@ const bool ENTRY_CHECKS = true; // required to go out
 const bool OVERFLOW_CHECKS = true; // SHOULD BE TRUE IDEALLY UNLESS YOU CAN GUARANTEE NO OVERFLOW.
 const bool TAIL_CALL_NEAR_AIR = true;
 const bool STEP_ERROR_MARKER = false;
+//const bool USE_BITSTACK = false;
+const bool SHOW_SPLITS = false;
 
 in vec3 vert_ray_step;
 flat in vec3 vert_cam_pos;
@@ -16,9 +18,11 @@ uniform int map_root;
 uniform sampler1D tex_map_norms;
 uniform isampler2D tex_map_splits;
 
-// sweet spot: 15
-// if we hit 16, it slows down
-const int STACK_MAX = 15;
+// sweet spot varies, if you go above it it slows down
+// needs trial and error though
+// current sweet spot: 16
+const int STACK_MAX = 16;
+
 int nsl[STACK_MAX];
 float nsz[STACK_MAX];
 int nsp;
@@ -46,6 +50,7 @@ void main()
 	out_color = vec4(vert_tc, 0.5, 1.0);
 	int tnorm_idx = -1;
 	bool has_entered = false;
+	float splitacc = 1.0;
 
 	for(int step = 0; step < MAX_STEPS; step++)
 	{
@@ -72,6 +77,7 @@ void main()
 			float amb = 0.1;
 			diff *= 1.0 - amb;
 			out_color = vec4(vec3(1.0)*(diff+amb), 1.0);
+			if(SHOW_SPLITS) out_color.rgb *= splitacc;
 			return;
 		}
 
@@ -89,6 +95,9 @@ void main()
 		{
 			// split
 
+			//out_color.rgb *= 0.9;
+			if(SHOW_SPLITS) splitacc *= 0.95;
+
 			ivec2 nf = (fside1 > 0.0 ? split.yz : split.zy);
 			int near = nf.x;
 			int far  = nf.y;
@@ -103,6 +112,13 @@ void main()
 				tnorm_idx = split.x;
 				znear = zsplit;
 				nidx = far;
+				//out_color = vec4(0.0, 0.0, 1.0, 1.0); return;
+				continue;
+			}
+
+			if(TAIL_CALL_NEAR_AIR && far == -1)
+			{
+				nidx = near;
 				continue;
 			}
 
@@ -116,7 +132,7 @@ void main()
 			nsz[nsp] = zfar;
 			nidx = near;
 			nsl[nsp++] = (far<<16)|split.x;
-			zfar = zsplit;
+			zfar = zsplit+0.0001;
 
 		} else if(fside1 > 0.0) {
 			// front

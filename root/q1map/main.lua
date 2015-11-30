@@ -4,7 +4,38 @@ screen_scale = 2
 MAP_NAME = "start"
 
 MAP_SPLIT_W = 1024
-MAP_USE_REAL_NODES = false
+MAP_USE_REAL_NODES = true
+
+print("loading paks")
+pak0 = bin_load("dat/pak0.pak")
+pak1 = bin_load("dat/pak1.pak")
+print("done")
+
+function pak_load(pak, fname)
+	-- find file in pak
+	assert(pak:sub(1,4) == "PACK")
+	local dofs, dlen = string.unpack("< I4 I4", pak:sub(4+1,4+8))
+	local i
+	for i=0,dlen-1,64 do
+		local ename = pak:sub(dofs+i+1, dofs+i+56)
+		local enul = ename:find("\x00", 1, true)
+		if enul then ename = ename:sub(1, enul-1) end
+		if ename == fname then
+			local eofs, elen = string.unpack("< I4 I4", pak:sub(dofs+i+56+1, dofs+i+56+8))
+			print("MATCH")
+			return pak:sub(eofs+1, eofs+elen)
+		end
+	end
+	return nil
+end
+
+function bin_load_pak(fname, ...)
+	-- TODO!
+	local fdata = bin_load("dat/"..fname, ...)
+	fdata = fdata or pak_load(pak1, fname)
+	fdata = fdata or pak_load(pak0, fname)
+	return fdata
+end
 
 -- from SDL_keycode.h
 SDLK_ESCAPE = 27
@@ -265,114 +296,271 @@ function load_stuff()
 	assert(shader_tracer)
 
 	-- map
-	mdata = bin_load("dat/"..MAP_NAME..".bsp")
+	mdata = bin_load_pak("maps/"..MAP_NAME..".bsp")
 	coroutine.yield()
-	bsp_version = string.unpack("< i4", mdata:sub(1,4))
+	local DIRNAMES
+	local dir_offs
+	if mdata:sub(1,4) == "IBSP" then
+		dir_offs = 8
+		bsp_version = string.unpack("< i4", mdata:sub(4+1,4+4))
+	else
+		dir_offs = 4
+		bsp_version = string.unpack("< i4", mdata:sub(1,4))
+	end
 	print("BSP VERSION:", bsp_version)
-	assert(bsp_version == 29)
+	assert(bsp_version == 29 or bsp_version == 38)
+	if bsp_version <= 29 then
+		DIRNAMES = {
+			"entities", "planes", "miptex", "vertices", "visilist",
+			"nodes", "texinfo", "faces", "lightmaps", "clipnodes",
+			"leaves", "lface", "edges", "ledges", "models",
+		}
+	else
+		DIRNAMES = {
+			"entities", "planes", "vertices", "visilist",
+			"nodes", "texinfo", "faces", "lightmaps",
+			"leaves", "lface", "lbrush", "edges", "ledges", "models",
+			"brushes", "brushsides", "pop", "areas", "areaportals",
+		}
+	end
 	print("getting dirs")
 
 	local dirs = {}
 	map_dirs = dirs
-	local DIRNAMES = {
-		"entities", "planes", "miptex", "vertices", "visilist",
-		"nodes", "texinfo", "faces", "lightmaps", "clipnodes",
-		"leaves", "lface", "edges", "ledges", "models",
-	}
 	local k, v
 	for k, v in ipairs(DIRNAMES) do
-		local cpos, clen = string.unpack("< i4 i4", mdata:sub((k-1)*8+4+1, (k-1)*8+4+8))
+		local cpos, clen = string.unpack("< i4 i4", mdata:sub((k-1)*8+dir_offs+1, (k-1)*8+dir_offs+8))
 		local cdata = mdata:sub(cpos+1, cpos+clen)
 		local d = cdata
 		print(k, v, #cdata, clen - #cdata)
 
 		coroutine.yield()
 
-		if v == "leafs" then
-			assert((clen % 24) == 0)
+		if v == "faces" then
+			assert((clen % 20) == 0)
 			local i
-			local rlen = clen//24
+			local rlen = clen//20
 			d = {}
 			for i=0,rlen-1 do
-				local plane_id, front, back, bx1, by1, bz1, bx2, by2, bz2,
-						face_id, face_num = 
-					string.unpack("< i4 i2 i2 i2 i2 i2 i2 i2 i2 I2 I2",
-						cdata:sub(i*24+1, (i+1)*24))
+				local plane_id, side, ledge_id, ledge_num, texinfo_id,
+					typelight, baselight, light0, light1, lightmap =
+					string.unpack("< I2 I2 i4 I2 I2 I1 I1 I1 I1 I4",
+						cdata:sub(i*20+1, (i+1)*20))
 				d[i+1] = {
 					plane_id = plane_id,
-					front = front,
-					back = back,
-					bx1 = bx1,
-					by1 = by1,
-					bz1 = bz1,
-					bx2 = bx2,
-					by2 = by2,
-					bz2 = bz2,
-					face_id = face_id,
-					face_num = face_num,
+					side = side,
+					ledge_id = ledge_id,
+					ledge_num = ledge_num,
+					texinfo_id = texinfo_id,
+					typelight = typelight,
+					baselight = baselight,
+					light0 = light0,
+					light1 = light1,
+					lightmap = lightmap,
 				}
+			end
+
+		elseif v == "leaves" then
+			if bsp_version <= 29 then
+				assert((clen % 28) == 0)
+				local i
+				local rlen = clen//28
+				d = {}
+				for i=0,rlen-1 do
+					local typ, vislist, bx1, by1, bz1, bx2, by2, bz2,
+							lface_id, lface_num,
+							sndwater, sndsky, sndslime, sndlava = 
+						string.unpack("< i4 i4 i2 i2 i2 i2 i2 i2 I2 I2 I1 I1 I1 I1",
+							cdata:sub(i*28+1, (i+1)*28))
+					d[i+1] = {
+						typ = typ,
+						vislist = vislist,
+						bx1 = bx1,
+						by1 = by1,
+						bz1 = bz1,
+						bx2 = bx2,
+						by2 = by2,
+						bz2 = bz2,
+						lface_id = lface_id,
+						lface_num = lface_num,
+						sndwater = sndwater,
+						sndsky = sndsky,
+						sndslime = sndslime,
+						sndlava = sndlava,
+					}
+				end
+
+			else
+				assert((clen % 28) == 0)
+				local i
+				local rlen = clen//28
+				d = {}
+				for i=0,rlen-1 do
+					local brush_or, vislist, bx1, by1, bz1, bx2, by2, bz2,
+							lface_id, lface_num,
+							lbrush_id, lbrush_num =
+						string.unpack("< i4 i4 i2 i2 i2 i2 i2 i2 I2 I2 I2 I2",
+							cdata:sub(i*28+1, (i+1)*28))
+					d[i+1] = {
+						brush_or = brush_or,
+						vislist = vislist,
+						bx1 = bx1,
+						by1 = by1,
+						bz1 = bz1,
+						bx2 = bx2,
+						by2 = by2,
+						bz2 = bz2,
+						lface_id = lface_id,
+						lface_num = lface_num,
+						lbrush_id = lbrush_id,
+						lbrush_num = lbrush_num,
+					}
+				end
+
+			end
+
+		elseif v == "lface" then
+			assert((clen % 2) == 0)
+			local i
+			local rlen = clen//2
+			d = {}
+			for i=0,rlen-1 do
+				local v = string.unpack("< I2", cdata:sub(i*2+1, (i+1)*2))
+				d[i+1] = v
 			end
 
 		elseif v == "models" then
-			assert((clen % 64) == 0)
-			local i
-			local rlen = clen//64
-			d = {}
-			for i=0,rlen-1 do
-				local bx1, by1, bz1, bx2, by2, bz2,
-					ox, oy, oz,
-					node_id0,
-					node_id1,
-					node_id2,
-					node_id3,
-					numleafs, face_id, face_num =
-					string.unpack("< f f f f f f f f f i4 i4 i4 i4 i4 i4 i4",
-						cdata:sub(i*64+1, (i+1)*64))
-				d[i+1] = {
-					bx1 = bx1,
-					by1 = by1,
-					bz1 = bz1,
-					bx2 = bx2,
-					by2 = by2,
-					bz2 = bz2,
-					ox = ox,
-					oy = oy,
-					oz = oz,
-					node_id0 = node_id0,
-					node_id1 = node_id1,
-					node_id2 = node_id2,
-					node_id3 = node_id3,
-					numleafs = numleafs,
-					face_id = face_id,
-					face_num = face_num,
-				}
+			if false then
+				local i
+				local s = ""
+				for i=1,#cdata do
+					s = s .. string.format(" %02X", cdata:byte(i))
+					if i%48 == 0 then s = s .. "\n" end
+				end
+				print(s)
+			end
 
-				--print(i, numleafs)
+			if bsp_version <= 29 then
+				assert((clen % 64) == 0)
+				local i
+				local rlen = clen//64
+				d = {}
+				for i=0,rlen-1 do
+					local bx1, by1, bz1, bx2, by2, bz2,
+						ox, oy, oz,
+						node_id0,
+						node_id1,
+						node_id2,
+						node_id3,
+						numleafs, face_id, face_num =
+						string.unpack("< f f f f f f f f f i4 i4 i4 i4 i4 i4 i4",
+							cdata:sub(i*64+1, (i+1)*64))
+					d[i+1] = {
+						bx1 = bx1,
+						by1 = by1,
+						bz1 = bz1,
+						bx2 = bx2,
+						by2 = by2,
+						bz2 = bz2,
+						ox = ox,
+						oy = oy,
+						oz = oz,
+						node_id0 = node_id0,
+						node_id1 = node_id1,
+						node_id2 = node_id2,
+						node_id3 = node_id3,
+						numleafs = numleafs,
+						face_id = face_id,
+						face_num = face_num,
+					}
+
+					--print(i, numleafs)
+				end
+
+			else
+				assert((clen % 48) == 0)
+				local i
+				local rlen = clen//48
+				d = {}
+				for i=0,rlen-1 do
+					local bx1, by1, bz1, bx2, by2, bz2,
+						ox, oy, oz,
+						node_id0,
+						face_id, face_num =
+						string.unpack("< f f f f f f f f f i4 i4 i4",
+							cdata:sub(i*48+1, (i+1)*48))
+					d[i+1] = {
+						bx1 = bx1,
+						by1 = by1,
+						bz1 = bz1,
+						bx2 = bx2,
+						by2 = by2,
+						bz2 = bz2,
+						ox = ox,
+						oy = oy,
+						oz = oz,
+						node_id0 = node_id0,
+						face_id = face_id,
+						face_num = face_num,
+					}
+
+					--print(i, numleafs)
+				end
+
 			end
 
 		elseif v == "nodes" then
-			assert((clen % 24) == 0)
-			local i
-			local rlen = clen//24
-			d = {}
-			for i=0,rlen-1 do
-				local plane_id, front, back, bx1, by1, bz1, bx2, by2, bz2,
-						face_id, face_num = 
-					string.unpack("< i4 i2 i2 i2 i2 i2 i2 i2 i2 I2 I2",
-						cdata:sub(i*24+1, (i+1)*24))
-				d[i+1] = {
-					plane_id = plane_id,
-					front = front,
-					back = back,
-					bx1 = bx1,
-					by1 = by1,
-					bz1 = bz1,
-					bx2 = bx2,
-					by2 = by2,
-					bz2 = bz2,
-					face_id = face_id,
-					face_num = face_num,
-				}
+			if bsp_version <= 29 then
+				assert((clen % 24) == 0)
+				local i
+				local rlen = clen//24
+				d = {}
+				for i=0,rlen-1 do
+					local plane_id, front, back, bx1, by1, bz1, bx2, by2, bz2,
+							face_id, face_num = 
+						string.unpack("< i4 i2 i2 i2 i2 i2 i2 i2 i2 I2 I2",
+							cdata:sub(i*24+1, (i+1)*24))
+					d[i+1] = {
+						plane_id = plane_id,
+						front = front,
+						back = back,
+						bx1 = bx1,
+						by1 = by1,
+						bz1 = bz1,
+						bx2 = bx2,
+						by2 = by2,
+						bz2 = bz2,
+						face_id = face_id,
+						face_num = face_num,
+					}
+				end
+
+			else
+				assert((clen % 28) == 0)
+				local i
+				local rlen = clen//28
+				d = {}
+				for i=0,rlen-1 do
+					local plane_id, front, back, bx1, by1, bz1, bx2, by2, bz2,
+							face_id, face_num = 
+						string.unpack("< i4 i4 i4 i2 i2 i2 i2 i2 i2 I2 I2",
+							cdata:sub(i*28+1, (i+1)*28))
+					--print(i, plane_id, front, back)
+					d[i+1] = {
+						plane_id = plane_id,
+						front = front,
+						back = back,
+						bx1 = bx1,
+						by1 = by1,
+						bz1 = bz1,
+						bx2 = bx2,
+						by2 = by2,
+						bz2 = bz2,
+						face_id = face_id,
+						face_num = face_num,
+					}
+				end
+
 			end
 
 		elseif v == "planes" then
@@ -419,7 +607,6 @@ function load_stuff()
 	-- set up map info
 	map_norms = {}
 	map_splits = {}
-	map_root = map_dirs.models[1].node_id1
 	local i
 	for i=0,#map_dirs.planes-1 do
 		local l = map_dirs.planes[i+1]
@@ -432,7 +619,99 @@ function load_stuff()
 
 	-- clipnodes?
 	if MAP_USE_REAL_NODES then
-		-- TODO!
+		map_root = map_dirs.models[1].node_id0
+
+		-- Gather nodes
+		local xnodes = #map_dirs.nodes
+		local extra = xnodes
+		local xlist = {}
+		for i=0,#map_dirs.nodes-1 do
+			local l = map_dirs.nodes[i+1]
+			map_splits[4*i+1] = l.plane_id
+
+			if l.front > 0 then
+				map_splits[4*i+2] = l.front
+			elseif map_dirs.leaves[-l.front].typ == -2 then
+				map_splits[4*i+2] = -2
+			else
+				map_splits[4*i+2] = -1
+				table.insert(xlist, {
+					ref = 4*i+2,
+					pchain = i,
+					leaf = -1-l.front,
+				})
+			end
+
+			if l.back > 0 then
+				map_splits[4*i+3] = l.back
+			elseif map_dirs.leaves[-l.back].typ == -2 then
+				map_splits[4*i+3] = -2
+			else
+				map_splits[4*i+3] = -2
+				table.insert(xlist, {
+					ref = 4*i+3,
+					pchain = i,
+					leaf = -1-l.back,
+				})
+			end
+
+			--map_splits[4*i+4] = -1
+			map_splits[4*i+4] = -1
+		end
+
+		-- Link parents
+		if false then
+			for i=0,(#map_splits)//4-1 do
+				local front = map_splits[4*i+2]
+				local back  = map_splits[4*i+3]
+				if front >= 0 then map_splits[4*front+4] = i end
+				if back  >= 0 then map_splits[4*back +4] = i end
+			end
+		end
+
+		-- Create leaves
+		for i=1,#xlist do
+			local xl = xlist[i]
+			--print(xl.leaf)
+			local l = map_dirs.leaves[xl.leaf+1]
+			map_splits[xl.ref] = extra
+			assert(l.typ ~= -2)
+
+			local planeset = {}
+			local j
+			local dummyref = xl.ref
+
+			-- FIXME: doesn't seem to work!
+			if false then
+				j = xl.pchain
+				while j >= 0 do
+					planeset[map_splits[4*j+1]] = true
+					j = map_splits[4*j+4]
+				end
+			end
+
+			print(l.lface_num)
+			for j=1,l.lface_num do
+				local fi = map_dirs.lface[l.lface_id+j]
+				local face = map_dirs.faces[fi+1]
+
+				if not planeset[face.plane_id] then
+					planeset[face.plane_id] = true
+					local side = face.side
+					assert(side == 0 or side == 1)
+					map_splits[4*extra + 1] = face.plane_id
+					map_splits[4*extra + 2+side] = -1
+					map_splits[4*extra + 3-side] = extra + 1
+					map_splits[4*extra + 4] = -1
+					dummyref = (4*extra + 3-side)
+					extra = extra + 1
+				end
+			end
+
+			map_splits[dummyref] = -2
+		end
+	else
+		map_root = map_dirs.models[1].node_id1
 		for i=0,#map_dirs.clipnodes-1 do
 			local l = map_dirs.clipnodes[i+1]
 			local l2 = map_dirs.planes[l.planenum+1]
@@ -441,14 +720,12 @@ function load_stuff()
 			map_splits[4*i+3] = l.back
 			map_splits[4*i+4] = -1
 		end
-	else
-		for i=0,#map_dirs.clipnodes-1 do
-			local l = map_dirs.clipnodes[i+1]
-			local l2 = map_dirs.planes[l.planenum+1]
-			map_splits[4*i+1] = l.planenum
-			map_splits[4*i+2] = l.front
-			map_splits[4*i+3] = l.back
-			map_splits[4*i+4] = -1
+
+		for i=0,(#map_splits)//4-1 do
+			local front = map_splits[4*i+2]
+			local back  = map_splits[4*i+3]
+			if front >= 0 then map_splits[4*front+4] = i end
+			if back  >= 0 then map_splits[4*back +4] = i end
 		end
 	end
 

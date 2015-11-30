@@ -21,11 +21,14 @@
 #include <lualib.h>
 #include <lauxlib.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #ifdef WIN32
 // libepoxy calls wglGetProcAddress for stuff that's core in 1.1
 // at least on Wine this returns NULL for a lot of things
 // so we have to get to the opengl32.dll crap directly
-#undef glBindT/xture
+#undef glBindTexture
 #undef glDrawArrays
 #undef glGenTextures
 #undef glTexImage2D
