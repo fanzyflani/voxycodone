@@ -1,4 +1,5 @@
 -- info from SDL_keycode.h
+SDLK_RETURN = 13
 SDLK_ESCAPE = 27
 SDLK_SPACE = 32
 SDLK_LCTRL = (1<<30)+224

@@ -63,8 +63,44 @@ function hook_tick(sec_current, sec_delta, ...)
 
 	local k, v
 	for k, v in ipairs(mbox) do
-		-- TODO: GUI stuff
-		if v[1] == "gui_menu" then
+		if v[1] == "gui_msg" then
+			local wid = v[2]
+			if v[3] == "close" then
+				-- any handlers we need?
+				if v[2] == "menu_main" then
+					misc.exit()
+					return nil
+				end
+
+			elseif v[3] == "select" then
+				if v[2] == "menu_main" then
+					if v[4] == 1 then
+						vm_client = sandbox.new("plugin", "q1map")
+						vm_current = vm_client
+					elseif v[4] == 2 then
+						vm_client = sandbox.new("plugin", "bnlmaps")
+						vm_current = vm_client
+					elseif v[4] == 3 then
+						misc.exit()
+						return nil
+					end
+
+					gui_close(menu_main)
+				elseif v[2] == "menu_ingame" then
+					-- TODO: work out how to kill a sandbox
+					gui_close(menu_ingame)
+
+					if v[4] == 1 then
+						-- return to game
+
+					elseif v[4] == 2 then
+						vm_current = vm_menu
+						vm_client = nil
+						gui_open(menu_main)
+					end
+
+				end
+			end
 		end
 	end
 end
@@ -85,7 +121,12 @@ function hook_key(key, state, ...)
 
 	if key == SDLK_ESCAPE then
 		if not state then
-			misc.exit()
+			if vm_client then
+				gui_set_menu_active(menu_ingame, 1)
+				gui_open(menu_ingame)
+			else
+				gui_open(menu_main)
+			end
 		end
 
 		return nil
@@ -166,10 +207,20 @@ else
 end
 
 do
+	--menu_main = gui_add_menu({"root"}, "menu_main", nil, {"Start", "Host", "Options", "Help", "Quit"})
+	menu_main = gui_add_menu({"root"}, "menu_main", nil, {"q1map", "bnlmaps", "Quit"})
+	menu_ingame = gui_add_menu({"root"}, "menu_ingame", nil, {"Continue", "Back to menu"})
+
 	vm_menu = sandbox.new("plugin", "menu")
 	vm_current = vm_menu
 
+	vm_client = nil
 	--vm_client = sandbox.new("plugin", "bnlmaps")
 	--vm_client = sandbox.new("plugin", "q1map")
 	--vm_current = vm_client
+
+	if not vm_client then
+		gui_open(menu_main)
+	end
 end
+

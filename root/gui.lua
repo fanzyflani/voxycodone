@@ -25,29 +25,77 @@ do
 end
 
 gui = {}
-gui.focused = true
-gui.active = 1
 gui.widgets = {}
+gui.focused = false
+gui.active = nil
 
-gui.widgets[1] = {
-	vm = {"self"},
-	id = "main_menu",
-	valid = true,
-	enabled = true,
+function gui_open(widx)
+	local w = gui.widgets[widx]
+	w.enabled = true
+	if gui.active == nil or gui.active == w.parent then
+		gui.active = widx
+	end
+	gui.focused = not not gui.active
+end
 
-	parent = nil,
+function gui_close(widx)
+	local w = gui.widgets[widx]
+	w.enabled = false
+	if gui.active == widx then
+		gui.active = w.parent
+	end
+	gui.focused = not not gui.active
+end
 
-	typ = "menu",
-	options = {
-		"Start",
-		"Host",
-		"Options",
-		"Help",
-		"Quit",
+function gui_message(w, ...)
+	if type(w.vm) == "table" then
+		local l = table.pack(...)
+		table.insert(l, 1, w.id)
+		table.insert(l, 1, "gui_msg")
 
-		active = 1,
-	},
-}
+		--
+		table.insert(sandbox.mbox, l)
+	else
+		sandbox.send(w.vm, "gui_msg", w.id, ...)
+	end
+end
+
+function gui_set_menu_active(widx, active)
+	local w = gui.widgets[widx]
+	assert(w.typ == "menu")
+	active = math.tointeger(active)
+	assert(active >= 1 and active <= #w.options)
+	w.options.active = active
+end
+
+function gui_add_menu(vm, id, parent, options, active)
+	active = active or 1
+	active = math.tointeger(active)
+	assert(active >= 1 and active <= #options)
+
+	local w = {
+		vm = vm,
+		id = id,
+		parent = parent,
+		options = {},
+
+		typ = "menu",
+		valid = true,
+		enabled = false,
+	}
+
+	local k, v
+	for k, v in ipairs(options) do
+		w.options[k] = v
+	end
+
+	w.options.active = active
+
+	-- FIXME: use old widget slots and/or clean up slots
+	local widx = 1+#gui.widgets
+	gui.widgets[widx] = w
+	return widx
+end
 
 function gui_draw_widget(sec_current, w, sx, sy, sw, sh)
 	if w.typ == "menu" then
@@ -133,9 +181,8 @@ function gui_hook_key(key, state, ...)
 
 	if key == SDLK_ESCAPE then
 		if not state then
-			w.enabled = false
-			gui.active = w.parent
-			gui.focused = not not gui.active
+			gui_close(gui.active)
+			gui_message(w, "close")
 		end
 
 		return nil
@@ -143,7 +190,7 @@ function gui_hook_key(key, state, ...)
 
 	if w.typ == "menu" then
 		if state then
-			print(string.format("%08X %08X", key, SDLK_DOWN))
+			--print(string.format("%08X", key))
 			if key == SDLK_DOWN then
 				w.options.active = w.options.active + 1
 				if w.options.active > #w.options then
@@ -154,6 +201,8 @@ function gui_hook_key(key, state, ...)
 				if w.options.active < 1 then
 					w.options.active = #w.options
 				end
+			elseif key == SDLK_RETURN then
+				gui_message(w, "select", w.options.active)
 			end
 		end
 	end
@@ -236,7 +285,7 @@ void main()
 	float char_x = (float(char_idx - 32) + char_sx)/95.0;
 	float char_y = vert_tc.y;
 	char_x *= 1044.0/1045.0;
-	char_x += 2.0/1044.0;
+	char_x += 1.5/1044.0;
 
 	float result = texture(tex0, vec2(char_x, char_y)).r;
 	//float result = texture(tex0, vert_tc*vec2(5.0/95.0, 1.0) + vec2(0.5/1045.0, 0.5/21.0)).r;
