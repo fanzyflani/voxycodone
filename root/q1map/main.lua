@@ -1,5 +1,6 @@
 screen_w, screen_h = draw.screen_size_get()
 screen_scale = 2
+beam_scale = 1
 
 MAP_NAME = "start"
 
@@ -38,6 +39,7 @@ function bin_load_pak(fname, ...)
 end
 
 -- from SDL_keycode.h
+SDLK_RETURN = 13
 SDLK_ESCAPE = 27
 SDLK_SPACE = 32
 SDLK_w = ("w"):byte()
@@ -47,6 +49,10 @@ SDLK_d = ("d"):byte()
 SDLK_0 = ("0"):byte()
 SDLK_1 = ("1"):byte()
 SDLK_2 = ("2"):byte()
+SDLK_RIGHT = (1<<30)+79
+SDLK_LEFT = (1<<30)+80
+SDLK_DOWN = (1<<30)+81
+SDLK_UP = (1<<30)+82
 SDLK_LCTRL = (1<<30)+224
 
 cam_rot_x = 0.0
@@ -141,6 +147,22 @@ function hook_render(sec_current)
 
 	matrix.invert(mat_cam2, mat_cam1);
 
+	-- BEAMER
+	if beam_scale > 1 then
+		fbo.target_set(fbo_beam)
+		shader.use(shader_beamer)
+		shader.uniform_f(shader.uniform_location_get(shader_beamer, "time"), sec_current)
+		shader.uniform_matrix_4f(shader.uniform_location_get(shader_beamer, "in_cam_inverse"), mat_cam2)
+		shader.uniform_i(shader.uniform_location_get(shader_beamer,
+			"map_root"), map_root)
+		shader.uniform_i(shader.uniform_location_get(shader_beamer, "tex_map_norms"), 0)
+		shader.uniform_i(shader.uniform_location_get(shader_beamer, "tex_map_splits"), 1)
+		texture.unit_set(0, "1", tex_map_norms)
+		texture.unit_set(1, "2", tex_map_splits)
+		draw.viewport_set(0, 0, screen_w//screen_scale//beam_scale, screen_h//screen_scale//beam_scale)
+		draw.blit()
+	end
+
 	-- SCENE
 	if screen_scale == 1 then
 		fbo.target_set(nil)
@@ -175,8 +197,14 @@ function hook_render(sec_current)
 		"map_root"), map_root)
 	shader.uniform_i(shader.uniform_location_get(shader_tracer, "tex_map_norms"), 0)
 	shader.uniform_i(shader.uniform_location_get(shader_tracer, "tex_map_splits"), 1)
+	shader.uniform_i(shader.uniform_location_get(shader_tracer, "tex_beam"), 2)
+	--shader.uniform_i(shader.uniform_location_get(shader_tracer, "tex_map_tinf_s"), 2)
+	--shader.uniform_i(shader.uniform_location_get(shader_tracer, "tex_map_tinf_t"), 3)
 	texture.unit_set(0, "1", tex_map_norms)
 	texture.unit_set(1, "2", tex_map_splits)
+	texture.unit_set(2, "2", tex_beam)
+	--texture.unit_set(2, "1", tex_map_tinf_s)
+	--texture.unit_set(3, "1", tex_map_tinf_t)
 	draw.viewport_set(0, 0, screen_w//screen_scale, screen_h//screen_scale)
 	draw.blit()
 
@@ -198,7 +226,7 @@ function hook_tick(sec_current, sec_delta)
 	-- of a C function
 	-- which was originally written in Lua.
 
-	local mvspeed = 20.0
+	local mvspeed = 320.0*2.0
 	--local mvspeed = 2.0
 	local mvspeedf = mvspeed * sec_delta
 
@@ -292,8 +320,26 @@ function load_stuff()
 		error("too much effort for compat profile right now!")
 	end
 
-	shader_tracer = loadfile("shader.lua")()
+	shader_tracer, shader_beamer = loadfile("shader.lua")()
 	assert(shader_tracer)
+	assert(shader_beamer)
+
+	-- palette
+	do
+		local pdata = bin_load_pak("gfx/palette.lmp")
+		assert(pdata)
+		assert(#pdata == 768)
+		palette = {}
+		coroutine.yield()
+		local i
+		for i=0,255 do
+			palette[4*i+1] = pdata:byte(3*i+1)
+			palette[4*i+2] = pdata:byte(3*i+2)
+			palette[4*i+3] = pdata:byte(3*i+3)
+			palette[4*i+4] = 255
+		end
+		coroutine.yield()
+	end
 
 	-- map
 	mdata = bin_load_pak("maps/"..MAP_NAME..".bsp")
@@ -427,6 +473,31 @@ function load_stuff()
 			for i=0,rlen-1 do
 				local v = string.unpack("< I2", cdata:sub(i*2+1, (i+1)*2))
 				d[i+1] = v
+			end
+
+		elseif v == "miptex" then
+			local i
+			local mtnum = string.unpack("< I4", cdata:sub(1, 4))
+			print(mtnum)
+			d = {}
+			for i=0,mtnum-1 do
+				local offs = 0+string.unpack("< i4", cdata:sub(4*i+4+1, 4*i+4+4))
+				print(i, offs)
+				if offs >= 0 then
+					local name, tw, th,
+						o1, o2, o4, o8 =
+						string.unpack("< c16 I4 I4 I4 I4 I4 I4",
+							cdata:sub(offs+1, offs+40))
+
+
+					d[i+1] = {
+						name = name:sub(1, (name:find("\x00", 1, true) or 16+1)-1),
+						tw = tw,
+						th = th,
+					}
+					print(tw, th)
+					--print("["..d[i+1].name.."]")
+				end
 			end
 
 		elseif v == "models" then
@@ -574,6 +645,27 @@ function load_stuff()
 				d[i+1] = { x, y, z, ofs, typ } -- probably won't use typ
 			end
 
+		elseif v == "texinfo" then
+			-- TODO: Q2 version
+			assert((clen % 40) == 0)
+			local i
+			local rlen = clen//40
+			d = {}
+			for i=0,rlen-1 do
+				local sx, sy, sz, soff,
+					tx, ty, tz, toff,
+					texture_id, animated =
+					string.unpack("< f f f f f f f f I4 I4",
+						cdata:sub(i*40+1, (i+1)*40))
+				d[i+1] = {
+					s = {sx, sy, sz, soff},
+					t = {tx, ty, tz, toff},
+					texture_id = texture_id,
+					animated = animated,
+
+				}
+			end
+
 		elseif v == "vertices" then
 			assert((clen % 12) == 0)
 			local i
@@ -613,7 +705,7 @@ function load_stuff()
 		map_norms[4*i+1] = l[1]
 		map_norms[4*i+2] = l[3]
 		map_norms[4*i+3] = -l[2]
-		map_norms[4*i+4] = l[4] / 32.0
+		map_norms[4*i+4] = l[4]
 		--print(l[1], l[2], l[3], l[4])
 	end
 
@@ -655,8 +747,8 @@ function load_stuff()
 				})
 			end
 
-			--map_splits[4*i+4] = -1
 			map_splits[4*i+4] = -1
+			--map_splits[4*i+4] = l.tex_info
 		end
 
 		-- Link parents
@@ -681,16 +773,16 @@ function load_stuff()
 			local j
 			local dummyref = xl.ref
 
-			-- FIXME: doesn't seem to work!
-			if false then
+			if true then
 				j = xl.pchain
+				if j >= 0 then j = map_splits[4*j+4] end
 				while j >= 0 do
 					planeset[map_splits[4*j+1]] = true
 					j = map_splits[4*j+4]
 				end
 			end
 
-			print(l.lface_num)
+			--print(l.lface_num)
 			for j=1,l.lface_num do
 				local fi = map_dirs.lface[l.lface_id+j]
 				local face = map_dirs.faces[fi+1]
@@ -729,6 +821,20 @@ function load_stuff()
 		end
 	end
 
+	-- texinfo
+	map_texinfo_s = {}
+	map_texinfo_t = {}
+	for i=0,#map_dirs.texinfo-1 do
+		map_texinfo_s[4*i+1] = map_dirs.texinfo[i+1].s[1]
+		map_texinfo_s[4*i+2] = map_dirs.texinfo[i+1].s[2]
+		map_texinfo_s[4*i+3] = map_dirs.texinfo[i+1].s[3]
+		map_texinfo_s[4*i+4] = map_dirs.texinfo[i+1].s[4]
+		map_texinfo_t[4*i+1] = map_dirs.texinfo[i+1].t[1]
+		map_texinfo_t[4*i+2] = map_dirs.texinfo[i+1].t[2]
+		map_texinfo_t[4*i+3] = map_dirs.texinfo[i+1].t[3]
+		map_texinfo_t[4*i+4] = map_dirs.texinfo[i+1].t[4]
+	end
+
 	-- PAD
 	while (#map_splits % (MAP_SPLIT_W*4)) ~= 0 do
 		map_splits[#map_splits+1] = 0
@@ -738,16 +844,25 @@ function load_stuff()
 	misc.gl_error()
 	tex_map_norms = texture.new("1", 1, "4f", #map_norms//4, "nn", "4f")
 	tex_map_splits = texture.new("2", 1, "4s", MAP_SPLIT_W, #map_splits//(4*MAP_SPLIT_W), "nn", "4s")
+	--tex_map_tinf_s = texture.new("1", 1, "4f", #map_dirs.texinfo, "nn", "4f")
+	--tex_map_tinf_t = texture.new("1", 1, "4f", #map_dirs.texinfo, "nn", "4f")
 	texture.load_sub(tex_map_norms, "1", 0, 0, #map_norms//4, "4f", map_norms)
 	texture.load_sub(tex_map_splits, "2", 0, 0, 0,
 		MAP_SPLIT_W, #map_splits//(4*MAP_SPLIT_W), "4s", map_splits)
+	--texture.load_sub(tex_map_tinf_s, "1", 0, 0, #map_dirs.texinfo, "4f", map_texinfo_s)
+	--texture.load_sub(tex_map_tinf_t, "1", 0, 0, #map_dirs.texinfo, "4f", map_texinfo_t)
 	print("TEX ERRS:", misc.gl_error())
 
 	tex_screen = texture.new("2", 1, "4nb", screen_w//screen_scale, screen_h//screen_scale, "ll", "4nb")
 	coroutine.yield()
+	tex_beam = texture.new("2", 1, "1f", screen_w//screen_scale//beam_scale, screen_h//screen_scale//beam_scale, "nn", "1f")
+	coroutine.yield()
 	fbo_scene = fbo.new()
 	fbo.bind_tex(fbo_scene, 0, "2", tex_screen, 0)
 	assert(fbo.validate(fbo_scene))
+	fbo_beam = fbo.new()
+	fbo.bind_tex(fbo_beam, 0, "2", tex_beam, 0)
+	assert(fbo.validate(fbo_beam))
 
 	--tex_map = texture.new("3", MAX_LAYER+1, "4ub", MAX_LX, MAX_LY, MAX_LZ, "nnn", "4ub")
 

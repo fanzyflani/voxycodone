@@ -1,7 +1,9 @@
 screen_w, screen_h = draw.screen_size_get()
 
--- from SDL_keycode.h
-SDLK_ESCAPE = 27
+print("keys")
+dofile("keys.lua")
+print("gui")
+dofile("gui.lua")
 
 vm_active_stack = {}
 vm_current = nil
@@ -29,6 +31,8 @@ function hook_render(sec_current, ...)
 	draw.viewport_set(0, 0, screen_w, screen_h)
 	draw.blit()
 
+	gui_draw(sec_current, ...)
+
 	--[[
 	texture.unit_set(0, "2", sandbox.fbo_get_tex(vm_menu))
 	shader.use(shader_blit1)
@@ -54,20 +58,41 @@ function hook_tick(sec_current, sec_delta, ...)
 	sandbox.poll(vm_current)
 
 	-- TODO: check for messages
-	--print(sec_current, #sandbox.mbox)
+	local mbox = sandbox.mbox
+	sandbox.mbox = {}
+
+	local k, v
+	for k, v in ipairs(mbox) do
+		-- TODO: GUI stuff
+		if v[1] == "gui_menu" then
+		end
+	end
 end
 
 function hook_key(key, state, ...)
 	-- TODO: hook wisely
+	if key == SDLK_F10 then
+		if not state then
+			misc.exit()
+		end
+
+		return nil
+	end
+
+	if gui.focused then
+		return gui_hook_key(key, state, ...)
+	end
+
 	if key == SDLK_ESCAPE then
 		if not state then
 			misc.exit()
 		end
 
-		return
+		return nil
 	end
 
 	sandbox.send(vm_current, "hook_key", key, state, ...)
+	return {vm_current}
 end
 
 function hook_mouse_button(button, state, ...)
@@ -145,6 +170,6 @@ do
 	vm_current = vm_menu
 
 	--vm_client = sandbox.new("plugin", "bnlmaps")
-	vm_client = sandbox.new("plugin", "q1map")
-	vm_current = vm_client
+	--vm_client = sandbox.new("plugin", "q1map")
+	--vm_current = vm_client
 end
