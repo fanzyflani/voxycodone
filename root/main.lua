@@ -63,37 +63,37 @@ function hook_tick(sec_current, sec_delta, ...)
 
 	local k, v
 	for k, v in ipairs(mbox) do
-		if v[1] == "gui_msg" then
-			local wid = v[2]
-			if v[3] == "close" then
+		if v[2] == "gui_msg" then
+			local wid = v[3]
+			if v[4] == "close" then
 				-- any handlers we need?
-				if v[2] == "menu_main" then
+				if v[3] == "menu_main" then
 					misc.exit()
 					return nil
 				end
 
-			elseif v[3] == "select" then
-				if v[2] == "menu_main" then
-					if v[4] == 1 then
+			elseif v[4] == "select" then
+				if v[3] == "menu_main" then
+					if v[5] == 1 then
 						vm_client = sandbox.new("plugin", "q1map")
 						vm_current = vm_client
-					elseif v[4] == 2 then
+					elseif v[5] == 2 then
 						vm_client = sandbox.new("plugin", "bnlmaps")
 						vm_current = vm_client
-					elseif v[4] == 3 then
+					elseif v[5] == 3 then
 						misc.exit()
 						return nil
 					end
 
 					gui_close(menu_main)
-				elseif v[2] == "menu_ingame" then
+				elseif v[3] == "menu_ingame" then
 					-- TODO: work out how to kill a sandbox
 					gui_close(menu_ingame)
 
-					if v[4] == 1 then
+					if v[5] == 1 then
 						-- return to game
 
-					elseif v[4] == 2 then
+					elseif v[5] == 2 then
 						vm_current = vm_menu
 						vm_client = nil
 						gui_open(menu_main)

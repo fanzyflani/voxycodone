@@ -52,6 +52,7 @@ function gui_message(w, ...)
 		local l = table.pack(...)
 		table.insert(l, 1, w.id)
 		table.insert(l, 1, "gui_msg")
+		table.insert(l, 1, {"root"})
 
 		--
 		table.insert(sandbox.mbox, l)
