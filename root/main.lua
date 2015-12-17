@@ -75,12 +75,15 @@ function hook_tick(sec_current, sec_delta, ...)
 			elseif v[4] == "select" then
 				if v[3] == "menu_main" then
 					if v[5] == 1 then
-						vm_client = sandbox.new("plugin", "q1map")
+						vm_client = sandbox.new("plugin", "pmdview")
 						vm_current = vm_client
 					elseif v[5] == 2 then
-						vm_client = sandbox.new("plugin", "bnlmaps")
+						vm_client = sandbox.new("plugin", "q1map")
 						vm_current = vm_client
 					elseif v[5] == 3 then
+						vm_client = sandbox.new("plugin", "bnlmaps")
+						vm_current = vm_client
+					elseif v[5] == 4 then
 						misc.exit()
 						return nil
 					end
@@ -96,6 +99,8 @@ function hook_tick(sec_current, sec_delta, ...)
 					elseif v[5] == 2 then
 						vm_current = vm_menu
 						vm_client = nil
+						misc.mouse_grab_set(false)
+						misc.mouse_visible_set(true)
 						gui_open(menu_main)
 					end
 
@@ -208,7 +213,8 @@ end
 
 do
 	--menu_main = gui_add_menu({"root"}, "menu_main", nil, {"Start", "Host", "Options", "Help", "Quit"})
-	menu_main = gui_add_menu({"root"}, "menu_main", nil, {"q1map", "bnlmaps", "Quit"})
+	menu_main = gui_add_menu({"root"}, "menu_main", nil, {
+		"pmdview", "q1map", "bnlmaps", "Quit"})
 	menu_ingame = gui_add_menu({"root"}, "menu_ingame", nil, {"Continue", "Back to menu"})
 
 	vm_menu = sandbox.new("plugin", "menu")

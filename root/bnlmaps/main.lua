@@ -1,11 +1,15 @@
 screen_w, screen_h = draw.screen_size_get()
 screen_scale = 1
 
+dofile("base64.lua")
+dofile("json.lua")
+
 DEPTHONLY = 2
 DEPTHONLY_MIN = 2
 DEPTHONLY_STEP = 2
 
-MAP_NAME = "mountain_express"
+MAP_IS_WIRE = false; MAP_NAME = "map-1"
+--MAP_IS_WIRE = true; MAP_NAME = "mountain_express"
 
 -- from SDL_keycode.h
 SDLK_ESCAPE = 27
@@ -334,9 +338,23 @@ function load_stuff()
 	else
 		tex_map = texture.new("3", MAX_LAYER+1, "4ub", MAX_LX, MAX_LY, MAX_LZ, "nnn", "4ub")
 	end
-	mdata = bin_load("map/"..MAP_NAME.."/map.dat")
-	coroutine.yield()
-	map_lx, map_ly, map_lz = string.unpack("< i2 i2 i2", mdata:sub(1,6))
+
+	if MAP_IS_WIRE then
+		mdata = bin_load("map/"..MAP_NAME.."/map.dat")
+		coroutine.yield()
+		map_lx, map_ly, map_lz = string.unpack("< i2 i2 i2", mdata:sub(1,6))
+	else
+		zmjson = bin_load("map/"..MAP_NAME..".bnlbin")
+		coroutine.yield()
+		smjson = misc.uncompress(zmjson)
+		mjson = json_parse(smjson)
+		zmdata = base64_decode(mjson.map.blocks_data)
+		print(zmdata:byte(1), zmdata:byte(2))
+		mdata = "\x00\x00\x00\x00\x00\x00" .. misc.uncompress(zmdata)
+		map_lx = mjson.map.size.x
+		map_ly = mjson.map.size.y
+		map_lz = mjson.map.size.z
+	end
 	print (map_lx, map_ly, map_lz)
 	assert (#mdata == 6 + 4*map_lx*map_ly*map_lz)
 
@@ -520,9 +538,13 @@ function hook_poll()
 	sandbox.mbox = {}
 
 	if loading then
-		if loading ~= "load_forever" and not coroutine.resume(loading) then
-			loading = nil
-			--loading = "load_forever"
+		if loading ~= "load_forever" then
+			local res, msg = coroutine.resume(loading)
+			if (not res) or coroutine.status(loading) == "dead" then
+				if (not res) and msg then error(msg) end
+				loading = nil
+				--loading = "load_forever"
+			end
 		end
 	end
 end

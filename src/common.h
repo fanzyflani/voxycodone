@@ -24,6 +24,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <zlib.h>
+
 #ifdef WIN32
 // libepoxy calls wglGetProcAddress for stuff that's core in 1.1
 // at least on Wine this returns NULL for a lot of things

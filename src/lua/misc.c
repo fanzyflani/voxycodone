@@ -38,6 +38,47 @@ static int lbind_misc_gl_error(lua_State *L)
 	return 1;
 }
 
+static int lbind_misc_uncompress(lua_State *L)
+{
+	if(lua_gettop(L) < 1)
+		return luaL_error(L, "expected 1 argument to misc.uncompress");
+	
+	// Grab string
+	size_t slen_full;
+	const Bytef *sdat = (const Bytef *)luaL_checklstring(L, 1, &slen_full);
+	uLongf slen = (uLongf)slen_full;
+
+	// Iteratively increase buffer until we can uncompress successfully
+	size_t dlen_cur = slen_full*2;
+	uLongf dlen = 0;
+	Bytef *ddat = malloc(dlen_cur);
+
+	for(;;)
+	{
+		dlen = (uLongf)dlen_cur;
+		int result = uncompress(ddat, &dlen, sdat, slen);
+
+		if(result == Z_OK)
+		{
+			break;
+
+		} else if(result == Z_BUF_ERROR) { 
+			dlen_cur += slen_full;
+			ddat = realloc(ddat, dlen_cur);
+
+		} else {
+			free(ddat);
+			return luaL_error(L, "error code %d reading zlib stream", result);
+
+		}
+	}
+
+	// Push, free, return!
+	lua_pushlstring(L, (char *)ddat, dlen);
+	free(ddat);
+	return 1;
+}
+
 void lbind_setup_misc(lua_State *L)
 {
 	lua_newtable(L);
@@ -45,6 +86,7 @@ void lbind_setup_misc(lua_State *L)
 	lua_pushcfunction(L, lbind_misc_gl_error); lua_setfield(L, -2, "gl_error");
 	lua_pushcfunction(L, lbind_misc_mouse_grab_set); lua_setfield(L, -2, "mouse_grab_set");
 	lua_pushcfunction(L, lbind_misc_mouse_visible_set); lua_setfield(L, -2, "mouse_visible_set");
+	lua_pushcfunction(L, lbind_misc_uncompress); lua_setfield(L, -2, "uncompress");
 	lua_setglobal(L, "misc");
 }
 

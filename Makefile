@@ -2,7 +2,7 @@
 
 CFLAGS = -g -O2 `sdl2-config --cflags` `./findlua.sh --cflags` `pkg-config epoxy --cflags` -I.
 LDFLAGS = -g
-LIBS = `sdl2-config --libs` -lSDL2_mixer `./findlua.sh --libs` `pkg-config epoxy --libs` -lGL -lm
+LIBS = `sdl2-config --libs` -lSDL2_mixer `./findlua.sh --libs` `pkg-config epoxy --libs` -lGL -lm -lz
 BINNAME = voxycodone
 OBJDIR = obj
 
