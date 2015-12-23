@@ -84,6 +84,9 @@ function hook_tick(sec_current, sec_delta, ...)
 						vm_client = sandbox.new("plugin", "bnlmaps")
 						vm_current = vm_client
 					elseif v[5] == 4 then
+						vm_client = sandbox.new("plugin", "ocemu")
+						vm_current = vm_client
+					elseif v[5] == 5 then
 						misc.exit()
 						return nil
 					end
@@ -130,6 +133,7 @@ function hook_key(key, state, ...)
 				gui_set_menu_active(menu_ingame, 1)
 				gui_open(menu_ingame)
 			else
+				gui_set_menu_active(menu_main, 4)
 				gui_open(menu_main)
 			end
 		end
@@ -214,7 +218,7 @@ end
 do
 	--menu_main = gui_add_menu({"root"}, "menu_main", nil, {"Start", "Host", "Options", "Help", "Quit"})
 	menu_main = gui_add_menu({"root"}, "menu_main", nil, {
-		"pmdview", "q1map", "bnlmaps", "Quit"})
+		"pmdview", "q1map", "bnlmaps", "ocemu", "Quit"})
 	menu_ingame = gui_add_menu({"root"}, "menu_ingame", nil, {"Continue", "Back to menu"})
 
 	vm_menu = sandbox.new("plugin", "menu")
@@ -226,6 +230,7 @@ do
 	--vm_current = vm_client
 
 	if not vm_client then
+		gui_set_menu_active(menu_main, 4)
 		gui_open(menu_main)
 	end
 end
