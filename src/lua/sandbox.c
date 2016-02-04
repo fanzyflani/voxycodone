@@ -3,6 +3,7 @@
 static int ltyp_gc_vmref(lua_State *L)
 {
 	// FIXME: prevent lua from spewing an error in the __gc hook, that's just dangerous
+	printf("Attempting VMRef cleanup\n");
 	lua_State **pLtarget = luaL_checkudata(L, 1, "VMRef");
 	lua_State *Ltarget = *pLtarget;
 	struct vc_extraspace *estarget = *(struct vc_extraspace **)(lua_getextraspace(Ltarget));
@@ -13,7 +14,10 @@ static int ltyp_gc_vmref(lua_State *L)
 	if(estarget->refcount <= 0)
 	{
 		printf("Freeing VM!\n");
+		assert(Ltarget != Lbase);
 		lua_close(Ltarget);
+		free(estarget->root_dir);
+		free(estarget);
 	}
 }
 

@@ -206,7 +206,10 @@ int main(int argc, char *argv[])
 	}
 
 	// Clean up
-	free(lua_getextraspace(Lbase));
+	struct vc_extraspace *es = *(struct vc_extraspace **)(lua_getextraspace(Lbase));
+	free(es->root_dir);
+	free(es);
+	lua_close(Lbase);
 
 	return 0;
 }
