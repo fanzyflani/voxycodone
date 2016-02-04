@@ -45,7 +45,7 @@ GLAPI void APIENTRY glTexSubImage2D( GLenum target, GLint level, GLint xoffset, 
 #endif
 
 #include <SDL.h>
-#include <SDL_mixer.h>
+//include <SDL_mixer.h>
 
 #include "linmath.h"
 
@@ -71,6 +71,8 @@ struct vc_extraspace
 	lua_State *Lparent;
 	lua_State **pLself;
 	char *root_dir;
+
+	int refcount;
 
 	GLint fbo; // -1 == no rendering!
 	GLuint fbo_ctex; // 0 == no rendering!

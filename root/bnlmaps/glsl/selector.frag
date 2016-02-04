@@ -1,7 +1,12 @@
 //version 130
 
 // vim: syntax=c
+const bool use_shadows = true;
 const bool precise_shadows = true;
+const float precise_shadow_threshold = 0.01;
+const float shadow_time_threshold = 0.3;
+const float shadow_bounce_offset = 0.01;
+const float ray_bounce_offset = 0.05;
 
 // true: faster, but some slopes get "pinched" out of the scene
 // false: slower but safer
@@ -441,8 +446,6 @@ void main()
 		vec2 dy0 = textureOffset(tex_depth_in, vert_tc, ivec2( 0,-1)).rg;
 		vec2 dx1 = textureOffset(tex_depth_in, vert_tc, ivec2( 1, 0)).rg;
 		vec2 dy1 = textureOffset(tex_depth_in, vert_tc, ivec2( 0, 1)).rg;
-		//vec2 dx2 = textureOffset(tex_depth_in, vert_tc, ivec2( 2, 0)).rg;
-		//vec2 dy2 = textureOffset(tex_depth_in, vert_tc, ivec2( 0, 2)).rg;
 		vec2 dtime = max(dbb, max(max(dx0, dx1), max(dy0, dy1)));
 		vec2 rtime = min(dbb, min(min(dx0, dx1), min(dy0, dy1)));
 
@@ -453,10 +456,6 @@ void main()
 		float dgrady0 = dbb.r - dy0.r;
 		float dgradx1 = dx1.r - dbb.r;
 		float dgrady1 = dy1.r - dbb.r;
-		//float dgradx2 = dx2.r - dx1.r;
-		//float dgrady2 = dy2.r - dy1.r;
-		//float dgrad2x = max(abs(dgradx1 - dgradx0), abs(dgradx2 - dgradx1));
-		//float dgrad2y = max(abs(dgrady1 - dgrady0), abs(dgrady2 - dgrady1));
 		float dgrad2x = abs(dgradx1 - dgradx0);
 		float dgrad2y = abs(dgrady1 - dgrady0);
 		float d = dgrad2x + dgrad2y;
@@ -474,7 +473,7 @@ void main()
 
 		if(fast_trace)
 		{
-			new_time = ifisheye/dbb.r - 0.01;
+			new_time = ifisheye/dbb.r - ray_bounce_offset;
 
 			if(texelFetch(tex_map, ivec3(floor(ray_pos + ray_dir * new_time)), 0).r != 0x00U)
 				fast_trace = false;
@@ -489,16 +488,20 @@ void main()
 		}
 
 		dtime.r = max(0.0, dtime.r);
-		new_time = dtime.r;
 		ray_pos += ray_dir * new_time;
 	}
 
 #ifdef BEAMER
 	trace_scene(ray_pos, ray_dir, false, out_depth.r);
 	out_depth.r += new_time;
-	trace_scene(ray_pos + ray_dir*((out_depth.r - new_time)-0.01),
-		normalize(vec3(0.3, 1.0, 0.3)),
-		true, out_depth.g);
+	if(use_shadows)
+	{
+		trace_scene(ray_pos + ray_dir*((out_depth.r - new_time)-shadow_bounce_offset),
+			normalize(vec3(0.3, 1.0, 0.3)),
+			true, out_depth.g);
+	} else {
+		out_depth.g = 0.0;
+	}
 	out_depth.r = ifisheye/out_depth.r;
 #else
 	float atime_main = new_time;
@@ -506,15 +509,20 @@ void main()
 	trace_scene(ray_pos, ray_dir, atime_main, out_color);
 	//out_color.r += atime_main - new_time;
 	//if(need_extra_trace) out_color.b += 1.0;
+	//out_color.r = new_time/64.0 + 0.5;
 
-	if(true) // Shadows
+	if(use_shadows) // Shadows
 	{
 		//if(out_color.a >= 1.0/255.0)
 		if(out_color.a >= 1.0)
 		{
-			vec3 shadow_ray_pos = ray_pos + ray_dir*(atime_main - new_time - 0.01);
+			vec3 shadow_ray_pos = ray_pos + ray_dir*(atime_main - new_time - shadow_bounce_offset);
 			vec4 shadow_color = vec4(0.0);
-			if((!precise_shadows) || (pretrace_shadow_variance < 0.01 && abs(atime_main - new_time) < 0.3))
+			if(
+				have_depth_in &&
+				((!precise_shadows) ||
+				(pretrace_shadow_variance < precise_shadow_threshold
+					&& abs(atime_main - new_time) < shadow_time_threshold)))
 			{
 				shadow_color.a = pretrace_shadow;
 			} else {

@@ -90,26 +90,47 @@ local function update_screen()
 	texture.load_sub(tex_palette, "1", 0, 0, 256, "3nb", virtual_palette)
 end
 
-function wait(delay)
+wait_uptime = nil
+computer = {}
+function computer.uptime()
+	assert(wait_uptime)
+	return wait_uptime
+end
+
+os = os or {}
+function os.sleep(delay)
 	if gpu_needs_flush then
 		reset_rate_limits()
 		update_screen()
 	end
-	assert(delay >= 0.05)
+	if true then 
+		-- HACK: delay's a bit shitty so we're just doing a yield + return
+		local cur, del = coroutine.yield()
+		return
+	end
+	assert(delay >= 0.0)
 	wait_quant = wait_quant + delay
 	local reduce = math.floor(wait_quant/0.05)*0.05
 	wait_buffer = wait_buffer + reduce
 	wait_quant = wait_quant - reduce
+	local cur, del = coroutine.yield()
+	wait_uptime = cur
+	wait_buffer = wait_buffer - del/2.0
 	while wait_buffer > 0.0 do
+		--print("try yield")
+		--local cur, del = 0.0, 0.05
 		local cur, del = coroutine.yield()
-		wait_buffer = wait_buffer - del
+		--print(cur, del, wait_buffer)
+		--print("exit yield")
+		wait_uptime = cur
+		wait_buffer = wait_buffer - del/2.0
 	end
 end
 
 local function flush_rate_limits()
 	reset_rate_limits()
 	update_screen()
-	wait(0.05)
+	os.sleep(0.05)
 end
 
 function gpu.set(x, y, value)
@@ -124,7 +145,7 @@ function gpu.set(x, y, value)
 	end
 	lim_set = lim_set - 1
 
-	local offs = virtual_w*y + x - 1
+	local offs = virtual_w*(y-1) + (x-1) - 1
 	local i
 	for i=1,#s do
 		virtual_data[3*(offs+i)+1] = s:byte(i)
@@ -153,7 +174,7 @@ function gpu.fill(x, y, width, height, char)
 	local ch = s:byte()
 	local u,v
 	for v=0,height-1 do
-		local offs = virtual_w*(y+v) + x - 1
+		local offs = virtual_w*(y-1+v) + x - 1
 		for u=0,width-1 do
 			virtual_data[3*(offs+u)+1] = ch
 			virtual_data[3*(offs+u)+2] = gpu_fg
@@ -185,7 +206,7 @@ function gpu.copy(x, y, width, height, tx, ty)
 	local doffs = (virtual_w*ty + tx)
 	if doffs > 0 then
 		for v=height-1,0,-1 do
-			local offs = virtual_w*(y+v) + x - 1
+			local offs = virtual_w*(y-1+v) + x - 1
 			for u=width-1,0,-1 do
 				virtual_data[3*(offs+doffs+u)+1] = virtual_data[3*(offs+u)+1]
 				virtual_data[3*(offs+doffs+u)+2] = virtual_data[3*(offs+u)+2]
@@ -194,7 +215,7 @@ function gpu.copy(x, y, width, height, tx, ty)
 		end
 	else
 		for v=0,height-1 do
-			local offs = virtual_w*(y+v) + x - 1
+			local offs = virtual_w*(y-1+v) + x - 1
 			for u=0,width-1 do
 				virtual_data[3*(offs+doffs+u)+1] = virtual_data[3*(offs+u)+1]
 				virtual_data[3*(offs+doffs+u)+2] = virtual_data[3*(offs+u)+2]
@@ -221,7 +242,7 @@ local function convert_color(color, isPaletteIndex)
 
 		local ret = b + 5*(g + 8*r) + 16
 		assert(ret >= 16 and ret < 256)
-		print(ret)
+		--print(ret)
 		return ret
 	end
 end
@@ -278,5 +299,68 @@ end
 
 function gpu.getResolution()
 	return gpu_res_w, gpu_res_h
+end
+
+component = {}
+component.gpu = gpu
+component.tape_drive = {}
+term = {}
+
+function component.tape_drive.stop() end
+function component.tape_drive.getSize() return 4096*60*4 end
+function component.tape_drive.seek() return 0 end
+function component.tape_drive.play() end
+
+function term.clear()
+	local y
+	for y=1,virtual_h do
+		local s = ""
+		local x
+		for x=1,virtual_w do
+			s = s .. " "
+		end
+		gpu.set(1,y,s)
+	end
+end
+
+function require(str)
+	if str == "component" then
+		return component
+	elseif str == "term" then
+		return term
+	elseif str == "computer" then
+		return computer
+	else
+		error("unhandled emu module "..str)
+	end
+end
+
+io = {}
+function io.open(fname, mode)
+	if mode == "rb" then
+		local fp = {}
+		local data = bin_load(fname)
+		local dpos = 1
+
+		function fp.read(self, v)
+			local s = nil
+			--print("read", dpos)
+			if type(v) == "number" and math.tointeger(v) >= 1 then
+				v = math.tointeger(v)
+				if dpos > #data then
+					return nil
+				else
+					s = data:sub(dpos, dpos+v-1)
+					dpos = dpos + v
+					return s
+				end
+			else
+				error("unhandled read val "..v)
+			end
+		end
+		return fp
+	else
+		error("unhandled io mode "..mode)
+	end
 end
 

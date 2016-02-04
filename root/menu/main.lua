@@ -1,5 +1,7 @@
 screen_w, screen_h = draw.screen_size_get()
-screen_scale = 4
+screen_scale = 2
+--scene = "lettuce" -- works fine w/ r600 LLVM backend + R600_DEBUG=llvm, fails w/o
+scene = "twister"
 
 -- from SDL_keycode.h
 SDLK_ESCAPE = 27
@@ -103,7 +105,6 @@ tex_screen = texture.new("2", 1, "4nb", screen_w/screen_scale, screen_h/screen_s
 fbo_scene = fbo.new()
 fbo.bind_tex(fbo_scene, 0, "2", tex_screen, 0)
 assert(fbo.validate(fbo_scene))
-scene = "lettuce"
 shader_test = loadfile("scenes/"..scene..".lua")()
 assert(shader_test)
 

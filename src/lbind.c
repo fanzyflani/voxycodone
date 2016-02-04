@@ -124,10 +124,10 @@ lua_State *init_lua_vm(lua_State *Lparent, enum vc_vm vmtyp, const char *root, i
 	{
 		L = luaL_newstate();
 	} else {
+		// FIXME FIXME XXX THIS IS BROKEN I CAN'T SAFELY SET THE GLOBAL ENV
 		L = lua_newthread(Lparent);
-		// FIXME FIXME XXX THIS IS FUCKING DANGEROUS I CAN'T QUITE SET THE GLOBAL ENVIRONMENT YET
 		//lua_newtable(L);
-		//lua_setupvalue(L, );
+		//lua_setupvalue(L, -1);
 	}
 
 	// Create extraspace
@@ -137,6 +137,7 @@ lua_State *init_lua_vm(lua_State *Lparent, enum vc_vm vmtyp, const char *root, i
 	es->Lparent = Lparent;
 	es->pLself = NULL;
 	es->root_dir = NULL;
+	es->refcount = (Lparent == NULL ? 1 : 0);
 	es->fbo = -1;
 
 	if(vmtyp == VM_CLIENT)

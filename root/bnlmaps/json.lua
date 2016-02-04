@@ -150,3 +150,44 @@ function json_parse(s, pos)
 	end
 end
 
+function json_escape_string(s)
+	s = s:gsub("\n", "\\n")
+	s = s:gsub("\r", "\\r")
+	s = s:gsub("\t", "\\t")
+	s = s:gsub("\b", "\\b")
+	s = s:gsub("\"", "\\\"")
+	return s
+end
+
+function json_encode(l)
+	if type(l) == "table" then
+		if #l > 0 then
+			local s = ""
+			local k,v
+			for k,v in ipairs(l) do
+				s = s .. "," .. json_encode(v)
+			end
+			return "["..s:sub(2).."]"
+
+		else
+			local s = ""
+			local k,v
+			for k,v in pairs(l) do
+				s = s .. "," .. json_encode(k) .. ":" .. json_encode(v)
+			end
+			return "{"..s:sub(2).."}"
+
+		end
+	elseif type(l) == "number" then
+		return l
+	elseif type(l) == "string" then
+		return '"' .. json_escape_string(l) .. '"'
+	elseif l == true then return "true"
+	elseif l == false then return "false"
+	elseif l == nil then return "null"
+	else
+		error("unhandled type for json_encode")
+	end
+
+end
+

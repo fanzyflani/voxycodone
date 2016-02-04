@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 #endif
 
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_NOPARACHUTE);
-	Mix_Init(MIX_INIT_OGG);
+	//Mix_Init(MIX_INIT_OGG);
 
 	/*if(!epoxy_has_gl_extension("GL_EXT_gpu_shader4"))
 	{
@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
 	int fps = 0;
 	char hands = '/';
 
-	Mix_OpenAudio(44100, AUDIO_S16SYS, 2, 4096);
+	//Mix_OpenAudio(44100, AUDIO_S16SYS, 2, 4096);
 
 	// TODO: clean this up {
 	//Mix_Chunk *music = Mix_LoadWAV("dat/ds15rel-gm.ogg");

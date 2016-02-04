@@ -12,4 +12,6 @@ dumps/
 # VIM
 .*.swp
 .*.swo
+.*.un~
+*~
 

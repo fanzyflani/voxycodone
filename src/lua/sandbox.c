@@ -1,5 +1,68 @@
 #include "common.h"
 
+static int ltyp_gc_vmref(lua_State *L)
+{
+	// FIXME: prevent lua from spewing an error in the __gc hook, that's just dangerous
+	lua_State **pLtarget = luaL_checkudata(L, 1, "VMRef");
+	lua_State *Ltarget = *pLtarget;
+	struct vc_extraspace *estarget = *(struct vc_extraspace **)(lua_getextraspace(Ltarget));
+	estarget->refcount--;
+	printf("VMRef %p lost, from %p - refcount = %i\n", Ltarget, L, estarget->refcount);
+
+	assert(estarget->refcount >= 0);
+	if(estarget->refcount <= 0)
+	{
+		printf("Freeing VM!\n");
+		lua_close(Ltarget);
+	}
+}
+
+static void copy_between_states(lua_State *L, lua_State *Ltarget, int recmax)
+{
+	// Check if valid type
+	int vt = lua_type(L, -1);
+	if(vt == LUA_TNIL)
+		lua_pushnil(Ltarget);
+	else if(vt == LUA_TBOOLEAN)
+		lua_pushboolean(Ltarget, lua_toboolean(L, -1));
+	else if(vt == LUA_TSTRING)
+		lua_pushstring(Ltarget, lua_tostring(L, -1));
+	else if(vt == LUA_TNUMBER && lua_isinteger(L, -1))
+		// FIXME: needs to check the subtype correctly
+		lua_pushinteger(Ltarget, lua_tointeger(L, -1));
+	else if(vt == LUA_TNUMBER && !lua_isinteger(L, -1))
+		lua_pushnumber(Ltarget, lua_tonumber(L, -1));
+	else if(vt == LUA_TTABLE && recmax > 0)
+	{
+		lua_newtable(Ltarget);
+
+		// move all the things
+		lua_pushnil(L);
+		// -2 = table, -1 = lookup key
+		while(lua_next(L, -2) != 0)
+		{
+			//printf("PUSH: %s %s\n", lua_tostring(L, -2), lua_typename(L, lua_type(L, -1)));
+			// L: -3 = table, -2 = lookup key, -1 = value
+			// Ltarget: -1 = table
+			lua_pushvalue(L, -2);
+			copy_between_states(L, Ltarget, recmax-1);
+			// Ltarget: -2 = table, -1 = key
+			copy_between_states(L, Ltarget, recmax-1);
+			// Ltarget: -3 = table, -2 = key, -1 = value
+			// L: -2 = table, -1 = lookup key
+			//printf("result: %s\n", lua_typename(Ltarget, lua_type(Ltarget, -1)));
+			lua_rawset(Ltarget, -3);
+			// Ltarget: -1 = table
+		}
+	} else {
+		// otherwise just ignore it
+		lua_pushnil(Ltarget);
+	}
+
+	// Remove value
+	lua_pop(L, 1);
+}
+
 static int lbind_sandbox_new(lua_State *L)
 {
 	if(lua_gettop(L) < 1)
@@ -40,8 +103,7 @@ static int lbind_sandbox_new(lua_State *L)
 	if(vmtyp == VM_BLIND)
 	{
 		// Run immediately
-		// TODO: work out what to do with errors + dispose of this bloody VM
-		// (chances are we'll have to do lua_newthread then SOMEHOW remove the thread)
+		// TODO: work out what to do with errors
 
 		const char *code = luaL_checkstring(L, 2);
 		Lnew = init_lua_vm(L, vmtyp, NULL, 0);
@@ -50,9 +112,13 @@ static int lbind_sandbox_new(lua_State *L)
 		lua_pushvalue(Lnew, -1); // back up function (so we can steal the environment)
 		lua_pcall(Lnew, 0, 0, 0);
 		lua_getupvalue(Lnew, -1, 1);
-		lua_xmove(Lnew, L, 1);
+
+		// move everything
+		copy_between_states(Lnew, L, 7);
+
+		// clean up
 		lua_remove(L, -2);
-		lua_gc(Lnew, LUA_GCCOLLECT, 0);
+		lua_close(Lnew);
 		return 1;
 
 	} else if(vmtyp == VM_PLUGIN) {
@@ -79,13 +145,12 @@ static int lbind_sandbox_new(lua_State *L)
 	*pL = Lnew;
 	struct vc_extraspace *esnew = *(struct vc_extraspace **)(lua_getextraspace(Lnew));
 	esnew->pLself = pL;
+	esnew->refcount++;
 
 	if(luaL_newmetatable(L, "VMRef") != 0)
 	{
 		// Fill in metatable
-		// FIXME: __gc
-		// TODO!
-		//lua_push(L, ); lua_setfield(L, -2, "");
+		lua_pushcfunction(L, ltyp_gc_vmref); lua_setfield(L, -2, "__gc");
 		lua_pushstring(L, "NOPE"); lua_setfield(L, -2, "__metatable");
 	}
 	lua_setmetatable(L, -2);
@@ -139,6 +204,7 @@ static int lbind_sandbox_send(lua_State *L)
 			*pL = L;
 			luaL_getmetatable(Ltarget, "VMRef");
 			lua_setmetatable(Ltarget, -2);
+			es->refcount++;
 		}
 
 		lua_seti(Ltarget, -2, 1);

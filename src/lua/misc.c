@@ -40,22 +40,29 @@ static int lbind_misc_gl_error(lua_State *L)
 
 static int lbind_misc_uncompress(lua_State *L)
 {
-	if(lua_gettop(L) < 1)
+	int top = lua_gettop(L);
+
+	if(top < 1)
 		return luaL_error(L, "expected 1 argument to misc.uncompress");
 	
 	// Grab string
 	size_t slen_full;
 	const Bytef *sdat = (const Bytef *)luaL_checklstring(L, 1, &slen_full);
 	uLongf slen = (uLongf)slen_full;
+	if(slen_full < 1024) slen_full = 1024;
 
 	// Iteratively increase buffer until we can uncompress successfully
+	// We can accept a hint if necessary
 	size_t dlen_cur = slen_full*2;
+	if(top >= 2) dlen_cur = luaL_checkinteger(L, 2);
+
 	uLongf dlen = 0;
 	Bytef *ddat = malloc(dlen_cur);
 
 	for(;;)
 	{
 		dlen = (uLongf)dlen_cur;
+		//fprintf(stderr, "dlen %d\n", dlen);
 		int result = uncompress(ddat, &dlen, sdat, slen);
 
 		if(result == Z_OK)

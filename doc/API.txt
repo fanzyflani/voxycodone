@@ -170,6 +170,11 @@ misc.mouse_grab_set(arg:b):
 misc.mouse_visible_set(arg:b):
 	Sets/clears mouse visibility.
 
+zlibdata:str = misc.uncompress(rawdata:str[, outlen:i]):
+	Compresses a string into a ZLib deflate stream.
+
+	"outlen" is used as a hint to indicate the expected output size.
+
 sandbox
 -------
 
@@ -320,6 +325,10 @@ texture.load_sub(tex:TexRef, target:TexTypeStr, level:i,
 
 	"data" is a 1D array which matches the texture format and size.
 	It should have elems*xsize*ysize*zsize elements.
+
+	ALTERNATIVELY, "data" can be a string,
+	but only bytes and unsigned bytes have defined behaviour.
+	(TODO: support endianness for larger sizes)
 
 	Elements should be Lua floats for floating-point data,
 	and Lua ints for integer data (regardless of sign).

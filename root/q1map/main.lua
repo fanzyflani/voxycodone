@@ -2,7 +2,7 @@ screen_w, screen_h = draw.screen_size_get()
 screen_scale = 2
 beam_scale = 1
 
-MAP_NAME = "start"
+MAP_NAME = "e3m6"
 
 MAP_SPLIT_W = 1024
 MAP_USE_REAL_NODES = true

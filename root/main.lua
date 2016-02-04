@@ -2,8 +2,23 @@ screen_w, screen_h = draw.screen_size_get()
 
 print("keys")
 dofile("keys.lua")
-print("gui")
-dofile("gui.lua")
+if VOXYCODONE_GL_COMPAT_PROFILE then
+	gui = {}
+	function gui_draw() end
+else
+	print("gui")
+	dofile("gui.lua")
+end
+
+-- blind VM test
+l = sandbox.new("blind", [[
+meow = 3
+]])
+print("blind result:")
+for k,v in pairs(l) do
+	print(k, v)
+end
+-- end of blind VM test
 
 vm_active_stack = {}
 vm_current = nil
@@ -87,6 +102,9 @@ function hook_tick(sec_current, sec_delta, ...)
 						vm_client = sandbox.new("plugin", "ocemu")
 						vm_current = vm_client
 					elseif v[5] == 5 then
+						vm_client = sandbox.new("plugin", "game")
+						vm_current = vm_client
+					elseif v[5] == 6 then
 						misc.exit()
 						return nil
 					end
@@ -129,7 +147,10 @@ function hook_key(key, state, ...)
 
 	if key == SDLK_ESCAPE then
 		if not state then
-			if vm_client then
+			if VOXYCODONE_GL_COMPAT_PROFILE then
+				misc.exit()
+				return nil
+			elseif vm_client then
 				gui_set_menu_active(menu_ingame, 1)
 				gui_open(menu_ingame)
 			else
@@ -217,20 +238,25 @@ end
 
 do
 	--menu_main = gui_add_menu({"root"}, "menu_main", nil, {"Start", "Host", "Options", "Help", "Quit"})
-	menu_main = gui_add_menu({"root"}, "menu_main", nil, {
-		"pmdview", "q1map", "bnlmaps", "ocemu", "Quit"})
-	menu_ingame = gui_add_menu({"root"}, "menu_ingame", nil, {"Continue", "Back to menu"})
+	if VOXYCODONE_GL_COMPAT_PROFILE then
+		vm_client = sandbox.new("plugin", "bnlmaps")
+		vm_current = vm_client
+	else
+		menu_main = gui_add_menu({"root"}, "menu_main", nil, {
+			"pmdview", "q1map", "bnlmaps", "ocemu", "game", "Quit"})
+		menu_ingame = gui_add_menu({"root"}, "menu_ingame", nil, {"Continue", "Back to menu"})
 
-	vm_menu = sandbox.new("plugin", "menu")
-	vm_current = vm_menu
+		vm_menu = sandbox.new("plugin", "menu")
+		vm_current = vm_menu
 
-	vm_client = nil
-	--vm_client = sandbox.new("plugin", "bnlmaps")
-	--vm_client = sandbox.new("plugin", "q1map")
-	--vm_current = vm_client
+		vm_client = nil
+		--vm_client = sandbox.new("plugin", "bnlmaps")
+		--vm_client = sandbox.new("plugin", "q1map")
+		--vm_current = vm_client
+	end
 
 	if not vm_client then
-		gui_set_menu_active(menu_main, 4)
+		gui_set_menu_active(menu_main, 5)
 		gui_open(menu_main)
 	end
 end

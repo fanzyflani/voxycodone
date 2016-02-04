@@ -1,7 +1,7 @@
 //version 120
 
 // vim: syntax=c
-const bool precise_shadows = true;
+const bool precise_shadows = false;
 
 // true: faster, but some slopes get "pinched" out of the scene
 // false: slower but safer

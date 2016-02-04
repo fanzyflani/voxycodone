@@ -120,24 +120,39 @@ void main()
 			// binomial binary bintastic thing i can't remember the name of
 			float sub = lstep*0.5;
 			float subsub = sub;
+
+			// TODO: r600 driver needs fixing before we can enable this
+			/*
 			for(int j = 0; j < SUBDIVS; j++)
 			{
 				subsub *= 0.5;
 
-				if(rm_scene(ray_pos-ray_step*sub) <= 0.0)
+				res = rm_scene(ray_pos-ray_step*sub);
+				if(res <= 0.0)
 					sub -= subsub;
 				else
 					sub += subsub;
 			}
+			*/
 			ray_pos -= ray_step*sub;
 			atime -= sub;
 
+			vec3 norm = normalize(vec3(
+				res - rm_scene(ray_pos + OFFS_X),
+				res - rm_scene(ray_pos + OFFS_Y),
+				res - rm_scene(ray_pos + OFFS_Z)
+			));
+			/*
 			vec3 norm = normalize(vec3(
 				rm_scene(ray_pos - OFFS_X) - rm_scene(ray_pos + OFFS_X),
 				rm_scene(ray_pos - OFFS_Y) - rm_scene(ray_pos + OFFS_Y),
 				rm_scene(ray_pos - OFFS_Z) - rm_scene(ray_pos + OFFS_Z)
 			));
-			float diff = max(0.0, -dot(norm, ray_step));
+			*/
+			//float diff = max(0.0, -dot(norm, ray_step));
+			out_color = vec4(1.0, 0.2, 0.0, 1.0);
+			out_color.rgb *= max(0.0, dot(norm, ray_step));
+			/*
 			//vec3 refl = normalize(ray_step - 2.0*dot(norm, ray_step)*norm);
 			vec3 refl = ray_step - 2.0*dot(norm, ray_step)*norm;
 			float spec = max(0.0, -dot(refl, normalize(ray_pos - vert_cam_pos)));
@@ -151,6 +166,8 @@ void main()
 			ray_pos += ray_step*0.02;
 			atime += 0.02;
 			out_acc *= 0.3;
+			*/
+			//out_color.rgb *= (diff*0.9+0.1);
 			//if(out_acc < 0.01)
 				break;
 		}

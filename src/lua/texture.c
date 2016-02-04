@@ -229,12 +229,23 @@ static int lbind_texture_load_sub(lua_State *L)
 		return luaL_error(L, "not enough elements in texture array to fill buffer");
 
 	// TODO: use directly-mapped PBOs so we don't have to malloc
-	void *data = malloc(btotal);
+	// FIXME: needs to be endian-clean
+	size_t dbufsz = 0;
+	int use_str = lua_isstring(L, aidx);
+	void *bdata = (use_str ? NULL: malloc(btotal));
+	const void *data = (use_str ? luaL_checklstring(L, aidx, &dbufsz): bdata);
 	if(data == NULL)
 		return luaL_error(L, "could not allocate temp buffer for texture");
 
+	if(use_str)
+	{
+		if(len < btotal)
+			return luaL_error(L, "string not long enough to fill buffer");
+	}
+
 	glBindTexture(tex_target, tex);
 
+	if(!use_str)
 	switch(data_fmt_typ)
 	{
 		case GL_FLOAT:
@@ -308,7 +319,7 @@ static int lbind_texture_load_sub(lua_State *L)
 			break;
 
 		default:
-			free(data);
+			if(!use_str) free(bdata);
 			return luaL_error(L, "TODO support data format \"%s\"", data_fmt_str);
 	}
 
@@ -318,27 +329,23 @@ static int lbind_texture_load_sub(lua_State *L)
 		glTexSubImage1D(tex_target, level, xoffs, xlen,
 			data_fmt_format, data_fmt_typ, data);
 
-		free(data);
-
 	} else if(dims == 2) {
 		//printf("%08X %08X %08X\n", tex_target, data_fmt_format, data_fmt_typ);
 		glTexSubImage2D(tex_target, level, xoffs, yoffs, xlen, ylen,
 			data_fmt_format, data_fmt_typ, data);
 
-		free(data);
-
 	} else if(dims == 3) {
 		glTexSubImage3D(tex_target, level, xoffs, yoffs, zoffs, xlen, ylen, zlen,
 			data_fmt_format, data_fmt_typ, data);
 
-		free(data);
-
 	} else {
-		free(data);
+		if(!use_str) free(bdata);
 
 		return luaL_error(L, "TODO: fill in other dimensions");
 
 	}
+
+	if(!use_str) free(bdata);
 
 	return 0;
 }

@@ -1,6 +1,6 @@
 return shader.new({
 vert = [=[
-#version 150
+#version 130
 
 uniform float time;
 
@@ -29,57 +29,30 @@ void main()
 ]=],
 
 frag = [=[
-#version 150
+#version 130
 
 uniform float time;
-uniform sampler2D tex_noise;
 
 in vec3 vert_ray_step;
 
 flat in vec3 vert_cam_pos;
 out vec4 out_color;
 
-float get_noise(vec2 pos)
-{
-	pos += 0.5; // hide border wrap artifacts
-	pos *= 256.0;
-	ivec2 texel = ivec2(floor(pos)) % 256;
-	vec2 t = (pos - floor(pos));
-
-	float t00 = texelFetchOffset(tex_noise, texel, 0, ivec2(0,0)).r;
-	float t01 = texelFetchOffset(tex_noise, texel, 0, ivec2(0,1)).r;
-	float t10 = texelFetchOffset(tex_noise, texel, 0, ivec2(1,0)).r;
-	float t11 = texelFetchOffset(tex_noise, texel, 0, ivec2(1,1)).r;
-
-	/*
-	Design a function such that
-	f(0) = 0
-	f(1) = 1
-	f(0.5) = 0.5
-	f(0.5-x) = 0.5-f(0.5+x)
-	*/
-
-	t = smoothstep(0.0, 1.0, t);
-
-	return mix(
-		mix(t00, t01, t.y),
-		mix(t10, t11, t.y),
-		t.x);
-
-}
-
-float get_noise_linear(vec2 pos)
-{
-	return texture(tex_noise, pos, 0).r;
-
-}
+const float OFFS = 0.01;
+const float OFFS2 = 0.70;
+const float OFFS3 = 0.03;
+const int STEPS = 30;
+const int SUBDIVS = 4;
+const vec3 OFFS_X = vec3(1.0, 0.0, 0.0)*OFFS;
+const vec3 OFFS_Y = vec3(0.0, 1.0, 0.0)*OFFS;
+const vec3 OFFS_Z = vec3(0.0, 0.0, 1.0)*OFFS;
 
 float rm_scene(vec3 pos)
 {
 	float rot = sin(pos.y*0.7 + time*0.5)*3.141593/2.0;
-	//float pnoise = (get_noise_linear(vec2(length(pos.xz)/16.0, pos.y/64.0))*2.0-1.0)*0.1;
-	//float pnoise = sin(min(abs(pos.x), abs(pos.z))*10.0)*0.04;
-	float pnoise = -sin(length(pos.xyz)*10.0)*0.2;
+	//float rot = (pos.y*0.7 + time*0.5)*3.141593/2.0;
+	//float pnoise = -sin(length(pos.xyz)*10.0)*0.2;
+	float pnoise = 0.0;
 	pos.xz = pos.xz*cos(rot) + vec2(pos.z, -pos.x)*sin(rot);
 
 	float dist = max(abs(pos.x), abs(pos.z));
@@ -87,18 +60,24 @@ float rm_scene(vec3 pos)
 	return 1.0 - dist + pnoise;
 }
 
+vec3 rm_scene_normal(vec3 pos, float base)
+{
+	return normalize(vec3(
+	//return (vec3(
+		//rm_scene(pos - OFFS_X) - rm_scene(pos + OFFS_X),
+		//rm_scene(pos - OFFS_Y) - rm_scene(pos + OFFS_Y),
+		// if we cancel this out then the R600 overflow won't fire
+		//-1.0//rm_scene(pos - OFFS_Z) - rm_scene(pos + OFFS_Z)
+		base - rm_scene(pos + OFFS_X),
+		base - rm_scene(pos + OFFS_Y),
+		base - rm_scene(pos + OFFS_Z)
+	));
+}
+
 void main()
 {
 	vec3 ray_pos = vert_cam_pos;
-	const float OFFS = 0.01;
-	const float OFFS2 = 0.70;
-	const float OFFS3 = 0.03;
-	const int STEPS = 30;
-	const int SUBDIVS = 4;
 	vec3 ray_step = normalize(vert_ray_step);
-	const vec3 OFFS_X = vec3(1.0, 0.0, 0.0)*OFFS;
-	const vec3 OFFS_Y = vec3(0.0, 1.0, 0.0)*OFFS;
-	const vec3 OFFS_Z = vec3(0.0, 0.0, 1.0)*OFFS;
 
 	// Rotate camera
 
@@ -122,19 +101,24 @@ void main()
 			{
 				subsub *= 0.5;
 
-				if(rm_scene(ray_pos-ray_step*sub) <= 0.0)
+				res = rm_scene(ray_pos-ray_step*sub);
+				if(res <= 0.0)
 					sub -= subsub;
 				else
 					sub += subsub;
 			}
+
 			ray_pos -= ray_step*sub;
 			atime -= sub;
 
-			vec3 norm = normalize(vec3(
-				rm_scene(ray_pos - OFFS_X) - rm_scene(ray_pos + OFFS_X),
-				rm_scene(ray_pos - OFFS_Y) - rm_scene(ray_pos + OFFS_Y),
-				rm_scene(ray_pos - OFFS_Z) - rm_scene(ray_pos + OFFS_Z)
-			));
+			out_color = vec4(1.0, 0.2, 0.0, 1.0);
+
+			res = rm_scene(ray_pos);
+			vec3 norm = rm_scene_normal(ray_pos, res);
+			vec3 reldir = normalize(ray_pos - vert_cam_pos);
+			//out_color.rgb *= 0.1 + 0.9*max(0.0, -dot(reldir, norm));
+			out_color.rgb *= max(0.0, -dot(reldir, norm));
+			/*
 			float diff = max(0.0, -dot(norm, ray_step));
 			//vec3 refl = normalize(ray_step - 2.0*dot(norm, ray_step)*norm);
 			vec3 refl = ray_step - 2.0*dot(norm, ray_step)*norm;
@@ -149,6 +133,7 @@ void main()
 			ray_pos += ray_step*0.02;
 			atime += 0.02;
 			out_acc *= 0.3;
+			*/
 			//if(out_acc < 0.01)
 				break;
 		}

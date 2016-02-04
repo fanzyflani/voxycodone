@@ -8,8 +8,8 @@ DEPTHONLY = 2
 DEPTHONLY_MIN = 2
 DEPTHONLY_STEP = 2
 
-MAP_IS_WIRE = false; MAP_NAME = "map-1"
---MAP_IS_WIRE = true; MAP_NAME = "mountain_express"
+--MAP_IS_WIRE = false; MAP_NAME = "map-1"
+MAP_IS_WIRE = true; MAP_NAME = "mountain_express"
 
 -- from SDL_keycode.h
 SDLK_ESCAPE = 27
@@ -118,6 +118,7 @@ function hook_render(sec_current)
 	-- DEPTH
 	local i
 	for i=DEPTHONLY,DEPTHONLY_MIN,-DEPTHONLY_STEP do
+		if i == 0 then break end
 		fbo.target_set(fbo_depth[i])
 		shader.use(shader_beamer)
 		shader.uniform_f(shader.uniform_location_get(shader_beamer, "time"), sec_current)
@@ -347,10 +348,15 @@ function load_stuff()
 		zmjson = bin_load("map/"..MAP_NAME..".bnlbin")
 		coroutine.yield()
 		smjson = misc.uncompress(zmjson)
+		coroutine.yield()
 		mjson = json_parse(smjson)
+		coroutine.yield()
+		print(json_encode(mjson))
+		coroutine.yield()
 		zmdata = base64_decode(mjson.map.blocks_data)
-		print(zmdata:byte(1), zmdata:byte(2))
+		coroutine.yield()
 		mdata = "\x00\x00\x00\x00\x00\x00" .. misc.uncompress(zmdata)
+		print(zmdata:byte(1), zmdata:byte(2))
 		map_lx = mjson.map.size.x
 		map_ly = mjson.map.size.y
 		map_lz = mjson.map.size.z
@@ -504,13 +510,16 @@ function load_stuff()
 
 	tex_screen = texture.new("2", 1, "4nb", screen_w//screen_scale, screen_h//screen_scale, "ll", "4nb")
 	coroutine.yield()
-	fbo_scene = fbo.new()
-	fbo.bind_tex(fbo_scene, 0, "2", tex_screen, 0)
-	assert(fbo.validate(fbo_scene))
+	if screen_scale ~= 1 then
+		fbo_scene = fbo.new()
+		fbo.bind_tex(fbo_scene, 0, "2", tex_screen, 0)
+		assert(fbo.validate(fbo_scene))
+	end
 
 	tex_depth = {}
 	fbo_depth = {}
 	for i=DEPTHONLY_MIN,DEPTHONLY_STEP do
+		if i == 0 then break end
 		tex_depth[i] = texture.new("2", 1, "2f", (screen_w//screen_scale)>>i, (screen_h//screen_scale)>>i, "ll", "1f")
 		fbo_depth[i] = fbo.new()
 		fbo.bind_tex(fbo_depth[i], 0, "2", tex_depth[i], 0)
