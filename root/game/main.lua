@@ -294,16 +294,20 @@ function load_stuff()
 		--coroutine.yield()
 	end
 	print(misc.gl_error())
-	map_density = {}
-	local j
-	local offs = 0
-	for j=1,512*512*256 do
-		map_density[j] = (map_data_raw:byte(j+offs) == 0 and 0xFFFF) or 0
+	if voxel.build_density_map then
+		voxel.build_density_map(tex_density, 256, 512, 512, map_data_raw)
+	else
+		map_density = {}
+		local j
+		local offs = 0
+		for j=1,512*512*256 do
+			map_density[j] = (map_data_raw:byte(j+offs) == 0 and 0xFFFF) or 0
+		end
+		texture.load_sub(tex_density, "3", i,
+			0, 0, 0,
+			256, 512, 512,
+			"1ns", map_density)
 	end
-	texture.load_sub(tex_density, "3", i,
-		0, 0, 0,
-		256, 512, 512,
-		"1ns", map_density)
 	texture.gen_mipmaps(tex_density, "3")
 	print(misc.gl_error())
 	coroutine.yield()
