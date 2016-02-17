@@ -29,6 +29,97 @@ cam_vel_z = 0.0
 
 loading = nil
 
+function mapgen_point(x, y, z)
+	--return (math.random() < 0.02 and 0)
+	--return ((y&32)~=0 and 0)
+	return math.sin(x*math.pi/16.0)*math.sin(z*math.pi/16.0) + math.cos(y*math.pi/16.0)>=0.0
+end
+
+function mapgen_area(cx, cy, cz)
+	assert(cx >= 0 and cx < 512)
+	assert(cy >= 0 and cy < 256)
+	assert(cz >= 0 and cz < 512)
+	assert((cx&31) == 0)
+	assert((cy&31) == 0)
+	assert((cz&31) == 0)
+	print(cx, cy, cz)
+	local data = {{}, {}, {}, {}, {}, {}}
+
+	-- Generate base
+	local x,y,z
+	for z=0,31 do
+	for x=0,31 do
+	for y=0,31 do
+		data[1][1+y+32*(x+32*z)] = (mapgen_point(cx+x, cy+y, cz+z) and 0) or 1
+	end end end
+
+	-- Build miptree upwards
+	local i
+	local w1 = 32
+	local w2 = 16
+	for i=1,5 do
+		local bx,by,bz
+		for bz=0,w2-1 do
+		for bx=0,w2-1 do
+		for by=0,w2-1 do
+			local out = i+1
+			local sx,sy,sz
+			local offs = 1+by*2+w1*(bx*2+w1*bz*2)
+			for sz=0,1 do
+			if out == 0 then break end
+			for sx=0,1 do
+			if out == 0 then break end
+			for sy=0,1 do
+				--if data[i][1+(by*2+sy)+w1*((bx*2+sx)+w1*(bz*2+sz))] == 0 then
+				if data[i][offs+sy+w1*(sx+w1*sz)] == 0 then
+					out = 0
+					break
+				end
+			end end end
+
+			data[i+1][1+by+w2*(bx+w2*bz)] = out
+		end end end
+
+		w1 = w1>>1
+		w2 = w2>>1
+	end
+
+	-- Build miptree downwards
+	w2 = 1
+	w1 = 2
+	for i=5,1,-1 do
+		for bz=0,w2-1 do
+		for bx=0,w2-1 do
+		for by=0,w2-1 do
+			local ov = data[i+1][1+by+w2*(bx+w2*bz)]
+			--assert(ov)
+			if ov ~= 0 then
+				local sx,sy,sz
+				local offs = 1+by*2+w1*(bx*2+w1*bz*2)
+				for sz=0,1 do
+				for sx=0,1 do
+				for sy=0,1 do
+					--assert(data[i][offs+sy+w1*(sx+w1*sz)])
+					--assert(data[i][offs+sy+w1*(sx+w1*sz)] ~= 0)
+					data[i][offs+sy+w1*(sx+w1*sz)] = ov
+				end end end
+			end
+		end end end
+		w2 = w2<<1
+		w1 = w1<<1
+	end
+
+	-- Write to texture
+	misc.gl_error()
+	for i=0,5 do
+		texture.load_sub(tex_geom, "3", i,
+			cy>>i, cx>>i, cz>>i,
+			32>>i, 32>>i, 32>>i,
+			"1ub", data[i+1])
+		print(misc.gl_error())
+	end
+end
+
 function hook_key(key, state)
 	if key == SDLK_ESCAPE and not state then
 		misc.exit()
@@ -98,7 +189,9 @@ function hook_render(sec_current)
 	shader.uniform_matrix_4f(shader.uniform_location_get(shader_tracer, "in_cam_inverse"), mat_cam2)
 	shader.uniform_f(shader.uniform_location_get(shader_tracer, "cam_pos"), cam_pos_x, cam_pos_y, cam_pos_z)
 	shader.uniform_i(shader.uniform_location_get(shader_tracer, "tex_geom"), 0)
+	shader.uniform_i(shader.uniform_location_get(shader_tracer, "tex_density"), 1)
 	texture.unit_set(0, "3", tex_geom)
+	texture.unit_set(1, "3", tex_density)
 	draw.viewport_set(0, 0, screen_w//screen_scale, screen_h//screen_scale)
 	draw.blit()
 
@@ -178,6 +271,7 @@ function load_stuff()
 	-- Map texture
 	print(misc.gl_error())
 	tex_geom = texture.new("3", 6, "1ub", 256, 512, 512, "nn", "1ub")
+	tex_density = texture.new("3", 6, "1ns", 256, 512, 512, "lln", "1us")
 	local offs, step, i = 1, 512*512*256
 	print(map_data_raw:sub(1,1):byte())
 	print(map_data_raw:sub(256,256):byte())
@@ -200,7 +294,28 @@ function load_stuff()
 		--coroutine.yield()
 	end
 	print(misc.gl_error())
+	map_density = {}
+	local j
+	local offs = 0
+	for j=1,512*512*256 do
+		map_density[j] = (map_data_raw:byte(j+offs) == 0 and 0xFFFF) or 0
+	end
+	texture.load_sub(tex_density, "3", i,
+		0, 0, 0,
+		256, 512, 512,
+		"1ns", map_density)
+	texture.gen_mipmaps(tex_density, "3")
+	print(misc.gl_error())
 	coroutine.yield()
+
+	-- Mapgen
+	local i
+	for i=1,40 do
+		local ix = math.tointeger(math.floor(math.random()*512/32))*32
+		local iy = math.tointeger(math.floor(math.random()*256/32))*32
+		local iz = math.tointeger(math.floor(math.random()*512/32))*32
+		--mapgen_area(ix, iy, iz)
+	end
 
 	-- FBO
 	tex_screen = texture.new("2", 1, "4nb", screen_w//screen_scale, screen_h//screen_scale, "ll", "4nb")

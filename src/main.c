@@ -206,6 +206,7 @@ int main(int argc, char *argv[])
 	}
 
 	// Clean up
+	printf("*** FINAL CLEANUP ***\n");
 	struct vc_extraspace *es = *(struct vc_extraspace **)(lua_getextraspace(Lbase));
 	free(es->root_dir);
 	free(es);
