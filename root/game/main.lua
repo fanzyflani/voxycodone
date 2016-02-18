@@ -20,9 +20,9 @@ SDLK_LCTRL = (1<<30)+224
 
 cam_rot_x = 0.0
 cam_rot_y = math.pi
-cam_pos_x = 0.0
-cam_pos_y = 16.0
-cam_pos_z = -10.0
+cam_pos_x = 256.5
+cam_pos_y = 192.5+16.0
+cam_pos_z = 256.5
 cam_vel_x = 0.0
 cam_vel_y = 0.0
 cam_vel_z = 0.0
@@ -143,9 +143,6 @@ function hook_mouse_button(button, state)
 	elseif button == 3 and state then
 		-- right
 		local px, py, pz = cam_pos_x, cam_pos_y, cam_pos_z
-		px = px + 256.5
-		pz = pz + 256.5
-		py = py + 192.5
 		py = 256.0-py
 
 		local ix = math.tointeger(math.floor(px/2.0))
@@ -210,7 +207,7 @@ function hook_render(sec_current)
 
 	shader.use(shader_tracer)
 	shader.uniform_matrix_4f(shader.uniform_location_get(shader_tracer, "in_cam_inverse"), mat_cam2)
-	shader.uniform_f(shader.uniform_location_get(shader_tracer, "cam_pos"), cam_pos_x, cam_pos_y, cam_pos_z)
+	shader.uniform_f(shader.uniform_location_get(shader_tracer, "cam_pos"), 256.0-cam_pos_y, cam_pos_x, cam_pos_z)
 	shader.uniform_i(shader.uniform_location_get(shader_tracer, "tex_geom"), 0)
 	shader.uniform_i(shader.uniform_location_get(shader_tracer, "tex_density"), 1)
 	shader.uniform_i(shader.uniform_location_get(shader_tracer, "tex_ltpos"), 2)

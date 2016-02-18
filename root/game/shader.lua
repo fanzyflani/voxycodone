@@ -11,7 +11,7 @@ void main()
 	cam_dir = normalize((-in_cam_inverse[2]
 		+ in_cam_inverse[0] * in_vec.x * 1280.0/720.0
 		+ in_cam_inverse[1] * in_vec.y
-		).xyz);
+		).yxz)*vec3(-1.0, 1.0, 1.0);
 
 	gl_Position = vec4(in_vec, 0.1, 1.0);
 }
@@ -189,15 +189,8 @@ float cast_ray(inout vec3 ray_pos, vec3 ray_dir, out vec3 frnorm, float maxtime,
 void main()
 {
 	vec3 ray_pos = cam_pos;
-	ray_pos.xz += 256.5;
-	ray_pos.y += 192.5;
-	ray_pos.y = 256.0-ray_pos.y;
 
 	vec3 ray_dir = cam_dir;
-	ray_dir.y = -ray_dir.y;
-
-	ray_pos = ray_pos.yxz;
-	ray_dir = ray_dir.yxz;
 
 	vec3 frnorm;
 	vec3 outpos = ray_pos;
