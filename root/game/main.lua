@@ -269,7 +269,10 @@ function load_stuff()
 	print(misc.gl_error())
 	tex_geom = texture.new("3", 6, "1ub", 256, 512, 512, "nn", "1ub")
 	tex_density = texture.new("3", 6, "1ns", 256, 512, 512, "lln", "1us")
-	tex_ltpos = texture.new("3", 9, "4f", 256, 512, 512, "lln", "4f")
+
+	-- this one needs to be smaller
+	-- otherwise we chew 1GB of VRAM right off the bat
+	tex_ltpos = texture.new("3", 8, "4f", 128, 256, 256, "lln", "4f")
 
 	-- Map data
 	map_data_raw = misc.uncompress(bin_load("test.dat"),
@@ -312,6 +315,7 @@ function load_stuff()
 			0, 0, 0,
 			256, 512, 512,
 			"1ns", map_density)
+		map_density = nil
 	end
 	print("mipgen: density")
 	texture.gen_mipmaps(tex_density, "3")
@@ -333,13 +337,14 @@ function load_stuff()
 	local i
 	for i=1,1000 do
 		local ix, iy, iz
+		local offs = 512*512*256+1
 		repeat
-			ix = math.tointeger(math.floor(math.random()*512))
-			iy = math.tointeger(math.floor(math.random()*256))
-			iz = math.tointeger(math.floor(math.random()*512))
-		until map_data_raw:byte(1+iy+256*(ix+512*iz)) ~= 0
+			ix = math.tointeger(math.floor(math.random()*512/2))
+			iy = math.tointeger(math.floor(math.random()*256/2))
+			iz = math.tointeger(math.floor(math.random()*512/2))
+		until map_data_raw:byte(offs+iy+256/2*(ix+512/2*iz)) ~= 0
 
-		while map_data_raw:byte(1+iy+1+256*(ix+512*iz)) ~= 0 do
+		while map_data_raw:byte(offs+iy+1+256/2*(ix+512/2*iz)) ~= 0 do
 			iy = iy + 1
 		end
 

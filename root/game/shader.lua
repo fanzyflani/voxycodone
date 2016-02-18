@@ -205,9 +205,9 @@ void main()
 	diffamb += 0.2*vec3(0.3, 0.5, 0.6)*max(0.0, dot(frnorm, vdir));
 
 	// positioned lights
-	float amul = 1.0*pow(8.0, 3.0);
-	float rmul = 1.0*pow(0.9, 3.0);
-	for(int i = 3; i < 9; i++, amul *= 8.0, rmul *= 0.9)
+	float amul = 1.0*pow(8.0, 2.0);
+	float rmul = 1.0*pow(0.9, 2.0);
+	for(int i = 2; i < 8; i++, amul *= 8.0, rmul *= 0.9)
 	{
 		vec4 ltval = textureLod(tex_ltpos, fpos, float(i));
 		if(ltval.a != 0.0)
