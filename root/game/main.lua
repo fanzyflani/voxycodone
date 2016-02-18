@@ -190,8 +190,10 @@ function hook_render(sec_current)
 	shader.uniform_f(shader.uniform_location_get(shader_tracer, "cam_pos"), cam_pos_x, cam_pos_y, cam_pos_z)
 	shader.uniform_i(shader.uniform_location_get(shader_tracer, "tex_geom"), 0)
 	shader.uniform_i(shader.uniform_location_get(shader_tracer, "tex_density"), 1)
+	shader.uniform_i(shader.uniform_location_get(shader_tracer, "tex_ltpos"), 2)
 	texture.unit_set(0, "3", tex_geom)
 	texture.unit_set(1, "3", tex_density)
+	texture.unit_set(2, "3", tex_ltpos)
 	draw.viewport_set(0, 0, screen_w//screen_scale, screen_h//screen_scale)
 	draw.blit()
 
@@ -263,15 +265,18 @@ function load_stuff()
 	assert(shader_tracer)
 	coroutine.yield()
 
+	-- Textures
+	print(misc.gl_error())
+	tex_geom = texture.new("3", 6, "1ub", 256, 512, 512, "nn", "1ub")
+	tex_density = texture.new("3", 6, "1ns", 256, 512, 512, "lln", "1us")
+	tex_ltpos = texture.new("3", 9, "4f", 256, 512, 512, "lln", "4f")
+
 	-- Map data
 	map_data_raw = misc.uncompress(bin_load("test.dat"),
 		512*512*256 + 256*256*128 + 128*128*64 + 64*64*32 + 32*32*16 + 16*16*8)
 	coroutine.yield()
 
 	-- Map texture
-	print(misc.gl_error())
-	tex_geom = texture.new("3", 6, "1ub", 256, 512, 512, "nn", "1ub")
-	tex_density = texture.new("3", 6, "1ns", 256, 512, 512, "lln", "1us")
 	local offs, step, i = 1, 512*512*256
 	print(map_data_raw:sub(1,1):byte())
 	print(map_data_raw:sub(256,256):byte())
@@ -308,7 +313,9 @@ function load_stuff()
 			256, 512, 512,
 			"1ns", map_density)
 	end
+	print("mipgen: density")
 	texture.gen_mipmaps(tex_density, "3")
+	print("density generated")
 	print(misc.gl_error())
 	coroutine.yield()
 
@@ -320,6 +327,33 @@ function load_stuff()
 		local iz = math.tointeger(math.floor(math.random()*512/32))*32
 		--mapgen_area(ix, iy, iz)
 	end
+
+	-- Random lights
+	-- TODO: clear texture somehow
+	local i
+	for i=1,1000 do
+		local ix, iy, iz
+		repeat
+			ix = math.tointeger(math.floor(math.random()*512))
+			iy = math.tointeger(math.floor(math.random()*256))
+			iz = math.tointeger(math.floor(math.random()*512))
+		until map_data_raw:byte(1+iy+256*(ix+512*iz)) ~= 0
+
+		while map_data_raw:byte(1+iy+1+256*(ix+512*iz)) ~= 0 do
+			iy = iy + 1
+		end
+
+		print("light", i, ix, iy, iz)
+		local data = {ix, iy, iz, 1.0}
+		texture.load_sub(tex_ltpos, "3", 0,
+			iy, ix, iz,
+			1, 1, 1,
+			"4f", data)
+		--mapgen_area(ix, iy, iz)
+	end
+	print("mipgen: ltpos")
+	texture.gen_mipmaps(tex_ltpos, "3")
+	print("ltpos generated")
 
 	-- FBO
 	tex_screen = texture.new("2", 1, "4nb", screen_w//screen_scale, screen_h//screen_scale, "ll", "4nb")

@@ -21,6 +21,7 @@ void main()
 
 uniform usampler3D tex_geom;
 uniform sampler3D tex_density;
+uniform sampler3D tex_ltpos;
 
 uniform vec3 cam_pos;
 in vec3 cam_dir;
@@ -178,19 +179,50 @@ void main()
 		cell += (skip*cinc);
 	}
 
-	const float AMBIENT = 0.1;
-	fcol.rgb *= mix(AMBIENT, max(0.0, dot(frnorm, vdir)), 1.0);
 	vec3 fpos = vec3(cell);
 	fpos += vec3(cpositive)-vec3(cinc)*wall*adir;
 	fpos = fpos*(1.0/vec3(256.0, 512.0, 512.0));
-	fcol.rgb *= (1.0 - (0.0
-		+textureLod(tex_density, fpos, 5.0).r
-		+textureLod(tex_density, fpos, 4.0).r
-		+textureLod(tex_density, fpos, 3.0).r
-		+textureLod(tex_density, fpos, 2.0).r
-		+textureLod(tex_density, fpos, 1.0).r
-		+textureLod(tex_density, fpos, 0.0).r
-		)/6.0);
+
+	const float AMBIENT = 0.1;
+	float ambmul = (1.0 - 0.9*(0.0
+		//+textureLod(tex_density, fpos, 5.0).r
+		//+textureLod(tex_density, fpos, 4.0).r
+		//+textureLod(tex_density, fpos, 3.0).r
+		//+textureLod(tex_density, fpos, 2.0).r
+		//+textureLod(tex_density, fpos, 1.0).r
+		+max(0.0, textureLod(tex_density, fpos, 1.0).r*2.0-1.0)
+		+max(0.0, textureLod(tex_density, fpos, 0.0).r*2.0-1.0)
+		)/2.0);
+
+	//
+	vec3 diffamb = vec3(0.0);
+	vec3 specular = vec3(0.0);
+
+	// ambient
+	diffamb += AMBIENT*ambmul;
+
+	// camera light
+	diffamb += 0.2*vec3(0.3, 0.5, 0.6)*max(0.0, dot(frnorm, vdir));
+
+	// positioned lights
+	float amul = 1.0*pow(8.0, 3.0);
+	float rmul = 1.0*pow(0.9, 3.0);
+	for(int i = 3; i < 9; i++, amul *= 8.0, rmul *= 0.9)
+	{
+		vec4 ltval = textureLod(tex_ltpos, fpos, float(i));
+		if(ltval.a != 0.0)
+		{
+			vec3 ltdir = ltval.rgb/ltval.a;
+			ltdir -= fpos;
+			ltdir = normalize(ltdir);
+			diffamb += vec3(0.5, 0.3, 0.2)*max(0.0, dot(frnorm, ltdir))
+				*min(1.0, ltval.a*amul)*rmul;
+		}
+	}
+
+	// combine all
+	fcol.rgb *= diffamb;
+	fcol.rgb += specular;
 }
 
 ]=]}, {"in_vec"}, {"fcol"})

@@ -1,8 +1,11 @@
-code based on my solo entry to Demosplash 2015, "The Future Is Yesterday"
+voxycodone: an engine designed for raytracing voxels and putting them in a multiplayer game
 
 ----
 
 dependencies: SDL2, SDL2\_mixer, libepoxy, Lua 5.3, zlib
+
+(SDL2\_mixer isn't used right now but will be when I get my head around it -
+ also, ENet will probably be used too)
 
 uses datenwolf's linmath.h "licensed" under WTFPLv2 (Public Domain)
 
