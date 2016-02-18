@@ -233,10 +233,10 @@ void main()
 	diffamb += 0.2*vec3(0.3, 0.5, 0.6)*max(0.0, dot(frnorm, vdir));
 
 	// positioned lights
-	float amul = 1.0*pow(8.0, 7.0);
+	float amul = 1.0*pow(8.0, 0.0);
 	ivec3 texcell = ivec3(outpos);
 	float tlight = 0.0;
-	for(int i = 7, lmax = 2; i >= 0; i--, amul /= 8.0)
+	for(int i = 0, lmax = 2; i < 5; i++, amul *= 8.0)
 	{
 		//vec4 ltval_N = texelFetch(tex_ltpos, texcell>>(i+1), i);
 		vec4 ltval_L = textureLod(tex_ltpos, fpos, float(i));
@@ -265,6 +265,20 @@ void main()
 		}
 	}
 	diffamb += vec3(0.5, 0.3, 0.2)*tlight;
+
+	// sunlight + moonlight
+	// TODO: adjustable angle + colour
+	{
+		const vec3 SUNLIGHT = vec3(-1.0, 0.2, 0.2);
+		vec3 cast_pos, cast_norm;
+		vec4 cast_col;
+		cast_pos = outpos - vdir;
+		float cast_time = cast_ray(cast_pos, SUNLIGHT, cast_norm, RENDER_MAXTIME, cast_col);
+
+		if(cast_time >= RENDER_MAXTIME*0.9)
+			diffamb += vec3(0.8, 0.8, 0.8)*max(0.0, -dot(normalize(SUNLIGHT),frnorm));
+
+	}
 
 	// combine all
 	fcol.rgb *= diffamb;
