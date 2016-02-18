@@ -40,32 +40,23 @@ uint world_get_geom(ivec3 pos, int layer)
 	return texelFetch(tex_geom, pos, layer).r;
 }
 
-void main()
+float cast_ray(inout vec3 ray_pos, vec3 ray_dir, out vec3 frnorm, float maxtime, out vec4 fcol)
 {
 	const int MAX_STEP = 2000;
 	const float EPSILON = 0.0001;
 	const int MAX_LAYER = 5;
 
 	int layer = 0;
-
-	vec3 ray_pos = cam_pos;
-	ray_pos.xz += 256.5;
-	ray_pos.y += 192.5;
-	ray_pos.y = 256.0-ray_pos.y;
-
-	vec3 ray_dir = cam_dir;
-	ray_dir.y = -ray_dir.y;
-
-	ray_pos = ray_pos.yxz;
-	ray_dir = ray_dir.yxz;
+	float atime = 0.0;
 
 	vec3 vdir = normalize(ray_dir);
 	ivec3 cpositive = ivec3(greaterThanEqual(vdir, vec3(0.0)));
 	ivec3 cinc = 2*cpositive-1;
 	vec3 needbend = vec3(lessThan(abs(vec3(vdir)), vec3(EPSILON)));
 	vdir = EPSILON*needbend + vdir*(1.0-needbend);
-	fcol = vec4(vdir.xyz, 1.0)*0.5+0.5;
-	vec3 frnorm = vdir;
+	//fcol = vec4(vdir.xyz, 1.0)*0.5+0.5;
+	fcol = vec4(1.0, 0.0, 1.0, 1.0);
+	frnorm = vdir;
 	ivec3 cell = ivec3(floor(ray_pos));
 	vec3 adir = abs(vdir);
 	vec3 aidir = 1.0/adir;
@@ -77,8 +68,20 @@ void main()
 	wall = (mod(cpositive + wall*-vec3(cinc), vec3(1.0)))/adir;
 
 	ivec3 skip = ivec3(0,0,1);
-	for(int i = 0; i < MAX_STEP; i++)
+	for(int i = 0; i < MAX_STEP && atime < maxtime; i++)
 	{
+		// step
+		float mtime = min(min(wall.x, wall.y), wall.z);
+		skip = ivec3(lessThanEqual(wall, vec3(mtime)));
+		wall -= mtime;
+		atime += mtime*float(1<<layer);
+		wall += vec3(skip)*aidir;
+		cell += (skip*cinc);
+
+		// if out of range, stop
+		if(any(lessThan(cell, ivec3(0)))) return maxtime;
+		if(any(greaterThanEqual(cell<<layer, ivec3(256,512,512)))) return maxtime;
+
 		// compare
 		uint v = world_get_geom(cell, layer);
 
@@ -170,19 +173,42 @@ void main()
 			cell >>= layerinc;
 			layer = nlayer;
 		}
-
-		// step
-		float mtime = min(min(wall.x, wall.y), wall.z);
-		skip = ivec3(lessThanEqual(wall, vec3(mtime)));
-		wall -= mtime;
-		wall += vec3(skip)*aidir;
-		cell += (skip*cinc);
 	}
 
+	/*
 	vec3 fpos = vec3(cell);
 	fpos += vec3(cpositive)-vec3(cinc)*wall*adir;
-	fpos = fpos*(1.0/vec3(256.0, 512.0, 512.0));
+	ray_pos = fpos;
+	*/
 
+	ray_pos = ray_pos + normalize(ray_dir)*atime;
+
+	return atime;
+}
+
+void main()
+{
+	vec3 ray_pos = cam_pos;
+	ray_pos.xz += 256.5;
+	ray_pos.y += 192.5;
+	ray_pos.y = 256.0-ray_pos.y;
+
+	vec3 ray_dir = cam_dir;
+	ray_dir.y = -ray_dir.y;
+
+	ray_pos = ray_pos.yxz;
+	ray_dir = ray_dir.yxz;
+
+	vec3 frnorm;
+	vec3 outpos = ray_pos;
+	float RENDER_MAXTIME = 10000.0;
+	float atime_init = cast_ray(outpos, ray_dir, frnorm, RENDER_MAXTIME, fcol);
+	if(atime_init == RENDER_MAXTIME) return;
+
+	vec3 fpos = outpos*(1.0/vec3(256.0, 512.0, 512.0));
+	vec3 vdir = normalize(ray_dir);
+
+	// ambient occlusion
 	const float AMBIENT = 0.1;
 	float ambmul = (1.0 - 0.9*(0.0
 		//+textureLod(tex_density, fpos, 5.0).r
@@ -195,6 +221,8 @@ void main()
 		)/2.0);
 
 	//
+	// LIGHTING
+	//
 	vec3 diffamb = vec3(0.0);
 	vec3 specular = vec3(0.0);
 
@@ -205,18 +233,29 @@ void main()
 	diffamb += 0.2*vec3(0.3, 0.5, 0.6)*max(0.0, dot(frnorm, vdir));
 
 	// positioned lights
-	float amul = 1.0*pow(8.0, 2.0);
-	float rmul = 1.0*pow(0.9, 2.0);
-	for(int i = 2; i < 8; i++, amul *= 8.0, rmul *= 0.9)
+	float amul = 1.0*pow(8.0, 3.0);
+	float rmul = 1.0*pow(0.9, 3.0);
+	ivec3 texcell = ivec3(outpos);
+	for(int i = 3; i < 6; i++, amul *= 8.0, rmul *= 0.9)
 	{
-		vec4 ltval = textureLod(tex_ltpos, fpos, float(i));
-		if(ltval.a != 0.0)
+		//vec4 ltval_N = texelFetch(tex_ltpos, texcell>>(i+1), i);
+		vec4 ltval_L = textureLod(tex_ltpos, fpos, float(i));
+		if(ltval_L.w != 0.0)
 		{
-			vec3 ltdir = ltval.rgb/ltval.a;
-			ltdir -= fpos;
-			ltdir = normalize(ltdir);
-			diffamb += vec3(0.5, 0.3, 0.2)*max(0.0, dot(frnorm, ltdir))
-				*min(1.0, ltval.a*amul)*rmul;
+			vec3 ltpos_L = ltval_L.xyz/ltval_L.w;
+			vec3 cast_pos = outpos;
+			vec3 ltdir_L = normalize(ltpos_L - outpos);
+			float ltdist = length(ltpos_L - outpos);
+			vec3 cast_norm;
+			vec4 cast_col;
+			float cast_time = cast_ray(cast_pos, ltdir_L, cast_norm, ltdist, cast_col);
+			if(cast_time >= ltdist*0.8)
+			{
+				diffamb += vec3(0.5, 0.3, 0.2)*max(0.0, -dot(frnorm, ltdir_L))
+					*min(1.0, ltval_L.w*amul)*rmul
+					*min(1.0, (cast_time-ltdist*0.8)/(ltdist*0.2))
+					;
+			}
 		}
 	}
 

@@ -1,5 +1,5 @@
 screen_w, screen_h = draw.screen_size_get()
-screen_scale = 1
+screen_scale = 2
 
 -- from SDL_keycode.h
 SDLK_RETURN = 13
@@ -142,6 +142,29 @@ function hook_mouse_button(button, state)
 		-- middle
 	elseif button == 3 and state then
 		-- right
+		local px, py, pz = cam_pos_x, cam_pos_y, cam_pos_z
+		px = px + 256.5
+		pz = pz + 256.5
+		py = py + 192.5
+		py = 256.0-py
+
+		local ix = math.tointeger(math.floor(px/2.0))
+		local iy = math.tointeger(math.floor(py/2.0))
+		local iz = math.tointeger(math.floor(pz/2.0))
+
+		print(ix, iy, iz)
+
+		if ix >= 0 and iy >= 0 and iz >= 0 then
+		if ix < 256 and iy < 128 and iz < 256 then
+			local data = {py, px, pz, 1.0}
+			map_light_data[1+iy+128*(ix+256*iz)] = data
+			texture.load_sub(tex_ltpos, "3", 0,
+				iy, ix, iz,
+				1, 1, 1,
+				"4f", data)
+			texture.gen_mipmaps(tex_ltpos, "3")
+		end
+		end
 	end
 end
 
@@ -268,7 +291,7 @@ function load_stuff()
 	-- Textures
 	print(misc.gl_error())
 	tex_geom = texture.new("3", 6, "1ub", 256, 512, 512, "nn", "1ub")
-	tex_density = texture.new("3", 6, "1ns", 256, 512, 512, "lln", "1us")
+	tex_density = texture.new("3", 9, "1ns", 256, 512, 512, "lln", "1us")
 
 	-- this one needs to be smaller
 	-- otherwise we chew 1GB of VRAM right off the bat
@@ -335,21 +358,31 @@ function load_stuff()
 	-- Random lights
 	-- TODO: clear texture somehow
 	local i
-	for i=1,1000 do
+	map_light_data = {}
+	for i=1,0 do
 		local ix, iy, iz
 		local offs = 512*512*256+1
 		repeat
-			ix = math.tointeger(math.floor(math.random()*512/2))
-			iy = math.tointeger(math.floor(math.random()*256/2))
-			iz = math.tointeger(math.floor(math.random()*512/2))
-		until map_data_raw:byte(offs+iy+256/2*(ix+512/2*iz)) ~= 0
+			iy = math.tointeger(math.floor(math.random()*128))
+			ix = math.tointeger(math.floor(math.random()*256))
+			iz = math.tointeger(math.floor(math.random()*256))
+		until map_data_raw:byte(offs+iy+128*(ix+256*iz)) ~= 0
 
-		while map_data_raw:byte(offs+iy+1+256/2*(ix+512/2*iz)) ~= 0 do
-			iy = iy + 1
+		if false then
+			iy = 127
+			while map_data_raw:byte(offs+iy+256/2*(ix+512/2*iz)) == 0 do
+				iy = iy - 1
+			end
+		elseif true then
+			while map_data_raw:byte(offs+iy+1+128*(ix+256*iz)) ~= 0 do
+				iy = iy + 1
+			end
 		end
 
 		print("light", i, ix, iy, iz)
-		local data = {ix, iy, iz, 1.0}
+		local dbias = 1.0
+		local data = {iy*2+dbias, ix*2+dbias, iz*2+dbias, 1.0}
+		map_light_data[1+iy+128*(ix+256*iz)] = data
 		texture.load_sub(tex_ltpos, "3", 0,
 			iy, ix, iz,
 			1, 1, 1,
