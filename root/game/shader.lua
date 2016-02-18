@@ -139,7 +139,7 @@ float cast_ray(inout vec3 ray_pos, vec3 ray_dir, out vec3 frnorm, float maxtime,
 					}
 				}
 
-			} else if(i != 0) {
+			} else {
 				// output colour
 				fcol = vec4(1.0, 1.0, 1.0, 1.0);
 				frnorm = normalize(vec3(skip*cinc));
