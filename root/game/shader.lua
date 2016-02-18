@@ -55,7 +55,7 @@ float cast_ray(inout vec3 ray_pos, vec3 ray_dir, out vec3 frnorm, float maxtime,
 	vec3 needbend = vec3(lessThan(abs(vec3(vdir)), vec3(EPSILON)));
 	vdir = EPSILON*needbend + vdir*(1.0-needbend);
 	//fcol = vec4(vdir.xyz, 1.0)*0.5+0.5;
-	fcol = vec4(1.0, 0.0, 1.0, 1.0);
+	fcol = vec4(0.2, 0.0, 0.3, 1.0);
 	frnorm = vdir;
 	ivec3 cell = ivec3(floor(ray_pos));
 	vec3 adir = abs(vdir);
@@ -233,31 +233,38 @@ void main()
 	diffamb += 0.2*vec3(0.3, 0.5, 0.6)*max(0.0, dot(frnorm, vdir));
 
 	// positioned lights
-	float amul = 1.0*pow(8.0, 3.0);
-	float rmul = 1.0*pow(0.9, 3.0);
+	float amul = 1.0*pow(8.0, 7.0);
 	ivec3 texcell = ivec3(outpos);
-	for(int i = 3; i < 6; i++, amul *= 8.0, rmul *= 0.9)
+	float tlight = 0.0;
+	for(int i = 7, lmax = 2; i >= 0; i--, amul /= 8.0)
 	{
 		//vec4 ltval_N = texelFetch(tex_ltpos, texcell>>(i+1), i);
 		vec4 ltval_L = textureLod(tex_ltpos, fpos, float(i));
 		if(ltval_L.w != 0.0)
 		{
 			vec3 ltpos_L = ltval_L.xyz/ltval_L.w;
-			vec3 cast_pos = outpos;
 			vec3 ltdir_L = normalize(ltpos_L - outpos);
-			float ltdist = length(ltpos_L - outpos);
-			vec3 cast_norm;
-			vec4 cast_col;
-			float cast_time = cast_ray(cast_pos, ltdir_L, cast_norm, ltdist, cast_col);
-			if(cast_time >= ltdist*0.8)
+			float diffmul = max(0.0, -dot(frnorm, ltdir_L));
+			if(diffmul > 0.0)
 			{
-				diffamb += vec3(0.5, 0.3, 0.2)*max(0.0, -dot(frnorm, ltdir_L))
-					*min(1.0, ltval_L.w*amul)*rmul
-					*min(1.0, (cast_time-ltdist*0.8)/(ltdist*0.2))
-					;
+				vec3 cast_pos = outpos;
+				float ltdist = length(ltpos_L - outpos);
+				vec3 cast_norm;
+				vec4 cast_col;
+				float cast_time = cast_ray(cast_pos, ltdir_L, cast_norm, ltdist, cast_col);
+				if(cast_time >= ltdist*0.8)
+				{
+					tlight += diffmul
+						*min(1.0, ltval_L.w*amul)
+						*min(1.0, (cast_time-ltdist*0.8)/(ltdist*0.2))
+						;
+
+					//if(--lmax <= 0) break;
+				}
 			}
 		}
 	}
+	diffamb += vec3(0.5, 0.3, 0.2)*tlight;
 
 	// combine all
 	fcol.rgb *= diffamb;
