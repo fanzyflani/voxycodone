@@ -329,11 +329,11 @@ void main()
 
 	// sunlight + moonlight
 	// TODO: adjustable angle + colour
-	if(false){
+	if(true){
 		const vec3 SUNLIGHT = vec3(-1.0, 0.2, 0.2);
 		vec3 cast_pos, cast_norm;
 		vec4 cast_col;
-		cast_pos = outpos - vdir;
+		cast_pos = outpos - frnorm*0.1;
 		float cast_time = cast_ray(cast_pos, SUNLIGHT, cast_norm, RENDER_MAXTIME, cast_col);
 
 		if(cast_time >= RENDER_MAXTIME*0.9)
