@@ -1,5 +1,5 @@
 screen_w, screen_h = draw.screen_size_get()
-screen_scale = 2
+screen_scale = 1
 
 -- from SDL_keycode.h
 SDLK_RETURN = 13
@@ -153,7 +153,8 @@ function hook_mouse_button(button, state)
 
 		if ix >= 0 and iy >= 0 and iz >= 0 then
 		if ix < 256 and iy < 128 and iz < 256 then
-			local data = {py, px, pz, 1.0}
+			local amp = 256.0
+			local data = {py*amp, px*amp, pz*amp, 1.0*amp}
 			map_light_data[1+iy+128*(ix+256*iz)] = data
 			texture.load_sub(tex_ltpos, "3", 0,
 				iy, ix, iz,
