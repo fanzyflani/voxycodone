@@ -12,7 +12,8 @@ static int lbind_voxel_build_density_map(lua_State *L)
 		return luaL_error(L, "expected 5 arguments to voxel.build_density_map");
 
 	// Get inputs
-	tex = lua_tointeger(L, 1);
+	int *p_tex = luaL_checkudata(L, 1, "GLtex");
+	tex = *p_tex;
 	xlen = lua_tointeger(L, 2);
 	ylen = lua_tointeger(L, 3);
 	zlen = lua_tointeger(L, 4);

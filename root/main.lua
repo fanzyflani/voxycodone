@@ -38,7 +38,7 @@ function hook_render(sec_current, ...)
 	]]
 
 	fbo.target_set(nil)
-	draw.buffers_set({0})
+	--draw.buffers_set({0})
 
 	texture.unit_set(0, "2", sandbox.fbo_get_tex(vm_current))
 	shader.use(shader_blit1)

@@ -344,6 +344,8 @@ function load_stuff()
 	end
 	print(misc.gl_error())
 	if voxel.build_density_map then
+		print("is valid?")
+		print("check.")
 		voxel.build_density_map(tex_density, 256, 512, 512, map_data_raw)
 	else
 		map_density = {}

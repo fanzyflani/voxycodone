@@ -166,8 +166,9 @@ static int lbind_texture_unit_set(lua_State *L)
 	int unit = lua_tointeger(L, 1);
 	const char *tex_fmt_str = lua_tostring(L, 2);
 	GLenum tex_target = texture_get_target(L, tex_fmt_str);
-	int *p_tex = luaL_checkudata(L, 3, "GLtex");
-	int tex = *p_tex;
+	int p_tex_isnil = lua_isnil(L, 3);
+	int *p_tex = p_tex_isnil ? NULL : luaL_checkudata(L, 3, "GLtex");
+	int tex = p_tex_isnil ? 0 : *p_tex;
 
 	glActiveTexture(GL_TEXTURE0 + unit);
 	glBindTexture(tex_target, tex);
