@@ -1,5 +1,22 @@
-#version 130
 // vim: syntax=c
+
+// a bit grating on the eyes, but better than the dumbed-down model
+//define DITHER_LIGHTS
+
+// useful.
+#define AMBIENT_OCCLUSION
+
+// makes the edges stand out a bit better.
+// TODO: better edge detection.
+#define ENHANCE_QUALITY
+
+#ifndef BEAMER
+#define INPUT_BEAMER
+#endif
+
+#ifdef INPUT_BEAMER
+uniform sampler2D tex_beamer;
+#endif
 
 uniform usampler3D tex_geom;
 uniform sampler3D tex_density;
@@ -7,6 +24,7 @@ uniform sampler3D tex_ltpos;
 
 uniform vec3 cam_pos;
 in vec3 cam_dir;
+in vec2 cam_texcoord;
 
 out vec4 fcol;
 
@@ -63,8 +81,13 @@ float cast_ray(inout vec3 ray_pos, vec3 ray_dir, out vec3 frnorm, float maxtime,
 		cell += (skip*cinc);
 
 		// if out of range, stop
+#ifdef BEAMER
+		if(any(lessThan(cell, ivec3(0)))) return atime;
+		if(any(greaterThanEqual(cell<<layer, ivec3(256,512,512)))) return atime;
+#else
 		if(any(lessThan(cell, ivec3(0)))) return maxtime;
 		if(any(greaterThanEqual(cell<<layer, ivec3(256,512,512)))) return maxtime;
+#endif
 
 		// compare
 		uint v = world_get_geom(cell, layer);
@@ -257,27 +280,50 @@ void main()
 	vec3 ray_dir = cam_dir;
 	vec3 frnorm;
 	vec3 outpos = ray_pos;
+	vec3 vdir = normalize(ray_dir);
+#ifdef INPUT_BEAMER
+	vec4 intex = texture(tex_beamer, cam_texcoord*0.5+0.5);
+	float atime_target = 1.0/intex.w;
+	float advancement = max(0.0, atime_target-0.1);
+	outpos += vdir*advancement;
+#endif
 	float RENDER_MAXTIME = 10000.0;
-	float atime_init = cast_ray(outpos, ray_dir, frnorm, RENDER_MAXTIME, fcol);
-	if(atime_init == RENDER_MAXTIME) return;
+#ifdef BEAMER
+	float atime_cast = cast_ray(outpos, ray_dir, frnorm, RENDER_MAXTIME, fcol);
+	if(atime_cast == RENDER_MAXTIME)
+	{
+		fcol = vec4(0.0, 0.0, 0.0, 1.0/atime_cast);
+		return;
+	}
+
+	fcol = vec4(1.0, 1.0, 1.0, 1.0/atime_cast);
+#else
+	float atime_cast = cast_ray(outpos, ray_dir, frnorm, RENDER_MAXTIME, fcol);
+	if(atime_cast == RENDER_MAXTIME) return;
+	float atime_added = atime_cast;
+	atime_cast += advancement;
+#endif
 
 	vec3 fpos = outpos*(1.0/vec3(256.0, 512.0, 512.0));
-	vec3 vdir = normalize(ray_dir);
+	vec3 fpos_air = (outpos - 0.5*frnorm)*(1.0/vec3(256.0, 512.0, 512.0));
 
 	// ambient occlusion
 	const float AMBIENT = 0.1;
-	/*
+#ifdef AMBIENT_OCCLUSION
 	float ambmul = (1.0 - 0.9*(0.0
 		//+textureLod(tex_density, fpos, 5.0).r
 		//+textureLod(tex_density, fpos, 4.0).r
 		//+textureLod(tex_density, fpos, 3.0).r
 		//+textureLod(tex_density, fpos, 2.0).r
 		//+textureLod(tex_density, fpos, 1.0).r
-		+max(0.0, textureLod(tex_density, fpos, 1.0).r*2.0-1.0)
-		+max(0.0, textureLod(tex_density, fpos, 0.0).r*2.0-1.0)
+		//+max(0.0, textureLod(tex_density, fpos + frnorm*0.5, 1.0).r*2.0-1.0)
+		//+max(0.0, textureLod(tex_density, fpos + frnorm*0.5, 0.0).r*2.0-1.0)
+		+textureLod(tex_density, fpos_air, 1.0).r
+		+textureLod(tex_density, fpos_air, 0.0).r
 		)/2.0);
-	*/
+#else
 	float ambmul = 1.0;
+#endif
 
 	//
 	// LIGHTING
@@ -285,23 +331,87 @@ void main()
 	vec3 diffamb = vec3(0.0);
 	vec3 specular = vec3(0.0);
 
+#ifndef BEAMER
 	// ambient
 	diffamb += AMBIENT*ambmul;
 
 	// camera light
+//ifndef AMBIENT_OCCLUSION
 	diffamb += 0.2*vec3(0.3, 0.5, 0.6)*max(0.0, dot(frnorm, vdir));
+//endif
+#endif
 
 	// positioned lights
-	float amul = 1.0*pow(8.0, 0.0)/256.0;
+	float amul = 1.0*pow(8.0, 0.0)/2048.0;
 	ivec3 texcell = ivec3(outpos);
 	float tlight = 0.0;
-	for(int i = 0, lmax = 2; i < 5; i++, amul *= 8.0)
+
+#ifndef BEAMER
+#ifdef ENHANCE_QUALITY
+	bool enhance_quality = abs(atime_cast/atime_target) > 1.0001;
+#else
+	bool enhance_quality = false;
+#endif
+
+	if(enhance_quality)
 	{
-		//vec4 ltval_N = texelFetch(tex_ltpos, texcell>>(i+1), i);
-		vec4 ltval_L = textureLod(tex_ltpos, fpos, float(i));
-		if(ltval_L.w > EPSILON)
+#endif
+	if(true)
+	{
+		// Higher-quality lighting model.
+#ifdef DITHER_LIGHTS
+		int fcx = int(floor(gl_FragCoord.x)) & 3;
+		int fcy = int(floor(gl_FragCoord.y)) & 3;
+		int i = int(((fcx + ((fcy&1)<<2)) ^ (fcy&2))&7);
+		amul += pow(8.0, float(i));
+#else
+		for(int i = 0; i < 8; i++, amul *= 8.0)
+#endif
 		{
-			vec3 ltpos_L = ltval_L.xyz/ltval_L.w;
+			//vec4 ltval_N = texelFetch(tex_ltpos, texcell>>(i+1), i);
+			vec4 ltval_L = textureLod(tex_ltpos, fpos, float(i));
+			if(ltval_L.w > EPSILON)
+			{
+				vec3 ltpos_L = ltval_L.xyz/ltval_L.w;
+				vec3 ltdir_L = normalize(ltpos_L - outpos);
+				float diffmul = max(0.0, -dot(frnorm, ltdir_L));
+				if(diffmul > 0.0)
+				{
+					vec3 cast_pos = outpos;
+					vec3 cast_norm;
+					vec4 cast_col;
+					float ltdist = length(ltpos_L - outpos);
+					float cast_time = cast_ray(cast_pos, ltdir_L, cast_norm, ltdist, cast_col);
+					//if(cast_time >= ltdist*0.8)
+					if(cast_time >= ltdist)
+					//if(!line_does_intersect(outpos, ltpos_L))
+					{
+						tlight += diffmul
+							*min(1.0, ltval_L.w*amul)
+#ifdef DITHER_LIGHTS
+							*sqrt(8.0)
+#endif
+							//*min(1.0, (cast_time-ltdist*0.8)/(ltdist*0.2))
+							;
+					}
+				}
+			}
+		}
+
+	} else {
+		// Lower-quality lighting model.
+		// Shadows look terrible in this when you have more than one light.
+		// It *is* slightly faster, but not recommended.
+		vec4 effv = vec4(0.0);
+		for(int i = 0; i < 8; i++)
+		{
+			vec4 ltv = textureLod(tex_ltpos, fpos, float(i));
+			effv += ltv;
+
+		}
+		if(effv.w > EPSILON)
+		{
+			vec3 ltpos_L = effv.xyz/effv.w;
 			vec3 ltdir_L = normalize(ltpos_L - outpos);
 			float diffmul = max(0.0, -dot(frnorm, ltdir_L));
 			if(diffmul > 0.0)
@@ -311,12 +421,11 @@ void main()
 				vec4 cast_col;
 				float ltdist = length(ltpos_L - outpos);
 				float cast_time = cast_ray(cast_pos, ltdir_L, cast_norm, ltdist, cast_col);
-				//if(cast_time >= ltdist*0.8)
 				if(cast_time >= ltdist)
 				//if(!line_does_intersect(outpos, ltpos_L))
 				{
-					tlight += diffmul
-						*min(1.0, ltval_L.w*amul)
+					tlight += diffmul*sqrt(8.0)
+						//*min(1.0, ltval_L.w*amul)
 						//*min(1.0, (cast_time-ltdist*0.8)/(ltdist*0.2))
 						;
 
@@ -325,11 +434,12 @@ void main()
 			}
 		}
 	}
+
 	diffamb += vec3(0.5, 0.3, 0.2)*tlight;
 
 	// sunlight + moonlight
 	// TODO: adjustable angle + colour
-	if(true){
+	if(false){
 		const vec3 SUNLIGHT = vec3(-1.0, 0.2, 0.2);
 		vec3 cast_pos, cast_norm;
 		vec4 cast_col;
@@ -340,9 +450,21 @@ void main()
 			diffamb += vec3(0.8, 0.8, 0.8)*max(0.0, -dot(normalize(SUNLIGHT),frnorm));
 
 	}
+#ifndef BEAMER
+	}
+#endif
 
 	// combine all
 	fcol.rgb *= diffamb;
 	fcol.rgb += specular;
+
+#ifndef BEAMER
+	if(!enhance_quality)
+	{
+		fcol.rgb += intex.rgb;
+	} else {
+		//fcol.r += 0.2;
+	}
+#endif
 }
 

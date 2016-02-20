@@ -1,6 +1,8 @@
 screen_w, screen_h = draw.screen_size_get()
 screen_scale = 1
 
+beamer_scale = 4
+
 -- from SDL_keycode.h
 SDLK_RETURN = 13
 SDLK_ESCAPE = 27
@@ -153,7 +155,7 @@ function hook_mouse_button(button, state)
 
 		if ix >= 0 and iy >= 0 and iz >= 0 then
 		if ix < 256 and iy < 128 and iz < 256 then
-			local amp = 256.0
+			local amp = 2048.0
 			local data = {py*amp, px*amp, pz*amp, 1.0*amp}
 			map_light_data[1+iy+128*(ix+256*iz)] = data
 			texture.load_sub(tex_ltpos, "3", 0,
@@ -199,6 +201,21 @@ function hook_render(sec_current)
 
 	matrix.invert(mat_cam2, mat_cam1);
 
+	-- SCENE - BEAMER
+	fbo.target_set(fbo_beamer)
+
+	shader.use(shader_beamer)
+	shader.uniform_matrix_4f(shader.uniform_location_get(shader_beamer, "in_cam_inverse"), mat_cam2)
+	shader.uniform_f(shader.uniform_location_get(shader_beamer, "cam_pos"), 256.0-cam_pos_y, cam_pos_x, cam_pos_z)
+	shader.uniform_i(shader.uniform_location_get(shader_beamer, "tex_geom"), 0)
+	shader.uniform_i(shader.uniform_location_get(shader_beamer, "tex_density"), 1)
+	shader.uniform_i(shader.uniform_location_get(shader_beamer, "tex_ltpos"), 2)
+	texture.unit_set(0, "3", tex_geom)
+	texture.unit_set(1, "3", tex_density)
+	texture.unit_set(2, "3", tex_ltpos)
+	draw.viewport_set(0, 0, screen_w//screen_scale//beamer_scale, screen_h//screen_scale//beamer_scale)
+	draw.blit()
+
 	-- SCENE
 	if screen_scale == 1 then
 		fbo.target_set(nil)
@@ -212,9 +229,11 @@ function hook_render(sec_current)
 	shader.uniform_i(shader.uniform_location_get(shader_tracer, "tex_geom"), 0)
 	shader.uniform_i(shader.uniform_location_get(shader_tracer, "tex_density"), 1)
 	shader.uniform_i(shader.uniform_location_get(shader_tracer, "tex_ltpos"), 2)
+	shader.uniform_i(shader.uniform_location_get(shader_tracer, "tex_beamer"), 3)
 	texture.unit_set(0, "3", tex_geom)
 	texture.unit_set(1, "3", tex_density)
 	texture.unit_set(2, "3", tex_ltpos)
+	texture.unit_set(3, "2", tex_beamer)
 	draw.viewport_set(0, 0, screen_w//screen_scale, screen_h//screen_scale)
 	draw.blit()
 
@@ -282,8 +301,9 @@ function load_stuff()
 	if VOXYCODONE_GL_COMPAT_PROFILE then
 		error("too much effort for compat profile right now!")
 	end
-	shader_tracer = loadfile("shader.lua")()
+	shader_tracer, shader_beamer = loadfile("shader.lua")()
 	assert(shader_tracer)
+	assert(shader_beamer)
 	coroutine.yield()
 
 	-- Textures
@@ -391,7 +411,13 @@ function load_stuff()
 	texture.gen_mipmaps(tex_ltpos, "3")
 	print("ltpos generated")
 
-	-- FBO
+	-- Beamer FBO
+	tex_beamer = texture.new("2", 1, "4f", screen_w//screen_scale//beamer_scale, screen_h//screen_scale//beamer_scale, "ll", "4f")
+	fbo_beamer = fbo.new()
+	fbo.bind_tex(fbo_beamer, 0, "2", tex_beamer, 0)
+	assert(fbo.validate(fbo_beamer))
+
+	-- Screen FBO
 	tex_screen = texture.new("2", 1, "4nb", screen_w//screen_scale, screen_h//screen_scale, "ll", "4nb")
 	fbo_scene = fbo.new()
 	fbo.bind_tex(fbo_scene, 0, "2", tex_screen, 0)

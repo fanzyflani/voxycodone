@@ -38,6 +38,12 @@ static int lbind_misc_gl_error(lua_State *L)
 	return 1;
 }
 
+static int lbind_misc_gl_finish(lua_State *L)
+{
+	glFinish();
+	return 0;
+}
+
 static int lbind_misc_uncompress(lua_State *L)
 {
 	int top = lua_gettop(L);
@@ -91,6 +97,7 @@ void lbind_setup_misc(lua_State *L)
 	lua_newtable(L);
 	lua_pushcfunction(L, lbind_misc_exit); lua_setfield(L, -2, "exit");
 	lua_pushcfunction(L, lbind_misc_gl_error); lua_setfield(L, -2, "gl_error");
+	lua_pushcfunction(L, lbind_misc_gl_finish); lua_setfield(L, -2, "gl_finish");
 	lua_pushcfunction(L, lbind_misc_mouse_grab_set); lua_setfield(L, -2, "mouse_grab_set");
 	lua_pushcfunction(L, lbind_misc_mouse_visible_set); lua_setfield(L, -2, "mouse_visible_set");
 	lua_pushcfunction(L, lbind_misc_uncompress); lua_setfield(L, -2, "uncompress");

@@ -162,6 +162,11 @@ err:i = misc.gl_error():
 
 	Returns the GL error state, and then resets the error code.
 
+misc.gl_finish():
+	glFinish();
+
+	Waits until everything has finished drawing.
+
 misc.mouse_grab_set(arg:b):
 	Sets/clears mouse grab.
 
