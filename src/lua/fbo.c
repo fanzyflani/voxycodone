@@ -23,7 +23,8 @@ static int lbind_fbo_bind_tex(lua_State *L)
 	GLuint fbo = lua_tointeger(L, 1);
 	int attachment = lua_tointeger(L, 2);
 	const char *tex_fmt_str = lua_tostring(L, 3);
-	GLuint tex = lua_tointeger(L, 4);
+	int *p_tex = luaL_checkudata(L, 4, "GLtex");
+	int tex = *p_tex;
 	int level = lua_tointeger(L, 5);
 	GLenum tex_target = texture_get_target(L, tex_fmt_str);
 

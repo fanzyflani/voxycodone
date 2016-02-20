@@ -1,5 +1,18 @@
 #include "common.h"
 
+static int ltyp_gc_gltex(lua_State *L)
+{
+	// FIXME: prevent lua from spewing an error in the __gc hook, that's just dangerous
+	int *p_tex = luaL_checkudata(L, 1, "GLtex");
+	if(p_tex[1] != 0)
+	{
+		int tex = *p_tex;
+		// FIXME: somehow we need to refcount this nicely wrt FBOs and whatnot
+		//printf("GLtex cleanup: %i\n", tex);
+		glDeleteTextures(1, &tex);
+	}
+}
+
 GLenum texture_get_target(lua_State *L, const char *fmt)
 {
 	if(fmt == NULL) fmt = "*** INVALID";
@@ -153,7 +166,8 @@ static int lbind_texture_unit_set(lua_State *L)
 	int unit = lua_tointeger(L, 1);
 	const char *tex_fmt_str = lua_tostring(L, 2);
 	GLenum tex_target = texture_get_target(L, tex_fmt_str);
-	int tex = lua_tointeger(L, 3);
+	int *p_tex = luaL_checkudata(L, 3, "GLtex");
+	int tex = *p_tex;
 
 	glActiveTexture(GL_TEXTURE0 + unit);
 	glBindTexture(tex_target, tex);
@@ -169,7 +183,8 @@ static int lbind_texture_load_sub(lua_State *L)
 	if(lua_gettop(L) < 7)
 		return luaL_error(L, "expected at least 7 arguments to texture.load_sub");
 
-	int tex = lua_tointeger(L, 1);
+	int *p_tex = luaL_checkudata(L, 1, "GLtex");
+	int tex = *p_tex;
 	const char *tex_fmt_str = lua_tostring(L, 2);
 	GLenum tex_target = texture_get_target(L, tex_fmt_str);
 	int dims = tex_fmt_str[0] - '0';
@@ -457,7 +472,17 @@ static int lbind_texture_new(lua_State *L)
 
 	}
 
-	lua_pushinteger(L, tex);
+	// Generate metatable
+	int *p_tex = lua_newuserdata(L, sizeof(int)*2);
+	*p_tex = tex;
+	p_tex[1] = 1;
+	if(luaL_newmetatable(L, "GLtex") != 0)
+	{
+		// Fill in metatable
+		lua_pushcfunction(L, ltyp_gc_gltex); lua_setfield(L, -2, "__gc");
+		lua_pushstring(L, "NOPE"); lua_setfield(L, -2, "__metatable");
+	}
+	lua_setmetatable(L, -2);
 	return 1;
 }
 
@@ -468,7 +493,8 @@ static int lbind_texture_gen_mipmaps(lua_State *L)
 	if(lua_gettop(L) < 2)
 		return luaL_error(L, "expected at least 2 arguments to texture.gen_mipmaps");
 
-	int tex = lua_tointeger(L, 1);
+	int *p_tex = luaL_checkudata(L, 1, "GLtex");
+	int tex = *p_tex;
 	const char *tex_fmt_str = lua_tostring(L, 2);
 	GLenum tex_target = texture_get_target(L, tex_fmt_str);
 

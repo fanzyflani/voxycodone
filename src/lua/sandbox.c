@@ -300,8 +300,15 @@ static int lbind_sandbox_fbo_get_tex(lua_State *L)
 	if(estarget->fbo == 0)
 		lua_pushnil(L);
 	else if(estarget->fbo != -1)
-		lua_pushinteger(L, estarget->fbo_ctex);
-	else
+	{
+		int *p_tex = lua_newuserdata(L, sizeof(int)*2);
+		*p_tex = estarget->fbo_ctex;
+		p_tex[1] = 0;
+		if(luaL_newmetatable(L, "GLtex") != 0)
+			abort();
+		lua_setmetatable(L, -2);
+
+	} else
 		lua_pushnil(L);
 
 	// Return!
