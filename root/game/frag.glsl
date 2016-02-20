@@ -30,6 +30,7 @@ out vec4 fcol;
 
 const int MAX_LAYER = 5;
 const float EPSILON = 0.0001;
+float RENDER_MAXTIME = 10000.0;
 
 uint world_get_geom(ivec3 pos, int layer)
 {
@@ -82,8 +83,10 @@ float cast_ray(inout vec3 ray_pos, vec3 ray_dir, out vec3 frnorm, float maxtime,
 
 		// if out of range, stop
 #ifdef BEAMER
-		if(any(lessThan(cell, ivec3(0)))) return atime;
-		if(any(greaterThanEqual(cell<<layer, ivec3(256,512,512)))) return atime;
+		if(any(lessThan(cell, ivec3(0))))
+			return (maxtime == RENDER_MAXTIME ? atime : maxtime);
+		if(any(greaterThanEqual(cell<<layer, ivec3(256,512,512))))
+			return (maxtime == RENDER_MAXTIME ? atime : maxtime);
 #else
 		if(any(lessThan(cell, ivec3(0)))) return maxtime;
 		if(any(greaterThanEqual(cell<<layer, ivec3(256,512,512)))) return maxtime;
@@ -287,7 +290,6 @@ void main()
 	float advancement = max(0.0, atime_target-0.1);
 	outpos += vdir*advancement;
 #endif
-	float RENDER_MAXTIME = 10000.0;
 #ifdef BEAMER
 	float atime_cast = cast_ray(outpos, ray_dir, frnorm, RENDER_MAXTIME, fcol);
 	if(atime_cast == RENDER_MAXTIME)
@@ -439,14 +441,14 @@ void main()
 
 	// sunlight + moonlight
 	// TODO: adjustable angle + colour
-	if(false){
+	if(true){
 		const vec3 SUNLIGHT = vec3(-1.0, 0.2, 0.2);
 		vec3 cast_pos, cast_norm;
 		vec4 cast_col;
 		cast_pos = outpos - frnorm*0.1;
-		float cast_time = cast_ray(cast_pos, SUNLIGHT, cast_norm, RENDER_MAXTIME, cast_col);
+		float cast_time = cast_ray(cast_pos, SUNLIGHT, cast_norm, RENDER_MAXTIME*2.0, cast_col);
 
-		if(cast_time >= RENDER_MAXTIME*0.9)
+		if(cast_time >= RENDER_MAXTIME)
 			diffamb += vec3(0.8, 0.8, 0.8)*max(0.0, -dot(normalize(SUNLIGHT),frnorm));
 
 	}
