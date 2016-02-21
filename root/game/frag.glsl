@@ -48,7 +48,11 @@ vec4 fcol;
 out vec4 fcol;
 #endif
 
+#ifdef COMPAT
+const int MAX_LAYER = 0; // FIXME: layers
+#else
 const int MAX_LAYER = 5;
+#endif
 const float EPSILON = 0.0001;
 float RENDER_MAXTIME = 10000.0;
 
@@ -159,7 +163,8 @@ float cast_ray(inout vec3 ray_pos, vec3 ray_dir, out vec3 oray_norm, float maxti
 						wall *= 2.0;
 #ifdef COMPAT
 						cell *= 2;
-						layershifti *= 2;
+						layershifti /= 2;
+						layershiftf /= 2.0;
 						ivec3 boost = ivec3(greaterThanEqual(wall,vec3(aidir)));
 						cell += cpositive-boost*cinc;
 #else
@@ -230,6 +235,8 @@ float cast_ray(inout vec3 ray_pos, vec3 ray_dir, out vec3 oray_norm, float maxti
 
 		// expand if necessary
 		int nlayer = int(v)-1;
+		if(nlayer > MAX_LAYER) nlayer = MAX_LAYER;
+
 		if(layer < nlayer)
 		{
 #ifdef COMPAT
@@ -240,6 +247,8 @@ float cast_ray(inout vec3 ray_pos, vec3 ray_dir, out vec3 oray_norm, float maxti
 				wall += vec3(subval)/adir;
 				wall /= 2.0;
 				cell /= 2;
+				layershifti *= 2;
+				layershiftf *= 2.0;
 			}
 #else
 			int layerinc = nlayer-layer;
