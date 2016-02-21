@@ -1,5 +1,7 @@
 #include "common.h"
 
+int ltyp_gc_gltex(lua_State *L);
+
 static int ltyp_gc_vmref(lua_State *L)
 {
 	// FIXME: prevent lua from spewing an error in the __gc hook, that's just dangerous
@@ -305,7 +307,11 @@ static int lbind_sandbox_fbo_get_tex(lua_State *L)
 		*p_tex = estarget->fbo_ctex;
 		p_tex[1] = 0;
 		if(luaL_newmetatable(L, "GLtex") != 0)
-			abort();
+		{
+			// Fill in metatable
+			lua_pushcfunction(L, ltyp_gc_gltex); lua_setfield(L, -2, "__gc");
+			lua_pushstring(L, "NOPE"); lua_setfield(L, -2, "__metatable");
+		}
 		lua_setmetatable(L, -2);
 
 	} else

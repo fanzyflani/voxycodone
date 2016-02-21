@@ -298,9 +298,6 @@ end
 
 function load_stuff()
 	-- Shader
-	if VOXYCODONE_GL_COMPAT_PROFILE then
-		error("too much effort for compat profile right now!")
-	end
 	shader_tracer, shader_beamer = loadfile("shader.lua")()
 	assert(shader_tracer)
 	assert(shader_beamer)
@@ -308,7 +305,14 @@ function load_stuff()
 
 	-- Textures
 	print(misc.gl_error())
-	tex_geom = texture.new("3", 6, "1ub", 256, 512, 512, "nn", "1ub")
+	if VOXYCODONE_GL_COMPAT_PROFILE then
+		-- GLSL 1.20 doesn't support integer samplers, so we have to convert these
+		tex_geom = texture.new("3", 6, "1nb", 256, 512, 512, "nn", "1nb")
+		MAP_GEOM_TEX_FORMAT = "1nb"
+	else
+		tex_geom = texture.new("3", 6, "1ub", 256, 512, 512, "nn", "1ub")
+		MAP_GEOM_TEX_FORMAT = "1ub"
+	end
 	tex_density = texture.new("3", 9, "1ns", 256, 512, 512, "lln", "1us")
 
 	-- this one needs to be smaller
@@ -330,12 +334,12 @@ function load_stuff()
 			texture.load_sub(tex_geom, "3", i,
 				0, 0, 0,
 				256>>i, 512>>i, 512>>i,
-				"1ub", map_data_raw)
+				MAP_GEOM_TEX_FORMAT, map_data_raw)
 		else
 			texture.load_sub(tex_geom, "3", i,
 				0, 0, 0,
 				256>>i, 512>>i, 512>>i,
-				"1ub", map_data_raw:sub(offs, offs+step-1))
+				MAP_GEOM_TEX_FORMAT, map_data_raw:sub(offs, offs+step-1))
 		end
 
 		offs = offs + step

@@ -1,6 +1,6 @@
 #include "common.h"
 
-static int ltyp_gc_gltex(lua_State *L)
+int ltyp_gc_gltex(lua_State *L)
 {
 	// FIXME: prevent lua from spewing an error in the __gc hook, that's just dangerous
 	int *p_tex = luaL_checkudata(L, 1, "GLtex");

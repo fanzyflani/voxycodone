@@ -239,7 +239,7 @@ end
 do
 	--menu_main = gui_add_menu({"root"}, "menu_main", nil, {"Start", "Host", "Options", "Help", "Quit"})
 	if VOXYCODONE_GL_COMPAT_PROFILE then
-		vm_client = sandbox.new("plugin", "bnlmaps")
+		vm_client = sandbox.new("plugin", "game")
 		vm_current = vm_client
 	else
 		menu_main = gui_add_menu({"root"}, "menu_main", nil, {
