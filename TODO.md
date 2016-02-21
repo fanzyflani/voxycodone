@@ -7,15 +7,15 @@ This really should happen before the other things.
 * [x] Port src/voxel.c to Lua (RESOLUTION: leave src/voxel.c intact)
 * [x] Split src/lbind.c into different files
 * [x] Update shader.new()
-* [ ] Port the main loop to Lua
-* [ ] Move stuff into place in preparation for sandbox system
+* [x] Port the main loop to Lua (RESOLUTION: it's probably better to use tick+render hooks)
+* [x] Move stuff into place in preparation for sandbox system
 * [x] Make API docs
 
 API
 ---
 
 * [ ] Expose more stuff in libs:
-  * [ ] 1D textures
+  * [x] 1D textures
   * [ ] Cubemaps
   * [x] Fill in all dims for these (TODOs in brackets):
     * [x] `texture.load_sub` (1D)
@@ -47,6 +47,8 @@ Graphics
   * [x] OpenGL 3.2 reference raytracer
   * [x] Beamtracer (requires FBO texture to use a mipmap pyramid)
   * [ ] OpenGL 2.1 raytracer/beamtracer
+    * [x] Raytracer
+    * [ ] Beamtracer
   * [ ] Filthy disgusting triangle mesh renderer
 * [ ] Some form of raytracing antialiasing (FSAA in beamtracer perhaps?)
 * [ ] PNG loading
@@ -66,7 +68,7 @@ VM system
   * [x] Blind sandbox
   * [x] Plugin sandbox
 * [x] Sandbox message passing
-* [ ] Find out how to delete and/or remove sandboxes
+* [x] Find out how to delete and/or remove sandboxes
 * [ ] Delegation mode
   * [ ] Input delegation (considering returning a sandbox or list)
   * [ ] Graphics delegation (considering having a render call)
@@ -104,6 +106,8 @@ Security
   * [ ] Network client
   * [ ] Network server
 * [ ] Ensure textures / FBOs don't leak between contexts
+  * [x] Textures
+  * [ ] FBOs
 
 Lua code acceleration
 ---------------------

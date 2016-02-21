@@ -1,7 +1,7 @@
 screen_w, screen_h = draw.screen_size_get()
 screen_scale = 1
 
-beamer_scale = 4
+beamer_scale = 2
 
 -- from SDL_keycode.h
 SDLK_RETURN = 13

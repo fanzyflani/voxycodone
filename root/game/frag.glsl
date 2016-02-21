@@ -18,16 +18,14 @@
 // a bit grating on the eyes, but better than the dumbed-down model
 #ifndef INPUT_BEAMER
 //define DITHER_LIGHTS
-#else
-//define INPUT_DITHER_LIGHTS
 #endif
 
 // useful.
 #define AMBIENT_OCCLUSION
 
 // makes the edges stand out a bit better.
-// TODO: better edge detection.
-#define ENHANCE_QUALITY
+//define ENHANCE_QUALITY
+//define ENHANCE_QUALITY_EDGE_DETECT
 
 #ifdef INPUT_BEAMER
 uniform sampler2D tex_beamer;
@@ -286,20 +284,24 @@ void main()
 	vec3 outpos = ray_pos;
 	vec3 vdir = normalize(ray_dir);
 #ifdef INPUT_BEAMER
-	vec4 intex = f2d_texture(tex_beamer, cam_texcoord*0.5+0.5);
+	vec2 real_texcoord = cam_texcoord*0.5+0.5;
+	vec4 intex = f2d_texture(tex_beamer, real_texcoord);
 	float atime_target = 1.0/intex.w;
-	float advancement = max(0.0, atime_target-0.1);
+	atime_target /= length(ray_dir);
+	float advancement = max(0.0, atime_target-0.2);
 	outpos += vdir*advancement;
 #endif
 #ifdef BEAMER
 	float atime_cast = cast_ray(outpos, ray_dir, frnorm, RENDER_MAXTIME, fcol);
+	float atime_exp_cast = 1.0/atime_cast;
+	atime_exp_cast /= length(ray_dir);
 	if(atime_cast == RENDER_MAXTIME)
 	{
-		fcol = vec4(0.0, 0.0, 0.0, 1.0/atime_cast);
+		fcol = vec4(0.0, 0.0, 0.0, atime_exp_cast);
 		return;
 	}
 
-	fcol = vec4(1.0, 1.0, 1.0, 1.0/atime_cast);
+	fcol = vec4(1.0, 1.0, 1.0, atime_exp_cast);
 #else
 	float atime_cast = cast_ray(outpos, ray_dir, frnorm, RENDER_MAXTIME, fcol);
 	if(atime_cast == RENDER_MAXTIME)
@@ -359,6 +361,29 @@ void main()
 #ifdef INPUT_BEAMER
 #ifdef ENHANCE_QUALITY
 	bool enhance_quality = abs(atime_cast/atime_target) > 1.0001;
+#ifndef COMPAT
+#ifdef ENHANCE_QUALITY_EDGE_DETECT
+	if(!enhance_quality)
+	{
+		float numerator = 1.0;
+		//float dist_00 = textureOffset(tex_beamer, real_texcoord, ivec2( 0, 0)).w;
+		float dist_00 = intex.w;
+		float dist_xn = textureOffset(tex_beamer, real_texcoord, ivec2(-1, 0)).w;
+		float dist_xp = textureOffset(tex_beamer, real_texcoord, ivec2( 1, 0)).w;
+		float dist_yn = textureOffset(tex_beamer, real_texcoord, ivec2( 0,-1)).w;
+		float dist_yp = textureOffset(tex_beamer, real_texcoord, ivec2( 0, 1)).w;
+		float grad_x0 = (dist_00 - dist_xn);
+		float grad_x1 = (dist_xp - dist_00);
+		float grad_y0 = (dist_00 - dist_yn);
+		float grad_y1 = (dist_yp - dist_00);
+		float dgradx = abs(grad_x0-grad_x1);
+		float dgrady = abs(grad_y0-grad_y1);
+		float dgrad = max(dgradx, dgrady)/dist_00;
+
+		enhance_quality = enhance_quality || (dgrad > 0.003);
+	}
+#endif
+#endif
 #else
 	bool enhance_quality = false;
 #endif
@@ -452,7 +477,7 @@ void main()
 
 	// sunlight + moonlight
 	// TODO: adjustable angle + colour
-	if(true){
+	if(false){
 		const vec3 SUNLIGHT = vec3(-1.0, 0.2, 0.2);
 		vec3 cast_pos, cast_norm;
 		vec4 cast_col;
@@ -465,24 +490,6 @@ void main()
 	}
 #ifndef BEAMER
 	}
-#if defined(INPUT_DITHER_LIGHTS) && !defined(COMPAT)
-	else {
-		vec3 inv00 = textureOffset(tex_beamer, cam_texcoord*0.5+0.5, ivec2(-1, -1)).rgb;
-		vec3 inv01 = textureOffset(tex_beamer, cam_texcoord*0.5+0.5, ivec2( 0, -1)).rgb;
-		vec3 inv10 = textureOffset(tex_beamer, cam_texcoord*0.5+0.5, ivec2(-1,  0)).rgb;
-		vec3 inv11 = textureOffset(tex_beamer, cam_texcoord*0.5+0.5, ivec2( 0,  0)).rgb;
-		vec3 inv20 = textureOffset(tex_beamer, cam_texcoord*0.5+0.5, ivec2(-1,  1)).rgb;
-		vec3 inv21 = textureOffset(tex_beamer, cam_texcoord*0.5+0.5, ivec2( 0,  1)).rgb;
-		vec3 inv30 = textureOffset(tex_beamer, cam_texcoord*0.5+0.5, ivec2(-1,  2)).rgb;
-		vec3 inv31 = textureOffset(tex_beamer, cam_texcoord*0.5+0.5, ivec2( 0,  2)).rgb;
-		intex.rgb = (
-			inv00+inv01+inv10+inv11
-			+
-			inv20+inv21+inv30+inv31
-			)/8.0;
-
-	}
-#endif
 #endif
 
 	// combine all
