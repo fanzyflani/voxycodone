@@ -307,7 +307,7 @@ function load_stuff()
 	print(misc.gl_error())
 	if VOXYCODONE_GL_COMPAT_PROFILE then
 		-- GLSL 1.20 doesn't support integer samplers, so we have to convert these
-		tex_geom = texture.new("3", 6, "1nb", 256, 512, 512, "nnn", "1nb")
+		tex_geom = texture.new("3", 6, "1nb", 256, 512, 512, "nn", "1nb")
 		MAP_GEOM_TEX_FORMAT = "1nb"
 	else
 		tex_geom = texture.new("3", 6, "1ub", 256, 512, 512, "nn", "1ub")

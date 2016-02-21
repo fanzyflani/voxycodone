@@ -6,7 +6,7 @@
 #define f2d_texture texture2D
 #define f3d_textureLod(tex, pos, bias) texture3D(tex, pos, bias)
 #else
-#define a_vert_frag out
+#define a_vert_frag in
 #define t_uint uint
 #define f2d_texture texture
 #define f3d_textureLod(tex, pos, bias) textureLod(tex, pos, bias)
