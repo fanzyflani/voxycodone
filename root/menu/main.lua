@@ -108,30 +108,57 @@ assert(fbo.validate(fbo_scene))
 shader_test = loadfile("scenes/"..scene..".lua")()
 assert(shader_test)
 
-shader_blit1 = shader.new({
-vert = [=[
-#version 150
-in vec2 in_vertex;
-out vec2 tc;
+if VOXYCODONE_GL_COMPAT_PROFILE then
+	shader_blit1 = shader.new({
+	vert = [=[
+	#version 120
+	attribute vec2 in_vertex;
+	varying vec2 tc;
 
-void main()
-{
-	gl_Position = vec4(in_vertex, 0.1, 1.0);
-	tc = in_vertex*0.5+0.5;
-}
-]=],
-frag = [=[
-#version 150
+	void main()
+	{
+		gl_Position = vec4(in_vertex, 0.1, 1.0);
+		tc = in_vertex*0.5+0.5;
+	}
+	]=],
+	frag = [=[
+	#version 120
 
-in vec2 tc;
-out vec4 out_color;
-uniform sampler2D tex0;
+	varying vec2 tc;
+	uniform sampler2D tex0;
 
-void main()
-{
-	out_color = texture(tex0, tc, 0);
-}
-]=],
-}, {"in_vertex"}, {"out_color"})
+	void main()
+	{
+		gl_FragColor = texture2D(tex0, tc, 0);
+	}
+	]=],
+	}, {"in_vertex"}, {"out_color"})
+else
+	shader_blit1 = shader.new({
+	vert = [=[
+	#version 130
+	in vec2 in_vertex;
+	out vec2 tc;
+
+	void main()
+	{
+		gl_Position = vec4(in_vertex, 0.1, 1.0);
+		tc = in_vertex*0.5+0.5;
+	}
+	]=],
+	frag = [=[
+	#version 130
+
+	in vec2 tc;
+	out vec4 out_color;
+	uniform sampler2D tex0;
+
+	void main()
+	{
+		out_color = texture(tex0, tc, 0);
+	}
+	]=],
+	}, {"in_vertex"}, {"out_color"})
+end
 assert(shader_blit1)
 

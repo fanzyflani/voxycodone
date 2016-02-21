@@ -2,7 +2,7 @@ screen_w, screen_h = draw.screen_size_get()
 
 print("keys")
 dofile("keys.lua")
-if VOXYCODONE_GL_COMPAT_PROFILE then
+if NO_MENU then
 	gui = {}
 	function gui_draw() end
 else
@@ -147,7 +147,7 @@ function hook_key(key, state, ...)
 
 	if key == SDLK_ESCAPE then
 		if not state then
-			if VOXYCODONE_GL_COMPAT_PROFILE then
+			if NO_MENU then
 				misc.exit()
 				return nil
 			elseif vm_client then
@@ -238,7 +238,7 @@ end
 
 do
 	--menu_main = gui_add_menu({"root"}, "menu_main", nil, {"Start", "Host", "Options", "Help", "Quit"})
-	if VOXYCODONE_GL_COMPAT_PROFILE then
+	if NO_MENU then
 		vm_client = sandbox.new("plugin", "game")
 		vm_current = vm_client
 	else

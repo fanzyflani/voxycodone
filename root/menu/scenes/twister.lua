@@ -1,13 +1,23 @@
+local glslver = (VOXYCODONE_GL_COMPAT_PROFILE and "120\n#define COMPAT") or "130"
 return shader.new({
-vert = [=[
-#version 130
+vert = "#version "..glslver..[=[
+
+#ifdef COMPAT
+#define a_in attribute
+#define a_vary varying
+#define a_flat
+#else
+#define a_in in
+#define a_vary out
+#define a_flat flat
+#endif
 
 uniform float time;
 
-in vec2 in_vertex;
+a_in vec2 in_vertex;
 
-out vec3 vert_ray_step;
-flat out vec3 vert_cam_pos;
+a_vary vec3 vert_ray_step;
+a_flat a_vary vec3 vert_cam_pos;
 
 void main()
 {
@@ -28,15 +38,24 @@ void main()
 
 ]=],
 
-frag = [=[
-#version 130
+frag = "#version "..glslver..[=[
+
+#ifdef COMPAT
+#define a_vary varying
+#define a_flat
+#define out_color gl_FragColor
+#else
+#define a_vary in
+#define a_flat flat
+#endif
 
 uniform float time;
 
-in vec3 vert_ray_step;
-
-flat in vec3 vert_cam_pos;
+a_vary vec3 vert_ray_step;
+a_flat a_vary vec3 vert_cam_pos;
+#ifndef COMPAT
 out vec4 out_color;
+#endif
 
 const float OFFS = 0.01;
 const float OFFS2 = 0.70;

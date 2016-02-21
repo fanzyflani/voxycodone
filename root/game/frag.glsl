@@ -11,9 +11,16 @@
 #define f2d_texture texture
 #define f3d_textureLod(tex, pos, bias) textureLod(tex, pos, bias)
 #endif
+#ifndef BEAMER
+#define INPUT_BEAMER
+#endif
 
 // a bit grating on the eyes, but better than the dumbed-down model
+#ifndef INPUT_BEAMER
 //define DITHER_LIGHTS
+#else
+//define INPUT_DITHER_LIGHTS
+#endif
 
 // useful.
 #define AMBIENT_OCCLUSION
@@ -21,10 +28,6 @@
 // makes the edges stand out a bit better.
 // TODO: better edge detection.
 #define ENHANCE_QUALITY
-
-#ifndef BEAMER
-#define INPUT_BEAMER
-#endif
 
 #ifdef INPUT_BEAMER
 uniform sampler2D tex_beamer;
@@ -462,6 +465,24 @@ void main()
 	}
 #ifndef BEAMER
 	}
+#if defined(INPUT_DITHER_LIGHTS) && !defined(COMPAT)
+	else {
+		vec3 inv00 = textureOffset(tex_beamer, cam_texcoord*0.5+0.5, ivec2(-1, -1)).rgb;
+		vec3 inv01 = textureOffset(tex_beamer, cam_texcoord*0.5+0.5, ivec2( 0, -1)).rgb;
+		vec3 inv10 = textureOffset(tex_beamer, cam_texcoord*0.5+0.5, ivec2(-1,  0)).rgb;
+		vec3 inv11 = textureOffset(tex_beamer, cam_texcoord*0.5+0.5, ivec2( 0,  0)).rgb;
+		vec3 inv20 = textureOffset(tex_beamer, cam_texcoord*0.5+0.5, ivec2(-1,  1)).rgb;
+		vec3 inv21 = textureOffset(tex_beamer, cam_texcoord*0.5+0.5, ivec2( 0,  1)).rgb;
+		vec3 inv30 = textureOffset(tex_beamer, cam_texcoord*0.5+0.5, ivec2(-1,  2)).rgb;
+		vec3 inv31 = textureOffset(tex_beamer, cam_texcoord*0.5+0.5, ivec2( 0,  2)).rgb;
+		intex.rgb = (
+			inv00+inv01+inv10+inv11
+			+
+			inv20+inv21+inv30+inv31
+			)/8.0;
+
+	}
+#endif
 #endif
 
 	// combine all

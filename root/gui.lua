@@ -4,6 +4,8 @@ GUI_HPAD = 40
 GUI_VPAD = 20
 GUI_VSPACE = 12
 
+local glslver = (VOXYCODONE_GL_COMPAT_PROFILE and "120\n#define COMPAT") or "130"
+
 do
 	local data = bin_load("dat/dejavu-18-bold.tga")
 	local w = 1045
@@ -210,15 +212,19 @@ function gui_hook_key(key, state, ...)
 end
 
 gui_shader_box = shader.new({
-vert=[=[
-#version 130
+vert="#version "..glslver..[=[
 
 uniform float time;
 
+#ifdef COMPAT
+attribute vec2 in_vertex;
+varying vec2 vert_tc;
+varying vec2 vert_vertex;
+#else
 in vec2 in_vertex;
-
 out vec2 vert_tc;
 out vec2 vert_vertex;
+#endif
 
 void main()
 {
@@ -226,19 +232,27 @@ void main()
 	vert_vertex = in_vertex * vec2(1280.0/720.0, 1.0);
 	gl_Position = vec4(in_vertex, 0.1, 1.0);
 }
-]=], frag = [=[
-#version 130
+]=], frag = "#version "..glslver..[=[
 
+#ifdef COMPAT
+varying vec2 vert_tc;
+varying vec2 vert_vertex;
+#else
 in vec2 vert_tc;
 in vec2 vert_vertex;
 out vec4 out_color;
+#endif
 
 uniform vec3 rcolor;
 
 void main()
 {
 	//out_color = vec4(vec3(0.33), 1.0);
+#ifdef COMPAT
+	gl_FragColor = vec4(rcolor, 1.0);
+#else
 	out_color = vec4(rcolor, 1.0);
+#endif
 }
 
 ]=]
@@ -246,15 +260,19 @@ void main()
 assert(gui_shader_box)
 
 gui_shader_text = shader.new({
-vert=[=[
-#version 130
+vert="#version "..glslver..[=[
 
 uniform float time;
 
+#ifdef COMPAT
+attribute vec2 in_vertex;
+varying vec2 vert_tc;
+varying vec2 vert_vertex;
+#else
 in vec2 in_vertex;
-
 out vec2 vert_tc;
 out vec2 vert_vertex;
+#endif
 
 void main()
 {
@@ -262,12 +280,16 @@ void main()
 	vert_vertex = in_vertex * vec2(1280.0/720.0, 1.0);
 	gl_Position = vec4(in_vertex, 0.1, 1.0);
 }
-]=], frag = [=[
-#version 130
+]=], frag = "#version "..glslver..[=[
 
+#ifdef COMPAT
+varying vec2 vert_tc;
+varying vec2 vert_vertex;
+#else
 in vec2 vert_tc;
 in vec2 vert_vertex;
 out vec4 out_color;
+#endif
 
 uniform vec3 rcolor;
 
@@ -288,15 +310,23 @@ void main()
 	char_x *= 1044.0/1045.0;
 	char_x += 1.5/1044.0;
 
+#ifdef COMPAT
+	float result = texture2D(tex0, vec2(char_x, char_y)).r;
+#else
 	float result = texture(tex0, vec2(char_x, char_y)).r;
+#endif
 	//float result = texture(tex0, vert_tc*vec2(5.0/95.0, 1.0) + vec2(0.5/1045.0, 0.5/21.0)).r;
 	if(result < 0.5)
 	{
 		discard;
 	} else {
+#ifdef COMPAT
+		gl_FragColor = vec4(rcolor, 1.0);
+#else
 		//out_color = vec4(vec3(result), 1.0);
 		//out_color = vec4(vec3(1.0), 1.0);
 		out_color = vec4(rcolor, 1.0);
+#endif
 	}
 }
 
